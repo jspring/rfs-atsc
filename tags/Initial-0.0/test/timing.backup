@@ -1,0 +1,30 @@
+Welcome to the rfs intersection !
+Reading /home/atsc/test/rfs.approach.cfg
+i: 1 phase_no 2 no_stop 1
+i: 2 phase_no 4 no_stop 1
+i: 3 phase_no 2 no_stop 1
+i: 4 phase_no 4 no_stop 1
+Intersection: 1, node 1
+Center: lat 379155555 long -1223348500 alt 5
+Antenna: lat 379155555 long -1223348500 alt 6
+Approach 1: phase 2 stop lines 1
+Stop 1: lat 379156194 long -1223348805 length 400 orient 0
+Approach 2: phase 4 stop lines 1
+Stop 1: lat 379159083 long -1223350111 length 300 orient 270
+Approach 3: phase 2 stop lines 1
+Stop 1: lat 379154972 long -1223348777 length 400 orient 180
+Approach 4: phase 4 stop lines 1
+Stop 1: lat 379155388 long -1223347666 length 600 orient 90
+Total no stops: 4
+Reading /home/atsc/test/rfs.phase.cfg
+i 1 j 1 index 2
+i 1 j 2 index 4
+no_intervals 0 
+Plan 1, mode 0, final phase 4, cycle length 72
+	Phase 2, Offset 0.0, G 45.0 Y 4.0 AllR 2.0
+	Phase 4, Offset 51.0, G 15.0 Y 4.0 AllR 2.0
+Sniffer signals: green 1,  yellow 1, red 0
+no_overlaps 0 
+ 0.000: SNIFFER 15:53:55.343  4G 
+ 0.000: SNIFFER 15:54:03.544  4Y 
+ 6.000: SNIFFER 15:54:09.543  2G 
