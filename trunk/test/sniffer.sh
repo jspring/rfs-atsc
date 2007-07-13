@@ -5,11 +5,11 @@
 
 sleep 1
 # start digio before phases, to create DB_ATSC_VAR
-/home/atsc/test/rdsniff_rfs -i 200 > sniffer.out &
+/home/atsc/test/rdsniff -s cal -i 200 > sniffer.out &
 
 sleep 1
 # start phases program, using binary from this directory
-/home/atsc/test/phases -s rfs -V > phases.out &
+/home/atsc/test/phases -s cal > phases.out &
 
 sleep 1
 # start program to broadcast intersection message every 500 ms

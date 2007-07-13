@@ -6,9 +6,6 @@
  *
  *
  * $Log$
- * Revision 1.1  2007/01/22 16:01:20  lou
- * Initial revision
- *
  *
  */
 

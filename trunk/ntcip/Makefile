@@ -20,7 +20,7 @@ LFLAGS += -L$(DB_DIR) -L$(LOCAL_DIR) -L.
 
 LIBS = -ldb_clts -llocals -lrt 
 
-EXEC = rdntcip rdntcip2
+EXEC = rdntcip
 
 HDRS = atsc.h mibdefs.h 
 
@@ -32,15 +32,8 @@ HDRS = atsc.h mibdefs.h
 
 all: 	$(EXEC)
 
-asc2_get.o: asc_get.c 
-	$(CC) $(CFLAGS) -DCOMPARE -o asc2_get.o asc_get.c
-parse_asc2.o: parse_asc.c 
-	$(CC) $(CFLAGS) -DCOMPARE -o parse_asc2.o parse_asc.c
-
 rdntcip: asc_get.o parse_asc.o format_asc.o fcs.o
 	$(LINK) $(LFLAGS) -o $@ asc_get.o parse_asc.o format_asc.o fcs.o $(LIBS)
-rdntcip2: asc2_get.o parse_asc2.o format_asc.o fcs.o
-	$(LINK) $(LFLAGS) -o $@ asc2_get.o parse_asc2.o format_asc.o fcs.o $(LIBS)
 
 clean:
 	\rm -f *.o *.*~ $(EXEC)

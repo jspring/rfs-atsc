@@ -1,5 +1,10 @@
-// Link in this routine to write atsc_t to database from digio.
-// Must be linked with site-specific .o that sets up mapping in nema_asg.
+/**\file
+ *      Writes ATSC variable to the database. 
+ *
+ * (C) Copyright University of California 2006.  All rights reserved.
+ *
+ */
+
 #include <sys_os.h>
 #include "sys_rt.h"
 #include "timestamp.h"
@@ -11,6 +16,11 @@
 
 #undef DEBUG_DBV
 #undef DEBUG_DBV_VERBOSE
+
+// Reference to variable that stores number of bits to be converted
+// and written to atsc_t and array that stores conversion information
+extern int num_bits_to_nema;
+extern bit_to_nema_phase_t nema_asg[16];
 
 int write_atsc_db_var(db_clt_typ *pclt, unsigned char digio_byte)
 {

@@ -24,7 +24,7 @@ LFLAGS += -L$(DB_DIR) -L$(LOCAL_DIR) -L$(IX_DIR)
 
 LIBS = -lix -ldb_clts -llocals -lrt
 
-EXEC = phases compare
+EXEC = phases
 
 .c.o:	
 	$(CC) $(CFLAGS) $*.c -o $*.o 
@@ -34,7 +34,6 @@ EXEC = phases compare
 all: $(EXEC)
 
 phases:		$(OBJS) phases.o
-phases:		$(OBJS) compare.o
 
 clean:
 	rm -f *.o *.err *.a $(EXEC)

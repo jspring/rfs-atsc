@@ -22,7 +22,7 @@
 #include "ix_msg.h"	/* intersection message header file */
 
 #undef DEBUG
-#define DEBUG_ATSC
+#undef DEBUG_ATSC
 #undef DEBUG_FILE_READ
 
 #define TEST_DIR	"/home/atsc/test/"

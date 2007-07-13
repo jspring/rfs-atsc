@@ -7,9 +7,6 @@
  *
  *
  *	$Log$
- *	Revision 1.1  2007/02/16 00:02:39  lou
- *	Initial revision
- *
  *
  *
  *  Process to read AB3418 messages from 2070.  We'll expect

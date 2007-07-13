@@ -12,9 +12,19 @@
 #include	"db_utils.h"
 #include	"clt_vars.h"
 #include	"atsc.h"
+#include	"nema_asg.h"
 
-#define DEBUG_DBV
-//#define NO_HARDWARE
+#undef DEBUG_DBV
+#undef NO_HARDWARE
+
+#define TEST_DIR	"/home/atsc/test/"
+
+//variable that stores number of bits to be converted and written to atsc_t
+int num_bits_to_nema;
+
+//array that stores conversion information
+//assume sniffing 2 colors on 8 approaches max
+bit_to_nema_phase_t nema_asg[16];	
 
 extern int write_atsc_db_var(db_clt_typ *pclt, unsigned char digio_byte);
 
@@ -45,16 +55,25 @@ int main (int argc, char** argv)
 {
 	char *domain = DEFAULT_SERVICE;
 	char hostname[MAXHOSTNAMELEN];
+	FILE *fp_nema;
+	char *site = "rfs";
+	char filename_nema[80];
+	char lineinput[512];
+	posix_timer_typ *ptmr;
 	db_clt_typ *pclt;
 	int opt;
 	int xport = COMM_PSX_XPORT;
-	posix_timer_typ *ptmr;
 	int interval = 1000;	// number of milliseconds between calls
 	int counter = 0;
-	while ((opt = getopt(argc, argv, "d:i:x:")) != -1) {
+	int i, line = 1;
+
+	while ((opt = getopt(argc, argv, "d:s:i:x:")) != -1) {
 		switch (opt) {
 		  case 'd':
 			domain = strdup(optarg);
+			break;
+		  case 's':
+			site = strdup(optarg);
 			break;
 		  case 'i':
 			interval = atoi(optarg);
@@ -97,6 +116,56 @@ int main (int argc, char** argv)
 		exit( EXIT_SUCCESS );
 	} else
 		sig_ign( sig_list, sig_hand );
+
+        /*******************************/
+        /* Read the configuration file */
+        /*******************************/
+
+        /* Specify the whole path */
+        strcpy( filename_nema, TEST_DIR);
+        strcat( filename_nema, site);
+        strcat( filename_nema, ".nema.cfg");
+
+        /* Open the NEMA configuration file for that site */
+        fp_nema = fopen( filename_nema, "r");
+        if( fp_nema == NULL )
+        {
+                printf("Could not open %s\n", filename_nema);
+                exit( EXIT_FAILURE );
+        }
+
+        /* Read the NEMA configuration file */
+        printf("Reading %s\n", filename_nema);
+        fflush(stdout);
+        while( fgets( lineinput, 100, fp_nema) != NULL )
+        {
+                if( strncmp(lineinput,"#",1) == 0 )
+                        continue;
+                /* Scan the file without the # */
+                switch (line)
+		{
+                case 1: sscanf(lineinput, "%d", &num_bits_to_nema);
+			i = 1;
+                        break;
+		default:
+			sscanf(lineinput, "%c %d",
+				&nema_asg[i-1].phase_color, 
+				&nema_asg[i-1].phase_number);	
+			i++;
+			break;
+		}
+		if( i > num_bits_to_nema )	// nothing left to read
+			break;
+		line += 1;
+	}
+	fclose( fp_nema );
+
+ 	printf("Number of bits: %d\n", num_bits_to_nema);
+        for (i = 1; i <= num_bits_to_nema; i++) {
+                printf("NEMA phase color: %c phase number: %d\n",
+                        nema_asg[i-1].phase_color, 
+                        nema_asg[i-1].phase_number); 
+	}
 
 	init_usb_digio();
 

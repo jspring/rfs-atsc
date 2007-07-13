@@ -19,11 +19,11 @@ AR = ar
 AR_FLAGS += rv
 
 LINK = cc
-LFLAGS += -L$(LOCAL_DIR)  -L$(DB_DIR)  
+LFLAGS += -L$(LOCAL_DIR) -L$(DB_DIR)
 
 LIBS = -ldb_clts -llocals -lrt -lusb
 
-EXEC = rdsniff_rfs rdsniff_page test_rfs test_page 
+EXEC = rdsniff testsniff 
 
 .c.o:	
 	$(CC) $(CFLAGS) $*.c -o $*.o 
@@ -35,15 +35,11 @@ all: libusb_digio.a $(EXEC)
 libusb_digio.a: usb_digio.o 
 	$(AR) $(AR_FLAGS) $@ usb_digio.o
 
-rdsniff_rfs:	atsc_dio.o atsc_db.o nema_asg_rfs.o
-	$(LINK) $(LFLAGS) -o $@ atsc_dio.o atsc_db.o nema_asg_rfs.o $(LIBS) libusb_digio.a
-rdsniff_page:	atsc_dio.o atsc_db.o nema_asg_page.o
-	$(LINK) $(LFLAGS) -o $@ atsc_dio.o atsc_db.o nema_asg_page.o $(LIBS) libusb_digio.a 
+rdsniff:	atsc_dio.o atsc_db.o
+	$(LINK) $(LFLAGS) -o $@ atsc_dio.o atsc_db.o $(LIBS) libusb_digio.a
 
-test_rfs:	atsc_fake.o atsc_db.o nema_asg_rfs.o
-	$(LINK) $(LFLAGS) -o $@ atsc_fake.o atsc_db.o nema_asg_rfs.o $(LIBS) 
-test_page:	atsc_fake.o atsc_db.o nema_asg_page.o
-	$(LINK) $(LFLAGS) -o $@ atsc_fake.o atsc_db.o nema_asg_page.o $(LIBS) 
+testsniff:	atsc_fake.o atsc_db.o
+	$(LINK) $(LFLAGS) -o $@ atsc_fake.o atsc_db.o $(LIBS) 
 
 clean:
 	rm -f *.o *.err *.a $(EXEC)
