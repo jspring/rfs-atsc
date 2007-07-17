@@ -154,15 +154,20 @@ int main (int argc, char **argv)
         /* Log in to the database (shared global memory).  Default to the
 	 * the current host. */
 	get_local_name(hostname, MAXHOSTNAMELEN);
-	if (( pclt = db_list_init( argv[0], hostname, domain, xport,
+	if (use_db) {
+		if (( pclt = db_list_init( argv[0], hostname, domain, xport,
 			db_vars_list, NUM_DB_VARS, NULL, 0)) == NULL ) {
 			printf("%s: Database initialization error \n", argv[0]);
 			exit( EXIT_FAILURE );
+		}
 	}
 
 	if (setjmp(exit_env) != 0) {
-		if (pclt != NULL) {
-			db_list_done(pclt, db_vars_list, NUM_DB_VARS, NULL, 0);
+		if (use_db) {
+			if (pclt != NULL) {
+				db_list_done(pclt, db_vars_list, 
+					NUM_DB_VARS, NULL, 0);
+			}
 		}
 		printf("%s exited, received %d messages\n", argv[0], msg_count);
 		exit(EXIT_SUCCESS);
@@ -185,8 +190,10 @@ int main (int argc, char **argv)
 		}
 		msg_count++;
 		ix_msg_extract(buf, &pix);  // places message in structure
-		ix_msg_update(pclt, pix, DB_RX_IX_MSG_VAR,
+		if (use_db) {
+			ix_msg_update(pclt, pix, DB_RX_IX_MSG_VAR,
 					DB_RX_IX_APPROACH1_VAR);
+		}
 		if (check_phases) {
 			struct tm tmval;
 			time_t time_t_secs = pix->seconds;
