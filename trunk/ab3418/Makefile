@@ -23,7 +23,7 @@ LFLAGS += -L$(LOCAL_DIR)  -L$(DB_DIR)
 
 LIBS= -ldb_clts -llocals  -lrt
 
-EXEC = rd3418 
+EXEC = rd3418 rd34182 
 
 .c.o:	
 	$(CC) $(CFLAGS) $*.c -o $*.o 
@@ -33,6 +33,11 @@ EXEC = rd3418
 all: $(EXEC)
 
 rd3418:		rd3418.o 
+
+rd34182.o:	rd3418.c 
+	$(CC) $(CFLAGS) -DCOMPARE -o rd34182.o rd3418.c
+rd34182:	rd34182.o 
+	$(LINK) $(LFLAGS) -o $@ rd34182.o $(LIBS)
 
 clean:
 	rm -f *.o *.err *.a $(EXEC)

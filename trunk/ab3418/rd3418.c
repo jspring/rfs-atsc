@@ -55,8 +55,13 @@ static int sig_list[] =
 	ERROR,
 };
 
+#ifdef COMPARE
+static db_id_t db_vars_list[] = {
+        {DB_ATSC2_VAR, sizeof(atsc_typ)}};
+#else
 static db_id_t db_vars_list[] = {
         {DB_ATSC_VAR, sizeof(atsc_typ)}};
+#endif 
 
 #define NUM_DB_VARS sizeof(db_vars_list)/sizeof(db_id_t)
 
@@ -133,7 +138,11 @@ int main( int argc, char *argv[] )
 	    {
 	    /* Log out from the database. */
 	    if (pclt != NULL)
+#ifdef COMPARE
+		clt_destroy( pclt, DB_ATSC2_VAR, DB_ATSC2_VAR );
+#else
 		clt_destroy( pclt, DB_ATSC_VAR, DB_ATSC_VAR );
+#endif
 	        clt_logout( pclt );
 
 		exit( EXIT_SUCCESS);
@@ -230,7 +239,11 @@ int main( int argc, char *argv[] )
 
 	                atsc.info_source = ATSC_SOURCE_AB3418;
 //	    		printf("write to database\n");
+#ifdef COMPARE
+	    		db_clt_write(pclt, DB_ATSC2_VAR, sizeof(atsc_typ), &atsc);
+#else
 	    		db_clt_write(pclt, DB_ATSC_VAR, sizeof(atsc_typ), &atsc);
+#endif
 	                break;
 
 	            default:
