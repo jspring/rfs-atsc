@@ -4,7 +4,7 @@
 #
 
 ATSC_DIR = ..
-DISTRIB_DIR = /home/path
+DISTRIB_DIR = ../../path
 
 INCLUDE_DIR = $(ATSC_DIR)/include
 DB_DIR = $(DISTRIB_DIR)/db

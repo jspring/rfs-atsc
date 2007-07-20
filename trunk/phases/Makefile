@@ -4,7 +4,7 @@
 #
 
 ATSC_DIR = ..
-DISTRIB_DIR = /home/path
+DISTRIB_DIR = ../../path
 
 IX_DIR = $(ATSC_DIR)/ix
 INCLUDE_DIR = $(ATSC_DIR)/include
