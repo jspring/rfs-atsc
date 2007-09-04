@@ -7,6 +7,9 @@
 
 #include	<sys_os.h>
 #include	"usb.h"
+#include 	"timestamp.h"
+
+#undef DEBUG_TIME
 
 //This code is written to work with National Instruments USB-6501
 //libusb 0.1.12 needs to be installed for this code to work
@@ -70,10 +73,23 @@ void init_usb_digio()
 unsigned char read_digio_byte()
 {
 	int ret;
+#ifdef DEBUG_TIME
+	timestamp_t before_ts, after_ts;
+	get_current_timestamp(&before_ts);
+#endif
+
 	ret = usb_bulk_write(handle, 0x01, snd_data, 7, USB_BUFFER_SIZE);
 	ret = usb_bulk_read(handle, 0x81, rcv_data, 7, USB_BUFFER_SIZE);
-	//temp = (int) rcv_data;
+
+#ifdef DEBUG_TIME
+/** when measured at RFS RSU, saw only ~2ms delay for write and read 
+  */ 
+	get_current_timestamp(&after_ts);
 	fflush(stdout);
-//	printf("read: status 0x%02hhx\n", rcv_data[6]);
+	print_timestamp(stdout, &before_ts);
+	printf(" ");
+	print_timestamp(stdout, &after_ts);
+	printf(" read: status 0x%02hhx\n", rcv_data[6]);
+#endif
 	return (rcv_data[6]);
 }

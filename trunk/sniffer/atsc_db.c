@@ -16,16 +16,20 @@
 
 #undef DEBUG_DBV
 #undef DEBUG_DBV_VERBOSE
+#define DEBUG_TRIG
 
 // Reference to variable that stores number of bits to be converted
 // and written to atsc_t and array that stores conversion information
 extern int num_bits_to_nema;
 extern bit_to_nema_phase_t nema_asg[16];
+static unsigned char last_greens = 0;
 
 int write_atsc_db_var(db_clt_typ *pclt, unsigned char digio_byte)
 {
 	atsc_typ current_atsc;
 	int bit_set = 0;
+	timestamp_t ts;
+	static timestamp_t last_ts;
 	int i;
 
 	//initialize all fields to 0
@@ -78,6 +82,20 @@ int write_atsc_db_var(db_clt_typ *pclt, unsigned char digio_byte)
 		current_atsc.phase_status_greens[0]);
 	fflush(stdout);
 #endif
-	db_clt_write(pclt, DB_ATSC_VAR, sizeof(atsc_typ), &current_atsc);
+	if (current_atsc.phase_status_greens[0] != last_greens) {
+		timestamp_t elapsed_ts;
+		db_clt_write(pclt, DB_ATSC_VAR, sizeof(atsc_typ),
+				 &current_atsc);
+#ifdef DEBUG_TRIG
+		get_current_timestamp(&ts);
+		print_timestamp(stdout, &ts);
+		decrement_timestamp(&ts, &last_ts, &elapsed_ts);
+		last_ts = ts;	
+		printf(" current: 0x%2hhx last: 0x%2hhx elapsed %.3f\n",
+			 current_atsc.phase_status_greens[0], last_greens,
+			 TS_TO_MS(&elapsed_ts)/1000.0);
+#endif
+		last_greens = current_atsc.phase_status_greens[0];
+	}
 }
 

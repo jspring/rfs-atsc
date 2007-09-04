@@ -66,11 +66,15 @@ int main (int argc, char** argv)
 	int interval = 1000;	// number of milliseconds between calls
 	int counter = 0;
 	int i, line = 1;
+	int no_db = 0;
 
-	while ((opt = getopt(argc, argv, "d:s:i:x:")) != -1) {
+	while ((opt = getopt(argc, argv, "d:s:i:x:n")) != -1) {
 		switch (opt) {
 		  case 'd':
 			domain = strdup(optarg);
+			break;
+		  case 'n':
+			no_db = 1;
 			break;
 		  case 's':
 			site = strdup(optarg);
@@ -88,11 +92,13 @@ int main (int argc, char** argv)
 		}
 	}
 	get_local_name(hostname, MAXHOSTNAMELEN+1);
-	if (( pclt = db_list_init( argv[0], hostname, domain, xport,
+	if (!no_db) {
+		if (( pclt = db_list_init( argv[0], hostname, domain, xport,
 			       db_vars_list, NUM_DB_VARS, NULL, 0))
 			       == NULL ) {
 		   printf("Database initialization error in %s\n", argv[0]);
 		   exit( EXIT_FAILURE );
+		}
 	}
 	if ((ptmr = timer_init(interval, 0)) == NULL) {
 		printf("timer_init failed\n");
@@ -184,7 +190,8 @@ int main (int argc, char** argv)
 		printf("fake status: 0x%2hhx\n", status);
 #endif
 //		printf("dio: status 0x%02hhx\n", status);
-		write_atsc_db_var(pclt, status);
+		if (!no_db)
+			write_atsc_db_var(pclt, status);
 		TIMER_WAIT(ptmr);
 	}
 }
