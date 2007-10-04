@@ -199,7 +199,7 @@ int main (int argc, char **argv)
 			time_t time_t_secs = pix->seconds;
 
 			localtime_r(&time_t_secs, &tmval);	
-			printf("%2d:%02d:%02d.%03d\n", tmval.tm_hour,
+			printf("%2d:%02d:%02d.%03d: ", tmval.tm_hour,
 				tmval.tm_min, tmval.tm_sec, 
 				pix->nanosecs/1000000);
 			for (i = 0; i < pix->num_approaches; i++) {

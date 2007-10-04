@@ -16,13 +16,14 @@
 #include "sys_rt.h"
 #include "db_clt.h"
 #include "db_utils.h"
-#include "clt_vars.h"
+#include "atsc_clt_vars.h"
 #include "timestamp.h"
 #include "atsc.h"	/* actuated traffic signal controller header file */
 #include "ix_msg.h"	/* intersection message header file */
+#include "alert_vars.h"	/* CICAS version of IDS header file */
 
 #undef DEBUG
-#undef DEBUG_ATSC
+#define DEBUG_ATSC
 #undef DEBUG_FILE_READ
 
 #define TEST_DIR	"/home/atsc/test/"
@@ -44,6 +45,7 @@ static void approach_update(db_clt_typ *pclt, void * papp, int approach_num, int
 
 /* List of variables that this process writes */
 static db_id_t db_vars_list[] = {
+	{DB_TRAFFIC_SIGNAL_VAR, sizeof(traffic_signal_typ)},
 	{DB_ATSC_BCAST_VAR, sizeof(atsc_typ)},
 	{DB_IX_MSG_VAR, sizeof(ix_msg_t)},
 	{DB_IX_APPROACH1_VAR, MAX_APPROACH_SIZE},
@@ -163,7 +165,9 @@ int main(int argc, char *argv[])
 	char lineinput[512];
 	trig_info_typ trig_info;	/* Trigger info */
 	db_data_typ db_data;
-	atsc_typ atsc;	/* ATSC info */
+	posix_timer_typ *ptmr;		/* Timer info */
+	traffic_signal_typ *psignal;	/* CICAS IDS info */
+	atsc_typ atsc;			/* ATSC info */
 	atsc_typ *patsc = &atsc; // pointer for convenience
 	ix_approach_t *pappr;	/* Approach info */
 	ix_stop_line_t *pstop;	/* Stop line info */
@@ -185,6 +189,7 @@ int main(int argc, char *argv[])
 	bool_typ sniffer_start = FALSE;
 	bool_typ overlap_start = FALSE;
 	bool_typ first_time = TRUE;
+	bool_typ first_trigger = FALSE;
 	int tindex;
 	int i=1, j=1, k=1, m=1, line=1, jj;	
 	int recv_type;
@@ -237,17 +242,17 @@ int main(int argc, char *argv[])
 	int old_red[MAX_PHASES+1],
 		 old_yellow[MAX_PHASES+1], old_green[MAX_PHASES+1];
 	int signal_color[MAX_PHASES+1];
-	float time_left[MAX_PHASES+1];
+	float time_left[MAX_PHASES+1], time_used[MAX_PHASES+1];
 	float start_green[MAX_PHASES+1],
 		 start_yellow[MAX_PHASES+1], start_red[MAX_PHASES+1];
 	int start_phase;	// phase at beginning of timing plan
 	float time_sec = 0.0; 
 	float cycle_sec = 0.0;
 	char *site = "rfs";
-	int verbose = 0;
-	int millisec;
+	int verbose = 0, traffic_flag = 0;
+	int millisec, timer_interval = 200;
 
-	while ( (option = getopt( argc, argv, "d:s:vx:hV" )) != EOF )
+	while ( (option = getopt( argc, argv, "d:x:s:i:hvVt" )) != EOF )
         {
                 switch( option )
                 {
@@ -260,6 +265,12 @@ int main(int argc, char *argv[])
                         case 's':
 				site = strdup(optarg);
                                 break;
+                        case 'i':
+				timer_interval = atoi(optarg);
+                                break;
+                        case 't':
+				traffic_flag = 1; 
+                                break;
                         case 'v':
 				verbose = 1; 
                                 break;
@@ -270,17 +281,19 @@ int main(int argc, char *argv[])
 				// same as default case
                         default:
 				fprintf(stderr, "%s usage:\n", argv[0]);
-				fprintf(stderr, "%s [-vVh] [-d domain] [-x xport] [-s site]\n",
+				fprintf(stderr, "%s [-vVth] [-d domain] [-x xport] [-s site] [-i timer_interval]\n",
 					argv[0]);
-				fprintf(stderr, "\t-v: Verbose level 1. Prints a single line\n");
+				fprintf(stderr, "\t-v: Verbose level 1. Print a single line\n");
 				fprintf(stderr, "\t    per db read for debugging purposes.\n");
-				fprintf(stderr, "\t-V: Verbose level 2. Prints super debug info\n");
+				fprintf(stderr, "\t-V: Verbose level 2. Print super debug info\n");
 				fprintf(stderr, "\t    (originally the -v flag).\n");
-				fprintf(stderr, "\t-h: Prints this message.\n");
+				fprintf(stderr, "\t-t: Process and write the traffic signal data.\n");
+				fprintf(stderr, "\t-h: Print this message.\n");
 				fprintf(stderr, "\t-d: Specify the domain.\n");
 				fprintf(stderr, "\t-x: Specify the xport.\n");
 				fprintf(stderr, "\t-s: Specify the name of the site files to load.\n");
 				fprintf(stderr, "\t    e.g. -s rts would load rts.approach.cfg and rts.phase.cfg.\n");
+				fprintf(stderr, "\t-i: Specify the timer interval in millisec.\n");
                                 exit(1);
                                 break;
                 }
@@ -295,7 +308,14 @@ int main(int argc, char *argv[])
 	    printf("Database initialization error in phases\n");
 	    exit( EXIT_FAILURE );
 	}
-	    
+	   
+        /* Initialize the timer. */
+        if ((ptmr = timer_init(timer_interval, DB_CHANNEL(pclt))) == NULL)
+            {
+            printf("timer_init failed\n");
+            exit( EXIT_FAILURE );
+            }
+
 	/* Exit code on receiving signal */
 	if (setjmp(exit_env) != 0) {
 		if( pclt != NULL ) {
@@ -605,6 +625,7 @@ int main(int argc, char *argv[])
 			/***************************************/
 			/* Read the database for the ATSC data */
 			/***************************************/
+			first_trigger = TRUE;
 			status = clock_gettime( CLOCK_REALTIME, &trig_time);
 			db_clt_read(pclt, DB_ATSC_VAR, sizeof(atsc), patsc);
 #ifdef DEBUG_ATSC
@@ -628,7 +649,12 @@ int main(int argc, char *argv[])
 					patsc->phase_status_greens[0]);
 #endif
 		}
-		else
+		else if( recv_type == DB_TIMER )
+                {
+                //	printf("received timer alarm\n");
+			status = clock_gettime( CLOCK_REALTIME, &trig_time);
+                }
+		else if( DB_TRIG_VAR( &trig_info) != DB_ATSC_VAR )
 			printf("Unknown trigger %d in phases\n", recv_type);
 
 		/***************************/
@@ -696,7 +722,7 @@ int main(int argc, char *argv[])
 				yellow[phase_num] = atsc_phase_is_set( patsc->phase_status_yellows, phase_num);
 
 #ifdef DEBUG_ATSC
-				printf("phase%d green: %d yellow: %d\n",phase_num,green[phase_num], yellow[phase_num]);
+//				printf("phase%d green: %d yellow: %d\n",phase_num,green[phase_num], yellow[phase_num]);
 #endif
 					
 				/* Fill signal_color by phase */
@@ -736,7 +762,7 @@ int main(int argc, char *argv[])
 				green[phase_num] = atsc_phase_is_set( patsc->phase_status_greens, phase_num);
 
 #ifdef DEBUG_ATSC
-				printf("phase%d green: %d\n",phase_num,green[phase_num]);
+//				printf("phase%d green: %d\n",phase_num,green[phase_num]);
 #endif
 					
 				/* Fill signal_color by phase */
@@ -809,9 +835,13 @@ int main(int argc, char *argv[])
 				}
 				else
 					time_left[phase_num] = (start_green[phase_num]+green_length[tindex][i])-time_sec;
+				time_used[phase_num] = time_sec-start_green[phase_num];
 			}
 			else if( signal_color[phase_num] == SIGNAL_STATE_YELLOW )
+			{
 				time_left[phase_num] = (start_yellow[phase_num]+yellow_length[tindex][i])-time_sec;
+				time_used[phase_num] = time_sec-start_yellow[phase_num];
+			}
 			else if( signal_color[phase_num] == SIGNAL_STATE_RED )
 			{
 		 	//	if( timing_type[tindex] == 0 )		/* fixed */
@@ -829,6 +859,7 @@ int main(int argc, char *argv[])
 				else
 					time_left[phase_num] = (start_red[phase_num]+cycle_length[tindex]
 						-green_length[tindex][i]-yellow_length[tindex][i])-time_sec;
+				time_used[phase_num] = time_sec-start_red[phase_num];
 			}
 		}
 
@@ -975,13 +1006,13 @@ int main(int argc, char *argv[])
 		/*************************/
 		/* Write pix to database */
 		/*************************/
-
- 		if( clt_update(pclt,DB_IX_MSG_VAR, DB_IX_MSG_VAR,
-       			sizeof(ix_msg_t),(void *)pix) == FALSE )
- 		{
-       			fprintf( stderr, "clt_update( DB_IX_MSG_VAR )\n" );
-    			exit( EXIT_FAILURE );
-		}
+		if( first_trigger == TRUE )
+ 			if( clt_update(pclt,DB_IX_MSG_VAR, DB_IX_MSG_VAR,
+       				sizeof(ix_msg_t),(void *)pix) == FALSE )
+ 			{
+       				fprintf( stderr, "clt_update( DB_IX_MSG_VAR )\n" );
+    				exit( EXIT_FAILURE );
+			}
 
 		/* Fill in the approach structure */
 		pappr = malloc(pix->num_approaches * sizeof(ix_approach_t));
@@ -1047,12 +1078,12 @@ int main(int argc, char *argv[])
 			/***************************/
 			/* Write pappr to database */
 			/***************************/
-
-			ix_approach_update(pclt, &pappr[i], i, DB_IX_APPROACH1_VAR);
+			if( first_trigger == TRUE )
+				ix_approach_update(pclt, &pappr[i], i, DB_IX_APPROACH1_VAR);
 		}
 
-		/* Print the whole message for debugging */
-		if (verbose == 1)
+		/* Print the whole message for debugging after we've had the first trigger from the ATSC */
+		if( (verbose == 1) && (first_trigger == TRUE) )
 		{
 			if( first_time == TRUE )
 			{
@@ -1085,15 +1116,53 @@ int main(int argc, char *argv[])
 			printf("\n");
 			fflush(stdout);
 		}
-		else if (verbose == 2)
+		else if( (verbose == 2) && (first_trigger == TRUE) )
 			ix_msg_print(pix);
 
+		/***************************************/
+		/* Write missing ATSC data to database */
+		/***************************************/
 		/* Fill the ATSC message completely since we only had info
 		 * on green with the sniffers or the AB3418 */
 		if( (patsc->info_source == ATSC_SOURCE_SNIFF) || (patsc->info_source == ATSC_SOURCE_AB3418) )
 		{
-			db_clt_write(pclt, DB_ATSC_BCAST_VAR, sizeof(atsc_typ),
+			if( first_trigger == TRUE )
+				db_clt_write(pclt, DB_ATSC_BCAST_VAR, sizeof(atsc_typ),
 					patsc);
+		}
+
+		/**********************************************/
+		/* Write traffic signal for CICAS to database */
+		/**********************************************/
+		if( (traffic_flag == 1) && (first_trigger == TRUE) )
+		{
+			/* Use no_phases instead of no_approaches (do not fill overlap phases) */
+			for (i = 1; i <= no_phases; i++) 
+			{
+				int phase_num;
+				phase_num = phase_index[tindex][i];
+
+				/* ring_phase[0] corresponds to NEMA phase 1, etc */
+				/* ring phase=1,3,5,7 for NEMA phase=2,4,2,4 at RFS
+
+				/* Different definition of phase color for Joel: */
+				/* SV phase green=0, amber=1, red=2, flashing red=3 */
+				if( (signal_color[phase_num] >= SIGNAL_STATE_GREEN)&&(signal_color[phase_num] <= SIGNAL_STATE_RED) )
+					psignal->ring_phase[phase_num-1].phase = signal_color[phase_num]-1;
+				else if( signal_color[phase_num] == SIGNAL_STATE_FLASHING_RED )
+					psignal->ring_phase[phase_num-1].phase = signal_color[phase_num]-2;
+
+				/* Time left and time used is a double in sec */
+				psignal->ring_phase[phase_num-1].time_left = (double)time_left[phase_num];
+				psignal->ring_phase[phase_num-1].time_used = (double)time_used[phase_num];
+
+				printf("phase%d %d %lf %lf : ",phase_num, psignal->ring_phase[phase_num-1].phase,
+				psignal->ring_phase[phase_num-1].time_left, psignal->ring_phase[phase_num-1].time_used);
+			}
+			printf("\n");
+
+			db_clt_write(pclt, DB_TRAFFIC_SIGNAL_VAR, sizeof(traffic_signal_typ),
+					psignal);
 		}
 
 		for( i=1; i <= no_phases; i++ )

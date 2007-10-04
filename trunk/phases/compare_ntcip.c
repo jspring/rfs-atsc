@@ -15,7 +15,7 @@
 #include "sys_rt.h"
 #include "db_clt.h"
 #include "db_utils.h"
-#include "clt_vars.h"
+#include "atsc_clt_vars.h"
 #include "timestamp.h"
 #include "atsc.h"	/* actuated traffic signal controller header file */
 #include "ix_msg.h"	/* intersection message header file */
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 	struct tm tmval, tmval2;	/* Formatted time output */
 	time_t time_t_secs, time_t_sec2;
 	int status;
-	int sniffer_trig[4][50], ntcip_trig[4][50];	
+	int sniffer_trig[4][100], ntcip_trig[4][100];	
 	int t1_p2 = 0, t1_p4 = 0, t2_p2 = 0, t2_p4 = 0;
 	bool_typ print_flag = FALSE;
 
@@ -544,7 +544,6 @@ int main(int argc, char *argv[])
 				{
 					signal_color[phase_num] = SIGNAL_STATE_GREEN;
 					red[phase_num] = 0;
-					clear_atsc_phase( patsc->phase_status_reds, phase_num);
 					if( green[phase_num] != old_green[phase_num] )
 						start_green[phase_num] = time_sec;
 				}
@@ -553,7 +552,6 @@ int main(int argc, char *argv[])
 				{
 					signal_color[phase_num] = SIGNAL_STATE_YELLOW;
 					red[phase_num] = 0;
-					clear_atsc_phase( patsc->phase_status_reds, phase_num);
 					if( yellow[phase_num] != old_yellow[phase_num] )
 					{
 						start_yellow[phase_num] = time_sec;
@@ -565,7 +563,6 @@ int main(int argc, char *argv[])
 				{	/* Color has to be red ! */
 					signal_color[phase_num] = SIGNAL_STATE_RED;
 					red[phase_num] = 1;
-					set_atsc_phase( patsc->phase_status_reds, phase_num);
 					if( red[phase_num] != old_red[phase_num] )
 						start_red[phase_num] = time_sec;
 				}
@@ -603,15 +600,12 @@ int main(int argc, char *argv[])
 			}
 		}
 
-                /* Print trigger times for sniffer and ntcip */
+                /* Print trigger times for sniffer and ntcip for GREEN turning ON */
                 if( trig_type == ATSC_SOURCE_SNIFF )
                 {
-               // 	printf("%6.3f: SNIFFER %d%s %d%s\n", cycle_sec, phase_no[1],
-                 //             	ix_signal_state_string(signal_color[phase_no[1]]),phase_no[2],
-                 //             	ix_signal_state_string(signal_color[phase_no[2]]));
                         for (i = 0; i < no_phases; i++)
                         {
-				if( (signal_color[phase_no[i+1]] == SIGNAL_STATE_GREEN || signal_color[phase_no[i+1]] == SIGNAL_STATE_YELLOW) 
+				if( (signal_color[phase_no[i+1]] == SIGNAL_STATE_GREEN) 
 					&& (signal_color[phase_no[i+1]] != old_color[phase_no[i+1]]))
 				{
                         		time_t_secs = trig_time.tv_sec;
@@ -656,12 +650,9 @@ int main(int argc, char *argv[])
                 }
                 else if( trig_type == ATSC_SOURCE_NTCIP )
                 {
-               // 	printf("%6.3f: NTCIP   %d%s %d%s\n", cycle_sec, phase_no[1],
-               //               	ix_signal_state_string(signal_color2[phase_no[1]]),phase_no[2],
-               //               	ix_signal_state_string(signal_color2[phase_no[2]]));
                         for (i = 0; i < no_phases; i++)
                         {
-				if( (signal_color2[phase_no[i+1]] == SIGNAL_STATE_GREEN || signal_color2[phase_no[i+1]] == SIGNAL_STATE_YELLOW) 
+				if( (signal_color2[phase_no[i+1]] == SIGNAL_STATE_GREEN) 
 					&& (signal_color2[phase_no[i+1]] != old_color2[phase_no[i+1]]))
 				{
                        	 		time_t_sec2 = trig2_time.tv_sec;
@@ -706,8 +697,8 @@ int main(int argc, char *argv[])
                 }
                	fflush(stdout);
 
-		/* Print the array once */
-		if( (time_sec >= 600.0) && (print_flag==FALSE) )
+		/* Print the array once after one hour */
+		if( (time_sec >= 60*60.0) && (print_flag==FALSE) )
 		{
         		for( i=0; i < min(t1_p4,t2_p4); i++ )
 			{

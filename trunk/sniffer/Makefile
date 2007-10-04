@@ -2,14 +2,14 @@
 #
 # Copyright (c) 2006   Regents of the University of California
 #
-# A trivial change to see if I can check it in
 
 ATSC_DIR = ..
-DISTRIB_DIR = ../../path
+DISTRIB_DIR = /home/path
 
 INCLUDE_DIR = $(ATSC_DIR)/include
 LOCAL_DIR = $(DISTRIB_DIR)/local
 DB_DIR = $(DISTRIB_DIR)/db
+CICAS_DIR = /home/cicas
 
 CC = cc
 CFLAGS += -c -D_GNU_SOURCE
@@ -47,4 +47,5 @@ clean:
 
 install:
 	cp $(EXEC) $(ATSC_DIR)/test
+	cp $(EXEC) $(CICAS_DIR)/test
 

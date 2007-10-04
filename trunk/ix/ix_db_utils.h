@@ -20,7 +20,7 @@
 #else
 #include "db_clt.h"
 #include "db_utils.h"
-#include "clt_vars.h"
+#include "atsc_clt_vars.h"
 #endif
 
 // Writes approach values from an ix_approach_t structure

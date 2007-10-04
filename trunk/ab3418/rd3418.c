@@ -27,10 +27,12 @@
 
 #include "db_clt.h"
 #include "db_utils.h"
-#include "clt_vars.h"
+#include "atsc_clt_vars.h"
 #include "atsc.h"
 #include "msgs.h"
 #include "fcs.h"
+
+#define DEBUG_TRIG
 
 int fpin;	
 int fpout;
@@ -70,6 +72,7 @@ int main( int argc, char *argv[] )
 	char *domain = DEFAULT_SERVICE;
 	int opt;
 	int xport = COMM_PSX_XPORT;
+        int interval = 25;    // number of milliseconds between calls
 	int i;
 	gen_mess_typ    readBuff;
 	char hostname[MAXHOSTNAMELEN];
@@ -85,15 +88,21 @@ int main( int argc, char *argv[] )
 	struct timeb timeptr_raw;
 	struct tm time_converted;
 	unsigned char interval_mask;
+	static unsigned char last_greens = 0;
+	timestamp_t ts, last_ts, elapsed_ts;
+
 //int jjj;
 
-	while ((opt = getopt(argc, argv, "d:x:")) != -1)
+	while ((opt = getopt(argc, argv, "d:i:x:")) != -1)
 	{
 		switch (opt)
 		{
 		  case 'd':
 			domain = strdup(optarg);
 			break;
+                  case 'i':
+                        interval = atoi(optarg);
+                        break;
 		  case 'x':
 			xport = atoi(optarg);	
 			break;
@@ -104,6 +113,7 @@ int main( int argc, char *argv[] )
 		}
 	}
 	get_local_name(hostname, MAXHOSTNAMELEN+1);
+printf("hostname %s\n",hostname);
 	if ((pclt = db_list_init( argv[0], hostname, domain, xport,
 			db_vars_list, NUM_DB_VARS, NULL, 0))
 			== NULL)
@@ -128,7 +138,7 @@ int main( int argc, char *argv[] )
 	chid = ChannelCreate(0);
 //	printf("chid %d\n", chid);
 
-	if ((ptmr = timer_init(25, chid)) == NULL) {
+	if ((ptmr = timer_init(interval, chid)) == NULL) {
 		printf("timer_init failed\n");
 		exit(1);
 	}
@@ -239,11 +249,26 @@ int main( int argc, char *argv[] )
 
 	                atsc.info_source = ATSC_SOURCE_AB3418;
 //	    		printf("write to database\n");
+			if (atsc.phase_status_greens[0] != last_greens) {
+
 #ifdef COMPARE
-	    		db_clt_write(pclt, DB_ATSC2_VAR, sizeof(atsc_typ), &atsc);
+				db_clt_write(pclt, DB_ATSC2_VAR,
+					 sizeof(atsc_typ), &atsc);
 #else
-	    		db_clt_write(pclt, DB_ATSC_VAR, sizeof(atsc_typ), &atsc);
+				db_clt_write(pclt, DB_ATSC_VAR,
+					 sizeof(atsc_typ), &atsc);
 #endif
+#ifdef DEBUG_TRIG
+			get_current_timestamp(&ts);
+			print_timestamp(stdout, &ts);
+			decrement_timestamp(&ts, &last_ts, &elapsed_ts);
+			last_ts = ts;
+			printf(" current: 0x%2hhx last: 0x%2hhx elapsed %.3f\n",
+				 atsc.phase_status_greens[0], last_greens,
+				 TS_TO_MS(&elapsed_ts)/1000.0);
+#endif
+			}
+			last_greens = atsc.phase_status_greens[0];
 	                break;
 
 	            default:

@@ -19,13 +19,13 @@
 #include "sys_rt.h"
 #include "db_clt.h"
 #include "db_utils.h"
-#include "clt_vars.h"
+#include "atsc_clt_vars.h"
 #include "timestamp.h"
 #include "mibdefs.h"
 #include "atsc.h"
 
 /* change to define and remake to get debugging information */
-#undef DEBUG
+#define DEBUG
 
 /** Called when an SNTP INTEGER type is expected.
  *  Returns value of integer. Index into buffer (pindex) is updated.

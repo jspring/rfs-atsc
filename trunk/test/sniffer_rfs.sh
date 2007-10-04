@@ -9,7 +9,7 @@ sleep 1
 
 sleep 1
 # start phases program, using binary from this directory
-/home/atsc/test/phases -s rfs > phases.out &
+/home/atsc/test/phases -s rfs -i 200 -t -v > phases.out &
 
 sleep 1
 # start program to broadcast intersection message every 500 ms

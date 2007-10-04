@@ -10,7 +10,7 @@
 #include	"timestamp.h"
 #include	"db_clt.h"
 #include	"db_utils.h"
-#include	"clt_vars.h"
+#include	"atsc_clt_vars.h"
 #include	"atsc.h"
 #include	"nema_asg.h"
 
@@ -172,6 +172,7 @@ int main (int argc, char** argv)
                         nema_asg[i-1].phase_color, 
                         nema_asg[i-1].phase_number); 
 	}
+	fflush(stdout);
 
 	init_usb_digio();
 

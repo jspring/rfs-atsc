@@ -4,16 +4,17 @@
 #
 
 ATSC_DIR = ..
-DISTRIB_DIR = ../../path
-
+DISTRIB_DIR = /home/path
+CICAS_DIR = /home/cicas
 IX_DIR = $(ATSC_DIR)/ix
+EXP_DIR = $(CICAS_DIR)/exp
 INCLUDE_DIR = $(ATSC_DIR)/include
 DB_DIR = $(DISTRIB_DIR)/db
 LOCAL_DIR = $(DISTRIB_DIR)/local
 
 CC = cc
 CFLAGS += -c -D_GNU_SOURCE
-CFLAGS += -I. -I$(INCLUDE_DIR) -I$(DB_DIR) -I$(LOCAL_DIR) -I$(IX_DIR)
+CFLAGS += -I. -I$(INCLUDE_DIR) -I$(DB_DIR) -I$(LOCAL_DIR) -I$(IX_DIR) -I$(EXP_DIR)
 CFLAGS += -g
 			
 AR = ar
@@ -42,3 +43,4 @@ clean:
 
 install:
 	cp $(EXEC) $(ATSC_DIR)/test
+	cp $(EXEC) $(CICAS_DIR)/test

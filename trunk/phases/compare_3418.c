@@ -15,13 +15,14 @@
 #include "sys_rt.h"
 #include "db_clt.h"
 #include "db_utils.h"
-#include "clt_vars.h"
+#include "atsc_clt_vars.h"
 #include "timestamp.h"
 #include "atsc.h"	/* actuated traffic signal controller header file */
 #include "ix_msg.h"	/* intersection message header file */
 
 #undef DEBUG_ATSC
 #undef DEBUG_FILE_READ
+#undef DEBUG_TRIG
 
 #define TEST_DIR	"/home/atsc/test/"
 
@@ -72,7 +73,7 @@ int main(int argc, char *argv[])
 	struct tm tmval, tmval2;	/* Formatted time output */
 	time_t time_t_secs, time_t_sec2;
 	int status;
-	int sniffer_trig[4][50], ab3418_trig[4][50];	
+	int sniffer_trig[4][100], ab3418_trig[4][100];	
 	int t1_p2 = 0, t1_p4 = 0, t2_p2 = 0, t2_p4 = 0;
 	bool_typ print_flag = FALSE;
 
@@ -146,6 +147,11 @@ int main(int argc, char *argv[])
 	char *site = "rfs";
 	int verbose = 0;
 	int millisec;
+	static timestamp_t last_sniff;
+	static timestamp_t last_ab3418;
+
+	memset(&last_sniff, 0, sizeof(timestamp_t));
+	memset(&last_ab3418, 0, sizeof(timestamp_t));
 
 	while ( (option = getopt( argc, argv, "d:s:vx:hV" )) != EOF )
         {
@@ -498,13 +504,23 @@ int main(int argc, char *argv[])
 			/********************************************************/
 			status = clock_gettime( CLOCK_REALTIME, &trig_time);
 			db_clt_read(pclt, DB_ATSC_VAR, sizeof(atsc), patsc);
-#ifdef DEBUG_ATSC
-			printf("sniffer trigger: green %02hhx\n",
-                                patsc->phase_status_greens[0]);
+#ifdef DEBUG_TRIG
+			{
+				timestamp_t ts;
+				timestamp_t elapsed_ts;
+				get_current_timestamp(&ts);
+				decrement_timestamp(&ts, &last_sniff, 
+					&elapsed_ts);
+				last_sniff = ts;
+				printf("sniffer trigger: "); 
+				print_timestamp(stdout, &ts);
+				printf(" %02hhx %7.3f\n",
+					patsc->phase_status_greens[0],
+					TS_TO_MS(&elapsed_ts)/1000.0);
+			}
 #endif
 			trig_type = ATSC_SOURCE_SNIFF;
-		}
-
+		} 
 		if( DB_TRIG_VAR( &trig_info) == DB_ATSC2_VAR )
                 {
                         /***************************************************/
@@ -512,12 +528,23 @@ int main(int argc, char *argv[])
                         /***************************************************/
                         status = clock_gettime( CLOCK_REALTIME, &trig2_time);
                         db_clt_read(pclt, DB_ATSC2_VAR, sizeof(atsc2), patsc2);
-#ifdef DEBUG_ATSC
-                        printf("ab3418 trigger: green %02hhx\n",
-                                patsc2->phase_status_greens[0]);
+#ifdef DEBUG_TRIG
+			{
+				timestamp_t ts;
+				timestamp_t elapsed_ts;
+				get_current_timestamp(&ts);
+				decrement_timestamp(&ts, &last_ab3418, 
+					&elapsed_ts);
+				last_ab3418 = ts;
+				printf("ab3418 trigger: ");
+				print_timestamp(stdout, &ts);
+				printf(" %02hhx %7.3f\n",
+					patsc2->phase_status_greens[0],
+					TS_TO_MS(&elapsed_ts)/1000.0);
+			}
 #endif
                         trig_type = ATSC_SOURCE_AB3418;
-                }
+                } 
 
 
 		/***************************/
@@ -609,15 +636,11 @@ int main(int argc, char *argv[])
 			}
 		}
 
-                /* Print trigger times for sniffer and AB3418 */
+                /* Print trigger times for sniffer and AB3418 for GREEN turning ON */
                 if( trig_type == ATSC_SOURCE_SNIFF )
                 {
-                	//printf("%6.3f: SNIFFER %d%s %d%s\n", cycle_sec, phase_no[1],
-                 	//             	ix_signal_state_string(signal_color[phase_no[1]]),phase_no[2],
-                 	//             	ix_signal_state_string(signal_color[phase_no[2]]));
                         for (i = 0; i < no_phases; i++)
                         {
-				//if( (signal_color[phase_no[i+1]] == SIGNAL_STATE_GREEN || signal_color[phase_no[i+1]] == SIGNAL_STATE_YELLOW) 
 				if( (signal_color[phase_no[i+1]] == SIGNAL_STATE_GREEN) 
 					&& (signal_color[phase_no[i+1]] != old_color[phase_no[i+1]]))
 				{
@@ -663,12 +686,8 @@ int main(int argc, char *argv[])
                 }
                 else if( trig_type == ATSC_SOURCE_AB3418 )
                 {
-               		//printf("%6.3f: AB3418   %d%s %d%s\n", cycle_sec, phase_no[1],
-               		//             	ix_signal_state_string(signal_color2[phase_no[1]]),phase_no[2],
-               		//             	ix_signal_state_string(signal_color2[phase_no[2]]));
                         for (i = 0; i < no_phases; i++)
                         {
-				//if( (signal_color2[phase_no[i+1]] == SIGNAL_STATE_GREEN || signal_color2[phase_no[i+1]] == SIGNAL_STATE_YELLOW) 
 				if( (signal_color2[phase_no[i+1]] == SIGNAL_STATE_GREEN) 
 					&& (signal_color2[phase_no[i+1]] != old_color2[phase_no[i+1]]))
 				{
@@ -681,7 +700,7 @@ int main(int argc, char *argv[])
 					else if( verbose == 2 )
 					{
                 				printf("%6.3f: ", cycle_sec);
-                        			printf("AB3418   ");
+                        			printf("AB3418  ");
                         			printf("%2d:%02d:%02d.%03d  ",
                                 			tmval2.tm_hour, tmval2.tm_min, tmval2.tm_sec,
                                 			trig2_time.tv_nsec/1000000);
@@ -714,8 +733,8 @@ int main(int argc, char *argv[])
                 }
                	fflush(stdout);
 
-		/* Print the array once */
-		if( (time_sec >= 600.0) && (print_flag==FALSE) )
+		/* Print the array once after one hour */
+		if( (time_sec >= 60*60.0) && (print_flag==FALSE) )
 		{
         		for( i=0; i < min(t1_p4,t2_p4); i++ )
 			{

@@ -16,12 +16,12 @@
 #include "timestamp.h"
 #include "db_clt.h"
 #include "db_utils.h"
-#include "clt_vars.h"
+#include "atsc_clt_vars.h"
 #include "atsc.h"
 #include "mibdefs.h"
 
 #undef DEBUG
-#undef DEBUG_MAIN
+#define DEBUG_MAIN
 
 jmp_buf env;
 
