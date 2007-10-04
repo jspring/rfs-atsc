@@ -2,6 +2,7 @@
 #
 # Copyright (c) 2006   Regents of the University of California
 #
+# A trivial change to see if I can check it in
 
 ATSC_DIR = ..
 DISTRIB_DIR = ../../path
