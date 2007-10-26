@@ -44,8 +44,8 @@ static void sig_hand(int code);
 static void approach_update(db_clt_typ *pclt, void * papp, int approach_num, int size);
 
 /* List of variables that this process writes */
+/* Does not include TRAFFIC_SIGNAL, which is created by cicas_create */
 static db_id_t db_vars_list[] = {
-	{DB_TRAFFIC_SIGNAL_VAR, sizeof(traffic_signal_typ)},
 	{DB_ATSC_BCAST_VAR, sizeof(atsc_typ)},
 	{DB_IX_MSG_VAR, sizeof(ix_msg_t)},
 	{DB_IX_APPROACH1_VAR, MAX_APPROACH_SIZE},
@@ -1155,14 +1155,20 @@ int main(int argc, char *argv[])
 				/* Time left and time used is a double in sec */
 				psignal->ring_phase[phase_num-1].time_left = (double)time_left[phase_num];
 				psignal->ring_phase[phase_num-1].time_used = (double)time_used[phase_num];
-
-				printf("phase%d %d %lf %lf : ",phase_num, psignal->ring_phase[phase_num-1].phase,
-				psignal->ring_phase[phase_num-1].time_left, psignal->ring_phase[phase_num-1].time_used);
+				if (verbose) 
+					printf("traffic_signal: phase%d %d %lf %lf : ",
+			phase_num, psignal->ring_phase[phase_num-1].phase,
+			psignal->ring_phase[phase_num-1].time_left, psignal->ring_phase[phase_num-1].time_used);
 			}
-			printf("\n");
+			if (verbose) {
+				printf("\n");
+				fflush(stdout);
+			}
 
-			db_clt_write(pclt, DB_TRAFFIC_SIGNAL_VAR, sizeof(traffic_signal_typ),
-					psignal);
+			// ignore error
+			(void) clt_update(pclt, DB_TRAFFIC_SIGNAL_TYPE,
+			 DB_TRAFFIC_SIGNAL_VAR, sizeof(traffic_signal_typ),
+					(void *) psignal);
 		}
 
 		for( i=1; i <= no_phases; i++ )
