@@ -9,6 +9,7 @@ DISTRIB_DIR = ../../path
 INCLUDE_DIR = $(ATSC_DIR)/include
 DB_DIR = $(DISTRIB_DIR)/db
 LOCAL_DIR = $(DISTRIB_DIR)/local
+PROJ_DIR = /home/cicas
 
 CC = cc
 CFLAGS += -c -D_GNU_SOURCE
@@ -44,3 +45,4 @@ clean:
 
 install:
 	cp $(EXEC) $(ATSC_DIR)/test
+	cp $(EXEC) $(PROJ_DIR)/test

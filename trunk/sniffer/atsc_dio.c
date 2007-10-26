@@ -67,8 +67,9 @@ int main (int argc, char** argv)
 	int counter = 0;
 	int i, line = 1;
 	int no_db = 0;
+	int verbose = 0;
 
-	while ((opt = getopt(argc, argv, "d:s:i:x:n")) != -1) {
+	while ((opt = getopt(argc, argv, "d:s:i:x:nv")) != -1) {
 		switch (opt) {
 		  case 'd':
 			domain = strdup(optarg);
@@ -81,6 +82,9 @@ int main (int argc, char** argv)
 			break;
 		  case 'i':
 			interval = atoi(optarg);
+			break;
+		  case 'v':
+			verbose = 1;
 			break;
 		  case 'x':
 			xport = atoi(optarg);	
@@ -190,7 +194,8 @@ int main (int argc, char** argv)
                 counter++;
 		printf("fake status: 0x%2hhx\n", status);
 #endif
-//		printf("dio: status 0x%02hhx\n", status);
+		if (verbose)
+			printf("dio: status 0x%02hhx\n", status);
 		if (!no_db)
 			write_atsc_db_var(pclt, status);
 		TIMER_WAIT(ptmr);
