@@ -84,7 +84,7 @@ int main (int argc, char **argv)
 	int interval = 100;
 	int getbusdisplay=0;	// put Transit Signal Priority info in header
 
-        while ((option = getopt(argc, argv, "i:no:p:v")) != EOF) {
+        while ((option = getopt(argc, argv, "gi:no:p:v")) != EOF) {
                 switch(option) {
                         case 'g':
                                 getbusdisplay = 1;
