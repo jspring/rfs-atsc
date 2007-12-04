@@ -33,6 +33,8 @@
 #include "ix_msg.h" 
 #include "ix_db_utils.h"
 #include "udp_utils.h"
+#include "../../tsp/src/veh_sig.h"
+#include "../../tsp/src/clt_vars.h"
 
 static int sig_list[]=
 {
@@ -80,9 +82,13 @@ int main (int argc, char **argv)
 	unsigned char send_buf[MAX_IX_MSG_PKT_SIZE];
 	char hostname[MAXHOSTNAMELEN+1];
 	int interval = 100;
+	int getbusdisplay=0;	// put Transit Signal Priority info in header
 
         while ((option = getopt(argc, argv, "i:no:p:v")) != EOF) {
                 switch(option) {
+                        case 'g':
+                                getbusdisplay = 1;
+				break;
                         case 'i':
                                 interval = atoi(optarg);
 				break;
@@ -142,9 +148,23 @@ int main (int argc, char **argv)
 	while (1) {
 		ix_msg_t *pmsg = (ix_msg_t *) malloc(sizeof(ix_msg_t));
 		int bytes_to_send;
+		to_disp_typ to_disp;
 		ix_msg_read(pclt, pmsg, DB_IX_MSG_VAR, DB_IX_APPROACH1_VAR); 
 		if (verbose)
 			ix_msg_print(pmsg);
+		if (getbusdisplay) {
+			short *pshort;
+			db_clt_read(pclt, DB_TO_DISP_VAR, sizeof(to_disp_typ),
+					&to_disp);
+			pmsg->preempt_calls = to_disp.showT2G;
+			pmsg->bus_priority_calls = to_disp.signalFace_bf;
+			pmsg->preempt_state = to_disp.signalFace_af;
+			pmsg->special_alarm = to_disp.showTimeSave;
+			pshort = (short *) &pmsg->reserved[0];
+			*pshort = to_disp.T2G;			
+			pshort = (short *) &pmsg->reserved[2];
+			*pshort = to_disp.busTimeSave;			
+		}
 		bytes_to_send = ix_msg_format(pmsg, send_buf,
 					MAX_IX_MSG_PKT_SIZE, 0);
 
