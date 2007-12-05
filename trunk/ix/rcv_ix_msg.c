@@ -21,6 +21,7 @@
  */ 
 
 #include "ix_msg.h"	// intersection message set header file
+#include "timestamp.h"
 
 // Normal operation in an RSU will interface with digital I/O and
 // phase tracking processes using the PATH data bucket code.
@@ -84,6 +85,7 @@ int main (int argc, char **argv)
 	int bytes_received;	/// returned from recvfrom
 	int verbose = 0;	/// echo entire message  to stdout
 	int check_phases = 0;	/// print phase/countdown summary to stdout
+	int check_tsp = 0;	/// print TSP info from header 
 	int count = 0;		/// character count for formatting
 	int msg_count = 0;	/// incremented with each receive
 	int i;			/// local counter for for loops
@@ -110,7 +112,7 @@ int main (int argc, char **argv)
 	int xport = COMM_PSX_XPORT;	/// Change if porting to another OS
 #endif
 
-        while ((option = getopt(argc, argv, "cd:f:np:v")) != EOF) {
+        while ((option = getopt(argc, argv, "cd:f:gnp:v")) != EOF) {
                 switch( option ) {
 			case 'c':
 				check_phases = 1; 
@@ -121,6 +123,9 @@ int main (int argc, char **argv)
 			case 'f':
 				foutname = strdup(optarg);
 				do_trace = 1;
+				break;
+			case 'g':
+				check_tsp = 1; 
 				break;
                         case 'n':
                                 use_db = 0;
@@ -209,6 +214,21 @@ int main (int argc, char **argv)
 				   pappr->time_to_next/10.0);
 			}
 			printf("\n");
+		}
+		if (check_tsp) {
+			timestamp_t ts;
+			short int *pshort;
+			get_current_timestamp(&ts);
+			print_timestamp(stdout, &ts);
+			printf(" showT2G %c sig_bf %c sig_af %c showTS %c ",
+				pix->preempt_calls,
+				pix->bus_priority_calls,
+				pix->preempt_state,
+				pix->special_alarm);
+			pshort = (short *) &pix->reserved[0];
+			printf(" T2G %hd ", pshort);
+			pshort = (short *) &pix->reserved[2];
+			printf(" TS %hd ", pshort);
 		}
 		if (do_trace)
 			ix_msg_update_file(fp, pix);

@@ -35,6 +35,7 @@
 #include "udp_utils.h"
 #include "../../tsp/src/veh_sig.h"
 #include "../../tsp/src/clt_vars.h"
+#include "timestamp.h"
 
 static int sig_list[]=
 {
@@ -71,6 +72,7 @@ int main (int argc, char **argv)
 	struct sockaddr_in snd_addr;	/// used by sendto
 	int bytes_sent;		/// returned from sendto
 	int verbose = 0;	/// extra output to stdout 
+	int check_tsp = 0;	/// set to 1 if getbusdisplay and verbose
 	posix_timer_typ *ptmr;
 	char * domain = DEFAULT_SERVICE;
 #ifdef TEST_ONLY
@@ -84,7 +86,7 @@ int main (int argc, char **argv)
 	int interval = 100;
 	int getbusdisplay=0;	// put Transit Signal Priority info in header
 
-        while ((option = getopt(argc, argv, "gi:no:p:v")) != EOF) {
+        while ((option = getopt(argc, argv, "i:no:p:v")) != EOF) {
                 switch(option) {
                         case 'g':
                                 getbusdisplay = 1;
@@ -109,6 +111,13 @@ int main (int argc, char **argv)
                                 break;
                 }
         }
+	if (getbusdisplay) {
+		if (verbose) {
+			check_tsp = 1;
+			verbose = 0;
+		}
+	}
+
 	printf("Sending to %s, max packet size %d\n",
 		foutname, MAX_IX_MSG_PKT_SIZE);
 
@@ -164,6 +173,22 @@ int main (int argc, char **argv)
 			*pshort = to_disp.T2G;			
 			pshort = (short *) &pmsg->reserved[2];
 			*pshort = to_disp.busTimeSave;			
+			if (check_tsp) {
+				timestamp_t ts;
+				get_current_timestamp(&ts);
+				print_timestamp(stdout, &ts);
+				printf(" showT2G %c sig_bf %c sig_af %c showTS %c ",
+					pmsg->preempt_calls,
+					pmsg->bus_priority_calls,
+					pmsg->preempt_state,
+					pmsg->special_alarm);
+				pshort = (short *) &pmsg->reserved[0];
+				printf(" T2G %hd ", pshort);
+				pshort = (short *) &pmsg->reserved[2];
+				printf(" TS %hd ", pshort);
+				printf("\n");
+			}
+
 		}
 		bytes_to_send = ix_msg_format(pmsg, send_buf,
 					MAX_IX_MSG_PKT_SIZE, 0);
