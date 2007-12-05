@@ -86,7 +86,7 @@ int main (int argc, char **argv)
 	int interval = 100;
 	int getbusdisplay=0;	// put Transit Signal Priority info in header
 
-        while ((option = getopt(argc, argv, "i:no:p:v")) != EOF) {
+        while ((option = getopt(argc, argv, "gi:no:p:v")) != EOF) {
                 switch(option) {
                         case 'g':
                                 getbusdisplay = 1;
@@ -176,6 +176,9 @@ int main (int argc, char **argv)
 			if (check_tsp) {
 				timestamp_t ts;
 				get_current_timestamp(&ts);
+			printf("T2G %d reserved 0x%hhx 0x%hhx \n",
+				to_disp.T2G, pmsg->reserved[0],
+				pmsg->reserved[1]); 
 				print_timestamp(stdout, &ts);
 				printf(" showT2G %c sig_bf %c sig_af %c showTS %c ",
 					pmsg->preempt_calls,
@@ -183,9 +186,9 @@ int main (int argc, char **argv)
 					pmsg->preempt_state,
 					pmsg->special_alarm);
 				pshort = (short *) &pmsg->reserved[0];
-				printf(" T2G %hd ", pshort);
+				printf(" T2G %hd ",*pshort);
 				pshort = (short *) &pmsg->reserved[2];
-				printf(" TS %hd ", pshort);
+				printf(" TS %hd ", *pshort);
 				printf("\n");
 			}
 

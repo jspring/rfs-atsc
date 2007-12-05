@@ -226,9 +226,9 @@ int main (int argc, char **argv)
 				pix->preempt_state,
 				pix->special_alarm);
 			pshort = (short *) &pix->reserved[0];
-			printf(" T2G %hd ", pshort);
+			printf(" T2G %hd ", *pshort);
 			pshort = (short *) &pix->reserved[2];
-			printf(" TS %hd ", pshort);
+			printf(" TS %hd ", *pshort);
 		}
 		if (do_trace)
 			ix_msg_update_file(fp, pix);
