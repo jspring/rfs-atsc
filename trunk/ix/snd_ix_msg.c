@@ -176,14 +176,16 @@ int main (int argc, char **argv)
 			if (check_tsp) {
 				timestamp_t ts;
 				get_current_timestamp(&ts);
-			printf("T2G %d reserved 0x%hhx 0x%hhx \n",
-				to_disp.T2G, pmsg->reserved[0],
-				pmsg->reserved[1]); 
 				print_timestamp(stdout, &ts);
-				printf(" showT2G %c sig_bf %c sig_af %c showTS %c ",
+				printf(" showT2G %c(0x%hhx) sig_bf %c(0x%hhx) ",
+					pmsg->preempt_calls,
 					pmsg->preempt_calls,
 					pmsg->bus_priority_calls,
+					pmsg->bus_priority_calls);
+				printf(" sig_af %c(0x%hhx) showTS %c(0x%hhx) ",
 					pmsg->preempt_state,
+					pmsg->preempt_state,
+					pmsg->special_alarm,
 					pmsg->special_alarm);
 				pshort = (short *) &pmsg->reserved[0];
 				printf(" T2G %hd ",*pshort);
