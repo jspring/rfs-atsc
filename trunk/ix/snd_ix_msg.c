@@ -163,35 +163,36 @@ int main (int argc, char **argv)
 			ix_msg_print(pmsg);
 		if (getbusdisplay) {
 			short *pshort;
-			db_clt_read(pclt, DB_TO_DISP_VAR, sizeof(to_disp_typ),
-					&to_disp);
-			pmsg->preempt_calls = to_disp.showT2G;
-			pmsg->bus_priority_calls = to_disp.signalFace_bf;
-			pmsg->preempt_state = to_disp.signalFace_af;
-			pmsg->special_alarm = to_disp.showTimeSave;
-			pshort = (short *) &pmsg->reserved[0];
-			*pshort = to_disp.T2G;			
-			pshort = (short *) &pmsg->reserved[2];
-			*pshort = to_disp.busTimeSave;			
-			if (check_tsp) {
-				timestamp_t ts;
-				get_current_timestamp(&ts);
-				print_timestamp(stdout, &ts);
-				printf(" showT2G %c(0x%hhx) sig_bf %c(0x%hhx) ",
-					pmsg->preempt_calls,
-					pmsg->preempt_calls,
-					pmsg->bus_priority_calls,
-					pmsg->bus_priority_calls);
-				printf(" sig_af %c(0x%hhx) showTS %c(0x%hhx) ",
-					pmsg->preempt_state,
-					pmsg->preempt_state,
-					pmsg->special_alarm,
-					pmsg->special_alarm);
+			if (db_clt_read(pclt, DB_TO_DISP_VAR,
+				 sizeof(to_disp_typ), &to_disp) == TRUE) {
+				pmsg->preempt_calls = to_disp.showT2G;
+				pmsg->bus_priority_calls = to_disp.signalFace_bf;
+				pmsg->preempt_state = to_disp.signalFace_af;
+				pmsg->special_alarm = to_disp.showTimeSave;
 				pshort = (short *) &pmsg->reserved[0];
-				printf(" T2G %hd ",*pshort);
+				*pshort = to_disp.T2G;			
 				pshort = (short *) &pmsg->reserved[2];
-				printf(" TS %hd ", *pshort);
-				printf("\n");
+				*pshort = to_disp.busTimeSave;			
+				if (check_tsp) {
+					timestamp_t ts;
+					get_current_timestamp(&ts);
+					print_timestamp(stdout, &ts);
+					printf(" showT2G %c(0x%hhx) sig_bf %c(0x%hhx) ",
+						pmsg->preempt_calls,
+						pmsg->preempt_calls,
+						pmsg->bus_priority_calls,
+						pmsg->bus_priority_calls);
+					printf(" sig_af %c(0x%hhx) showTS %c(0x%hhx) ",
+						pmsg->preempt_state,
+						pmsg->preempt_state,
+						pmsg->special_alarm,
+						pmsg->special_alarm);
+					pshort = (short *) &pmsg->reserved[0];
+					printf(" T2G %hd ",*pshort);
+					pshort = (short *) &pmsg->reserved[2];
+					printf(" TS %hd ", *pshort);
+					printf("\n");
+				}
 			}
 
 		}
