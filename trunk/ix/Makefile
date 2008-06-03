@@ -9,10 +9,11 @@ DISTRIB_DIR = ../..//path
 INCLUDE_DIR = $(ATSC_DIR)/include
 DB_DIR = $(DISTRIB_DIR)/db
 LOCAL_DIR = $(DISTRIB_DIR)/local
+SENS_INCLUDE = $(DISTRIB_DIR)/sens/include
 
 CC = cc
 CFLAGS += -c -D_GNU_SOURCE
-CFLAGS += -I. -I$(INCLUDE_DIR) -I$(DB_DIR) -I$(LOCAL_DIR)
+CFLAGS += -I. -I$(INCLUDE_DIR) -I$(DB_DIR) -I$(LOCAL_DIR) -I$(SENS_INCLUDE)
 CFLAGS += -g
 			
 AR = ar

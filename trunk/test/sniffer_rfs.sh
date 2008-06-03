@@ -13,4 +13,4 @@ sleep 1
 
 sleep 1
 # start program to broadcast intersection message every 500 ms
-/home/atsc/test/snd_ix_msg -o 10.0.0.255 -i 200 >snd_ix_msg.out &  
+/home/atsc/test/snd_ix_msg -o 127.255.255.255 -i 200 >snd_ix_msg.out &  
