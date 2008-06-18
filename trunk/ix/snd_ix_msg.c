@@ -165,6 +165,8 @@ int main (int argc, char **argv)
 			short *pshort;
 			if (db_clt_read(pclt, DB_TO_DISP_VAR,
 				 sizeof(to_disp_typ), &to_disp) == TRUE) {
+				printf("db: 0x%hhx\n", to_disp.showT2G);
+				fflush(stdout);
 				pmsg->preempt_calls = to_disp.showT2G;
 				pmsg->bus_priority_calls = to_disp.signalFace_bf;
 				pmsg->preempt_state = to_disp.signalFace_af;

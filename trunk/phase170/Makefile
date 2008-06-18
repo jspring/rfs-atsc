@@ -4,19 +4,22 @@
 #
 
 ATSC_DIR = ..
+TSP_DIR = /home/tsp
 DISTRIB_DIR = /home/path
 CICAS_DIR = /home/cicas
 IX_DIR = $(ATSC_DIR)/ix
+SENS_DIR = $(DISTRIB_DIR)/sens
 EXP_DIR = $(CICAS_DIR)/exp
 INCLUDE_DIR = $(ATSC_DIR)/include
 DB_DIR = $(DISTRIB_DIR)/db
 LOCAL_DIR = $(DISTRIB_DIR)/local
-CICAS_DIR = ../../cicas
 
 CC = cc
 CFLAGS += -c -D_GNU_SOURCE
 CFLAGS += -I. -I$(INCLUDE_DIR) -I$(DB_DIR) -I$(LOCAL_DIR) -I$(IX_DIR) -I$(EXP_DIR)
 CFLAGS += -I$(CICAS_DIR)/exp
+CFLAGS += -I$(SENS_DIR)/sms
+CFLAGS += -I$(TSP_DIR)/src
 CFLAGS += -g
 			
 AR = ar
@@ -27,7 +30,7 @@ LFLAGS += -L$(DB_DIR) -L$(LOCAL_DIR) -L$(IX_DIR)
 
 LIBS = -lix -ldb_clts -llocals -lrt
 
-EXEC = phases compare_ntcip compare_3418 phases_init_only
+EXEC = phase170e 
 
 .c.o:	
 	$(CC) $(CFLAGS) $*.c -o $*.o 
@@ -36,10 +39,7 @@ EXEC = phases compare_ntcip compare_3418 phases_init_only
 
 all: $(EXEC)
 
-phases:		$(OBJS) phases.o
-phases_init_only:		$(OBJS) phases_init_only.o
-compare_ntcip:	$(OBJS) compare_ntcip.o
-compare_3418:	$(OBJS) compare_3418.o
+phase170e:		$(OBJS) phase170e.o
 
 clean:
 	rm -f *.o *.err *.a $(EXEC)
