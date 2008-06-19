@@ -25,6 +25,8 @@
 #include "int_cfg.h"  // intersection configuration header file
 #include "phase170e.h"
 
+#define DEBUG
+
 static int sig_list[] = {
 	SIGINT,
 	SIGQUIT,
@@ -247,6 +249,7 @@ int main(int argc, char *argv[])
 			{
 				// upon the finishing of GE execution, phase 4 starts with green
 				signal_trace.priority_status = 0;
+				signal_trace.bus_time_saved = 0;
 				if ( verbose != 0) printf("GE done\n");				
 			}
 			else if ( signal_trace.priority_status == Early_Green &&
@@ -254,6 +257,7 @@ int main(int argc, char *argv[])
 			{
 				// upon the finishing of EG execution, phase 2 starts with green
 				signal_trace.priority_status = 0;
+				signal_trace.bus_time_saved = 0;
 				if ( verbose != 0) printf("EG done\n");				
 			}			
 			// get the countdown time for each permitted phase			
@@ -303,6 +307,17 @@ int main(int argc, char *argv[])
 			}
 			// write ix_msg to database
 			assem_ix_msg(pix,pappr,pix_timing,&signal_trace,verbose,pclt,argv[0]);			
+#ifdef DEBUG
+			print_timespec(stderr,&now);
+			for (i=0;i<pix->num_approaches;i++) 
+			{
+				fprintf(stderr," %s %.1f",
+					ix_signal_state_string(pappr[i].signal_state),
+					(float)pappr[i].time_to_next/10.0);
+			}
+			fprintf(stderr," %d %d %d\n",
+				pix->bus_priority_calls,pix->reserved[0],pix->reserved[1]);
+#endif			
 			continue;
 		}		
 		var = DB_TRIG_VAR(&trig_info);
@@ -317,12 +332,12 @@ int main(int argc, char *argv[])
 			// received a signal status message trigger
 			signal_trig = 1;
 			psignal_status = (signal_status_typ *) db_data.value.user;
-			signal_trace.signal.tp.tv_sec = now.tv_sec;
-			signal_trace.signal.tp.tv_nsec = now.tv_nsec;			
 			if ( psignal_status->master_cycle_clock != signal_trace.signal.master_cycle_clock)
 			{
 				// in case received duplicated messages, only update the tracer with the new message 
 				update_signal_state(&signal_trace,psignal_status);
+				signal_trace.signal.tp.tv_sec = now.tv_sec;
+				signal_trace.signal.tp.tv_nsec = now.tv_nsec;			
 			}
 			if ( verbose == 1 ) 
 			{
@@ -360,12 +375,16 @@ int main(int argc, char *argv[])
 				signal_EG_onset[1][0] = signal_EG_onset[3][2] + 
 					pix_timing->phase_timing.allred_intv[3];
 				cycle_rounding(&signal_EG_onset[1][0], cycle_len);
+				signal_trace.bus_time_saved = (unsigned char)(signal_state_onset[pattern][1][0] 
+					- signal_EG_onset[1][0]);
 			}
 			else if (pPRS->requested_type == Green_Extension)
 			{
 				// controller is executing GE. signal onsets remain the same as the logic for executing GE
 				// is to trick the local_cycle _clock
 				// do nothing
+				signal_trace.bus_time_saved = (unsigned char)(signal_state_onset[pattern][1][0]
+					- signal_state_onset[pattern][1][1] - MAX_GE);
 			}				
 			if ( verbose == 1)
 			{

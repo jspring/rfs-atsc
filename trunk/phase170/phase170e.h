@@ -1,3 +1,4 @@
+#define MAX_GE			10
 #define Early_Green     2
 #define Green_Extension 3
 
@@ -28,6 +29,7 @@ typedef struct {
 	signal_state_typ signal;
 	priority_state_typ prio;
 	unsigned char priority_status;
+	unsigned char bus_time_saved;
 	float active_local_cycle_clock;
 	float active_master_cycle_clock;	
 	float *pactive_onsets;
@@ -184,6 +186,13 @@ void assem_ix_msg(ix_msg_t *pix, ix_approach_t *pappr, E170_timing_typ *ptiming,
 	{
 		pix->reserved[i] = 0;
 	}
+	// fill in reserve[0] with bus phase and reserve[1] with bus time saved
+	// when the traffic controller is under priority
+	if ( psignal_trace->priority_status != 0)
+	{
+		pix->reserved[0] = 2;
+		pix->reserved[1] = psignal_trace->bus_time_saved;
+	}	
 	pix->num_approaches = ptiming->total_no_approaches;
 	// Fill in the approach structure 
 	memset(pappr,0,pix->num_approaches * sizeof(ix_approach_t));
