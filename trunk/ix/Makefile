@@ -20,7 +20,7 @@ PATH_CFLAGS += -I. -I$(INCLUDE_DIR) -I$(DB_DIR) -I$(LOCAL_DIR) -I$(SENS_INCLUDE)
 PATH_CFLAGS += -g
 			
 ifndef PATH_AR
-AR = ar
+PATH_AR = ar
 endif
 
 AR_FLAGS += rv

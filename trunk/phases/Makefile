@@ -13,7 +13,7 @@ DB_DIR = $(DISTRIB_DIR)/db
 LOCAL_DIR = $(DISTRIB_DIR)/local
 
 ifndef PATH_CC
-CC = gcc
+PATH_CC = gcc
 endif
 
 PATH_CFLAGS += -c -D_GNU_SOURCE
