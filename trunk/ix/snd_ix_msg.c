@@ -33,8 +33,8 @@
 #include "ix_msg.h" 
 #include "ix_db_utils.h"
 #include "udp_utils.h"
-#include "../../tsp/src/veh_sig.h"
-#include "../../tsp/src/clt_vars.h"
+#include "veh_sig.h"
+#include "tsp_clt_vars.h"
 #include "timestamp.h"
 
 static int sig_list[]=

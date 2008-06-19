@@ -14,28 +14,37 @@ INCLUDE_DIR = $(ATSC_DIR)/include
 DB_DIR = $(DISTRIB_DIR)/db
 LOCAL_DIR = $(DISTRIB_DIR)/local
 
-CC = cc
-CFLAGS += -c -D_GNU_SOURCE
-CFLAGS += -I. -I$(INCLUDE_DIR) -I$(DB_DIR) -I$(LOCAL_DIR) -I$(IX_DIR) -I$(EXP_DIR)
-CFLAGS += -I$(CICAS_DIR)/exp
-CFLAGS += -I$(SENS_DIR)/sms
-CFLAGS += -I$(TSP_DIR)/src
-CFLAGS += -g
+ifndef PATH_CC
+CC = gcc
+endif
+
+PATH_CFLAGS += -c -D_GNU_SOURCE
+PATH_CFLAGS += -I. -I$(INCLUDE_DIR) -I$(DB_DIR) -I$(LOCAL_DIR) -I$(IX_DIR) -I$(EXP_DIR)
+PATH_CFLAGS += -I$(CICAS_DIR)/exp
+PATH_CFLAGS += -I$(SENS_DIR)/sms
+PATH_CFLAGS += -I$(TSP_DIR)/src
+PATH_CFLAGS += -g
 			
+ifndef PATH_AR
 AR = ar
+endif
+
 AR_FLAGS += rv
 
-LINK = cc
-LFLAGS += -L$(DB_DIR) -L$(LOCAL_DIR) -L$(IX_DIR)
+ifndef PATH_LINK
+LINK = gcc
+endif
+
+PATH_LDFLAGS += -L$(DB_DIR) -L$(LOCAL_DIR) -L$(IX_DIR)
 
 LIBS = -lix -ldb_clts -llocals -lrt
 
 EXEC = phase170e 
 
 .c.o:	
-	$(CC) $(CFLAGS) $*.c -o $*.o 
+	$(PATH_CC) $(CFLAGS) $(PATH_CFLAGS) $*.c -o $*.o 
 .o:
-	$(LINK) $(LFLAGS) -o $@ $@.o $(LIBS) 
+	$(PATH_LINK) $(PATH_LDFLAGS) -o $@ $@.o $(LIBS) 
 
 all: $(EXEC)
 

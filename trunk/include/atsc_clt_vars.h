@@ -5,9 +5,11 @@
  *	All values in 3000s to avoid conflict with other projects
  *	that may want to coexist with this code.
  *
+ *	Every atsc data server var is in the range 3000 to avoid conflicts,
+ *	since this code may be used in concert with many other variables
  */
 
-/* same as in /home/cicas/src TODO: make cicas reference atsc*/
+/* cicas references this*/
 #define DB_TRAFFIC_SIGNAL_TYPE      3264
 #define DB_TRAFFIC_SIGNAL_VAR       3264
 
