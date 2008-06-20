@@ -220,15 +220,10 @@ int main (int argc, char **argv)
 			short int *pshort;
 			get_current_timestamp(&ts);
 			print_timestamp(stdout, &ts);
-			printf(" showT2G %c sig_bf %c sig_af %c showTS %c ",
-				pix->preempt_calls,
-				pix->bus_priority_calls,
-				pix->preempt_state,
-				pix->special_alarm);
-			pshort = (short *) &pix->reserved[0];
-			printf(" T2G %hd ", *pshort);
-			pshort = (short *) &pix->reserved[2];
-			printf(" TS %hd ", *pshort);
+			printf(" bus_priority_type %hhd\n ",
+				pix->bus_priority_calls);
+			printf(" bus approach/phase %hhd ", pix->reserved[0]);
+			printf(" bus time saved  %hhd ", pix->reserved[1]);
 		}
 		if (do_trace)
 			ix_msg_update_file(fp, pix);
