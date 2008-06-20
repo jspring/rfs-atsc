@@ -4,7 +4,11 @@
 #
 
 ATSC_DIR = ..
-DISTRIB_DIR = /home/path
+ifndef PATH_AR
+DISTRIB_DIR = ../../path 
+else
+DISTRIB_DIR = /home/gems/sdk/sobos/build_dir/i386/path_util-1.0
+endif
 CICAS_DIR = /home/cicas
 IX_DIR = $(ATSC_DIR)/ix
 EXP_DIR = $(CICAS_DIR)/exp
