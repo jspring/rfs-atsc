@@ -4,7 +4,7 @@
 #
 
 ATSC_DIR = ..
-ifndef PKG_BUILD_DIR
+ifndef PATH_AR
 DISTRIB_DIR = ../../path
 else
 DISTRIB_DIR = /home/gems/sdk/sobos/build_dir/i386/path_util-1.0 
