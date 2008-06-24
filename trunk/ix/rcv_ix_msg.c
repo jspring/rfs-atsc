@@ -33,7 +33,6 @@
 #include "path_gps_lib.h"
 #include "sqlite3.h"
 
-
 #undef DO_TRACE
 
 jmp_buf exit_env;
@@ -96,6 +95,7 @@ static void sqlt3_ex(sqlite3 *sqlt, char *cmd_str)
                         sqlite3_free(zerr);
         }
 }
+
 static char *ixtbl_str = "ixtbl (object_id, local_time, local_ms, cnt1, cnt2, sig1, sig2, bus_priority_type, bus_approach, bus_time_saved, date_time)";
 				 
 int main (int argc, char **argv)
@@ -141,7 +141,7 @@ int main (int argc, char **argv)
 	int xport = COMM_PSX_XPORT;	/// Change if porting to another OS
 #endif
 
-        while ((option = getopt(argc, argv, "cd:f:gnp:v")) != EOF) {
+        while ((option = getopt(argc, argv, "cd:f:gnp:qv")) != EOF) {
                 switch( option ) {
 			case 'c':
 				check_phases = 1; 
