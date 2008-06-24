@@ -35,7 +35,7 @@ endif
 
 PATH_LDFLAGS += -L$(DB_DIR) -L$(LOCAL_DIR) -L.
 
-LIBS = -lix -ldb_clts -llocals  -lrt
+LIBS = -lix -ldb_clts -llocals -lsqlite3 -lrt
 			
 HDRS = ix_msg.h
 

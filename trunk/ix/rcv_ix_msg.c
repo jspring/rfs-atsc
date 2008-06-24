@@ -29,8 +29,10 @@
 // is used instead; see Makefile to build test_rcv_ix_msg.
 
 #include "ix_db_utils.h"
-
 #include "udp_utils.h"
+#include "path_gps_lib.h"
+#include "sqlite3.h"
+
 
 #undef DO_TRACE
 
@@ -74,6 +76,27 @@ void do_usage(char *progname)
 	fprintf(stderr, "\n");
 	exit(1);
 }
+/**
+ *      callback function, used with query returning statements
+ *      to handle results; no results from queries yet in this
+ *      program
+ */
+static int callback(void *not_used, int argc, char **argv, char **az_col){
+        return 0;
+}
+
+/** 
+ *      Convenience wrapper for sqlite3_exec that does error checking.
+ */
+static void sqlt3_ex(sqlite3 *sqlt, char *cmd_str)
+{
+        char *zerr = NULL;
+        if (sqlite3_exec(sqlt, cmd_str, callback, 0, &zerr) != SQLITE_OK) {
+                        fprintf(stderr, "sqlite3 error: %s\n", zerr);
+                        sqlite3_free(zerr);
+        }
+}
+static char *ixtbl_str = "ixtbl (object_id, local_time, local_ms, cnt1, cnt2, sig1, sig2, bus_priority_type, bus_approach, bus_time_saved, date_time)";
 				 
 int main (int argc, char **argv)
 {
@@ -94,6 +117,10 @@ int main (int argc, char **argv)
 	char hostname[MAXHOSTNAMELEN+1];
 	char *domain = DEFAULT_SERVICE;	/// Set to use database
 	db_clt_typ *pclt = NULL;	/// Data bucket client pointer
+        sqlite3 *sqlt;
+        char *sqlt_name = "other_gps.db";/// default name for sqlite database
+        char cmd_str[MAX_CMD_STR];
+
 
 	/** in TEST_ONLY, with use_db, file rcv_test_phases.out
 	 *  is automatically created
@@ -101,9 +128,11 @@ int main (int argc, char **argv)
 	 *  or set use_db to 0 with the -n flag.
 	 */ 
 	int use_db = 1;		
+	int use_sql = 0;
 	int do_trace = 0;	/// if 1, create a trace file
 	char *foutname = NULL;  /// must set trace file name on command line
 	FILE *fp;		/// trace file pointer
+	timestamp_t ts;
 
 #ifdef TEST_ONLY
 	int xport = 1;			/// Write the file
@@ -132,6 +161,9 @@ int main (int argc, char **argv)
 				break;
                         case 'p':
                                 port_in = atoi(optarg);
+				break;
+                        case 'q':
+                                use_sql = 1;
 				break;
                         case 'v':
                                 verbose = 1;
@@ -164,6 +196,14 @@ int main (int argc, char **argv)
 			db_vars_list, NUM_DB_VARS, NULL, 0)) == NULL ) {
 			printf("%s: Database initialization error \n", argv[0]);
 			exit( EXIT_FAILURE );
+		}
+	}
+	if (use_sql) {
+		if (sqlite3_open(sqlt_name, &sqlt) != 0) {
+			fprintf(stderr, "Can't open %s\n",
+				 sqlite3_errmsg(sqlt));
+			sqlite3_close(sqlt);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -216,7 +256,6 @@ int main (int argc, char **argv)
 			printf("\n");
 		}
 		if (check_tsp) {
-			timestamp_t ts;
 			short int *pshort;
 			get_current_timestamp(&ts);
 			print_timestamp(stdout, &ts);
@@ -225,6 +264,49 @@ int main (int argc, char **argv)
 			printf(" bus approach/phase %hhd ", pix->reserved[0]);
 			printf(" bus time saved  %hhd ", pix->reserved[1]);
 		}
+		if (use_sql) {
+			char tmp_str[MAX_CMD_STR];
+			unsigned char *p = (unsigned char *)
+                                                 &src_addr.sin_addr.s_addr;
+			unsigned char obj[GPS_OBJECT_ID_SIZE];
+							///"x'XXXXXXXXXXXX'"\0
+			char id_str[2*GPS_OBJECT_ID_SIZE + 6]; 
+			int i;
+			memset(obj, 0, GPS_OBJECT_ID_SIZE);
+			for (i = 0; i < 4; i++)
+				obj[i] = p[i];
+
+			id_str[0] = '"';
+			id_str[1] = 'x';
+			id_str[2] = '\'';
+			for (i = 0; i < GPS_OBJECT_ID_SIZE; i++)
+				snprintf(&id_str[2*i+3], 3, "%02x", obj[i]);
+			id_str[2*GPS_OBJECT_ID_SIZE + 3] = '\'';
+			id_str[2*GPS_OBJECT_ID_SIZE + 4] = '"';
+			id_str[2*GPS_OBJECT_ID_SIZE + 5] = '\0';
+			snprintf(tmp_str, MAX_CMD_STR, 
+	"(%s,\"%02d:%02d:%02d\",%d,%.2f,%.2f,\"%s\",\"%s\",%hhd,%hhd,%hhd,%s)",
+				id_str,
+				ts.hour,
+				ts.min,
+				ts.sec,
+				ts.millisec,
+				ix_signal_state_string(
+					pix->approach_array[0].signal_state),
+				ix_signal_state_string(
+					pix->approach_array[1].signal_state),
+				pix->bus_priority_calls,
+				pix->reserved[0],
+				pix->reserved[1],
+				"datetime('now')");
+			snprintf(cmd_str, MAX_CMD_STR, 
+				"insert into %s values %s",
+				 ixtbl_str, tmp_str);
+			if (verbose)
+				printf("ixtbl insert_str: %s\n", cmd_str);
+			sqlt3_ex(sqlt, cmd_str);
+		}
+
 		if (do_trace)
 			ix_msg_update_file(fp, pix);
 		if (verbose)
