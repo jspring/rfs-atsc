@@ -46,7 +46,7 @@ EXEC = rcv_ix_msg snd_ix_msg ix_byte_count
 .c.o:	$(HDRS) 
 	$(PATH_CC) $(CFLAGS) $(PATH_CFLAGS) $*.c -o $*.o 
 .o:	libix.a
-	$(PATH_LINK) $(PATH_LDFLAGS) -o $@ $@.o $(LIBS) 
+	$(PATH_LINK) $(LDFLAGS)  $(PATH_LDFLAGS) -o $@ $@.o $(LIBS) 
 
 all: libix.a $(EXEC)
 

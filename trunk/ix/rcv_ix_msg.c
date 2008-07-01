@@ -23,6 +23,8 @@
 #include "ix_msg.h"	// intersection message set header file
 #include "timestamp.h"
 
+//#define DEBUG
+
 // Normal operation in an RSU will interface with digital I/O and
 // phase tracking processes using the PATH data bucket code.
 // To test message send and receive off-line, file reading code
@@ -120,14 +122,16 @@ int main (int argc, char **argv)
         sqlite3 *sqlt;
         char *sqlt_name = "other_gps.db";/// default name for sqlite database
         char cmd_str[MAX_CMD_STR];
-
+#ifdef DEBUG
+	struct tm tmval;	// use this for formatted output
+#endif
 
 	/** in TEST_ONLY, with use_db, file rcv_test_phases.out
 	 *  is automatically created
 	 *  if not compiled as TEST_ONLY, must have db_slv running
 	 *  or set use_db to 0 with the -n flag.
 	 */ 
-	int use_db = 1;		
+	int use_db = 0;		
 	int use_sql = 0;
 	int do_trace = 0;	/// if 1, create a trace file
 	char *foutname = NULL;  /// must set trace file name on command line
@@ -173,7 +177,9 @@ int main (int argc, char **argv)
                                 break;
                 }
         }
-
+#ifdef DEBUG
+	verbose = 0;
+#endif
 	fprintf(stderr, "Receive Port: %d\n", port_in);
 	fdin = udp_allow_all(port_in);
 
@@ -191,6 +197,7 @@ int main (int argc, char **argv)
         /* Log in to the database (shared global memory).  Default to the
 	 * the current host. */
 	get_local_name(hostname, MAXHOSTNAMELEN);
+/*
 	if (use_db) {
 		if (( pclt = db_list_init( argv[0], hostname, domain, xport,
 			db_vars_list, NUM_DB_VARS, NULL, 0)) == NULL ) {
@@ -198,6 +205,7 @@ int main (int argc, char **argv)
 			exit( EXIT_FAILURE );
 		}
 	}
+*/
 	if (use_sql) {
 		if (sqlite3_open(sqlt_name, &sqlt) != 0) {
 			fprintf(stderr, "Can't open %s\n",
@@ -264,6 +272,15 @@ int main (int argc, char **argv)
 			printf(" bus approach/phase %hhd ", pix->reserved[0]);
 			printf(" bus time saved  %hhd ", pix->reserved[1]);
 		}
+#ifdef DEBUG
+		localtime_r(&pix->seconds, &tmval);	// use gmtime to print UTC
+		printf("%02d:%02d:%02d.%03d Signal_Face %s Countdown_time %4.1f Priority_type %d Bus_time_save %d\r",
+			tmval.tm_hour,tmval.tm_min,tmval.tm_sec,pix->nanosecs / 1000000,
+			ix_signal_state_string(pix->approach_array[0].signal_state),
+			pix->approach_array[0].time_to_next/10.0,
+			pix->bus_priority_calls,
+			pix->reserved[1]);
+#endif				
 		if (use_sql) {
 			char tmp_str[MAX_CMD_STR];
 			unsigned char *p = (unsigned char *)
@@ -285,12 +302,15 @@ int main (int argc, char **argv)
 			id_str[2*GPS_OBJECT_ID_SIZE + 4] = '"';
 			id_str[2*GPS_OBJECT_ID_SIZE + 5] = '\0';
 			snprintf(tmp_str, MAX_CMD_STR, 
-	"(%s,\"%02d:%02d:%02d\",%d,%.2f,%.2f,\"%s\",\"%s\",%hhd,%hhd,%hhd,%s)",
+	"(%s,\"%02d:%02d:%02d\",%d,%.1f,%.1f,\"%s\",\"%s\",%hhd,%hhd,%hhd,%s)",
 				id_str,
 				ts.hour,
 				ts.min,
 				ts.sec,
 				ts.millisec,
+                                (float) pix->approach_array[0].time_to_next*1.0/10,
+                                (float) pix->approach_array[1].time_to_next*1.0/10,
+
 				ix_signal_state_string(
 					pix->approach_array[0].signal_state),
 				ix_signal_state_string(
