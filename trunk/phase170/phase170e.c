@@ -221,10 +221,10 @@ int main(int argc, char *argv[])
 	pix_timing = &signal_timing_cfg[site_id-1];	
 	// get the onset of signal state change for each phase and control plan
 	memset(signal_state_onset,0,sizeof(signal_state_onset));
-	get_signal_change_onset(pix_timing, signal_state_onset);
+	get_signal_change_onset(pix_timing,signal_state_onset);
 	if (verbose != 0)
 		// echo intersection configurations
-		echo_cfg(pix_timing, signal_state_onset);	
+		echo_cfg(pix_timing,signal_state_onset);	
 	// allocate memory for pappr, as the total number of approaches for this site is already known 
 	pappr = malloc(pix_timing->total_no_approaches * sizeof(ix_approach_t));	
 	// setup db trigger list (SIGNAL_STATUS and PRIORITY_REQUEST)
@@ -378,7 +378,7 @@ int main(int argc, char *argv[])
 				signal_trace.time2next[i] = (float)fL;
 			}
 			// write ix_msg to database
-			assem_ix_msg(pix,pappr,pix_timing,&signal_trace,verbose,pclt,argv[0]);			
+			assem_ix_msg(pix,pappr,pix_timing,&signal_trace,pclt,argv[0]);			
 			// forward signal phase and contdown
 			if (fwdflag == 1)
 			{
@@ -390,8 +390,9 @@ int main(int argc, char *argv[])
 					sprintf(msg,"%d,%d,",pappr[i].signal_state,pappr[i].time_to_next);
 					strcat(buf,msg);
 				}
-				// tsp info
-				sprintf(msg,"%d,%d,%d\n",pix->bus_priority_calls,pix->reserved[0],pix->reserved[1]);
+				// tsp info: requested bus, priority type, approach phase, and bus time saved
+				sprintf(msg,"%d,%d,%d,%d\n",signal_trace.prio.requested_busID,
+					pix->bus_priority_calls,pix->reserved[0],pix->reserved[1]);
 				strcat(buf,msg);
 				fwdbytes = 0;
 				bytes_to_send = strlen(buf);
@@ -437,7 +438,7 @@ int main(int argc, char *argv[])
 			}
 			if ( verbose == 1 ) 
 			{
-				// print trigger info
+				// print received signal status info
 				printf("signal: %02d:%02d:%02d:%03d, phase=%d%d, intv=%02d%02d, local=%d, pattern=%d\n",
 					psignal_status->hour,psignal_status->min,
 					psignal_status->sec,psignal_status->millisec,
@@ -484,7 +485,7 @@ int main(int argc, char *argv[])
 			}				
 			if ( verbose == 1)
 			{
-				// print trigger info
+				// print received priority request info
 				printf("priority: %02d:%02d:%02d.%03d, bus=%d, type=%d, phase=%d, FO=%d\n",
 					pPRS->hour,pPRS->min,pPRS->sec,pPRS->millisec,
 					pPRS->requested_busID,pPRS->requested_type,
@@ -514,7 +515,7 @@ double ts2sec(struct timespec *ts)
 }
 
 // function to calculate the onset of signal state change for each phase and each control plan
-void get_signal_change_onset(E170_timing_typ *ptiming, float onsets[MAX_PLANS][MAX_PHASES][3])
+void get_signal_change_onset(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MAX_PHASES][3])
 {
 	int i,j,k;
 	float f;
@@ -550,7 +551,7 @@ unsigned char update_head_color(unsigned char intv)
 }
 
 // function to update signal status upon db trigger
-void update_signal_state(signal_trace_typ *ptracer, signal_status_typ *pinput)
+void update_signal_state(signal_trace_typ *ptracer,signal_status_typ *pinput)
 {
 	int i,active_phase,active_intv;
 	int active_color;
@@ -588,7 +589,7 @@ void update_signal_state(signal_trace_typ *ptracer, signal_status_typ *pinput)
 }
 
 // function to update priority status upon db trigger
-void update_priority_state(signal_trace_typ *ptracer, signal_priority_request_typ *pinput)
+void update_priority_state(signal_trace_typ *ptracer,signal_priority_request_typ *pinput)
 {
 	ptracer->prio.requested_busID = pinput->requested_busID;
 	ptracer->prio.priority_type = pinput->requested_type;
@@ -603,8 +604,8 @@ void update_priority_state(signal_trace_typ *ptracer, signal_priority_request_ty
 }
 
 // function to assemble ix_msg and write to database 
-void assem_ix_msg(ix_msg_t *pix, ix_approach_t *pappr, E170_timing_typ *ptiming,
-				  signal_trace_typ *psignal_trace, int verbose, db_clt_typ *pclt, char *progname)
+void assem_ix_msg(ix_msg_t *pix,ix_approach_t *pappr,E170_timing_typ *ptiming,
+	signal_trace_typ *psignal_trace,db_clt_typ *pclt,char *progname)
 {
 	ix_stop_line_t *pstop;	// Stop line info 
 	int i,j,k;
@@ -641,7 +642,7 @@ void assem_ix_msg(ix_msg_t *pix, ix_approach_t *pappr, E170_timing_typ *ptiming,
 	// when the traffic controller is under priority
 	if ( psignal_trace->priority_status != 0)
 	{
-		pix->reserved[0] = 2;
+		pix->reserved[0] = (unsigned char)(psignal_trace->prio.request_phase);
 		pix->reserved[1] = psignal_trace->bus_time_saved;
 	}	
 	pix->num_approaches = ptiming->total_no_approaches;
@@ -696,7 +697,7 @@ void assem_ix_msg(ix_msg_t *pix, ix_approach_t *pappr, E170_timing_typ *ptiming,
 }
 
 // function to echo intersection configurations
-void echo_cfg(E170_timing_typ *ptiming, float onsets[MAX_PLANS][MAX_PHASES][3])
+void echo_cfg(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MAX_PHASES][3])
 {
 	int i,j,k;
 	printf("Welcome to %s\n\n",ptiming->name);

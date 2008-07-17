@@ -52,13 +52,13 @@ typedef struct {
 } IS_PACKED signal_trace_typ;
 
 double ts2sec(struct timespec *ts);
-void cycle_rounding(float *f, float cycle_len);
-void get_signal_change_onset(E170_timing_typ *ptiming, float onsets[MAX_PLANS][MAX_PHASES][3]);
+void cycle_rounding(float *f,float cycle_len);
+void get_signal_change_onset(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MAX_PHASES][3]);
 unsigned char update_head_color(unsigned char intv);
-void update_signal_state(signal_trace_typ *ptracer, signal_status_typ *pinput);
-void update_priority_state(signal_trace_typ *ptracer, signal_priority_request_typ *pinput);
-void assem_ix_msg(ix_msg_t *pix, ix_approach_t *pappr, E170_timing_typ *ptiming,
-	signal_trace_typ *psignal_trace, int verbose, db_clt_typ *pclt, char *progname);
-void echo_cfg(E170_timing_typ *ptiming, float onsets[MAX_PLANS][MAX_PHASES][3]);
+void update_signal_state(signal_trace_typ *ptracer,signal_status_typ *pinput);
+void update_priority_state(signal_trace_typ *ptracer,signal_priority_request_typ *pinput);
+void assem_ix_msg(ix_msg_t *pix, ix_approach_t *pappr,E170_timing_typ *ptiming,
+	signal_trace_typ *psignal_trace,db_clt_typ *pclt,char *progname);
+void echo_cfg(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MAX_PHASES][3]);
 
 
