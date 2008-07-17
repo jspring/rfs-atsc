@@ -7,6 +7,11 @@
  * Copyright (c) 2006   Regents of the University of California
  */
  
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
 #include "sys_os.h"
 #include "stdio.h"
 #include "stdlib.h"
@@ -25,7 +30,8 @@
 #include "int_cfg.h"  // intersection configuration header file
 #include "phase170e.h"
 
-#define DEBUG
+#define PACKET_SIZE 
+//#define DEBUG
 
 static int sig_list[] = {
 	SIGINT,
@@ -66,7 +72,7 @@ static db_id_t db_vars_list[] = {
 void do_usage(char *progname)
 {
 	fprintf(stderr, "%s usage:\n",progname);
-	fprintf(stderr, "[-vVh] [-d domain] [-x xport] [-s site] [-i timer_interval]\n");
+	fprintf(stderr, "[-vVh] [-d domain] [-x xport] [-s site_id] [-S signal_id] [-i timer_interval] [-f destination IP] [-p destination port]\n");
 	fprintf(stderr, "\t-v: Verbose level 1. Print debug info for db read\n");
 	fprintf(stderr, "\t-V: Verbose level 2. Print debug info for db write\n");
 	fprintf(stderr, "\t    (default: no print).\n");
@@ -79,6 +85,10 @@ void do_usage(char *progname)
 	fprintf(stderr, "\t    (default: signal_id = 1.\n");		
 	fprintf(stderr, "\t-i: Specify the timer interval in millisec.\n");
 	fprintf(stderr, "\t    (default: 200 millisec interval.\n");		
+	fprintf(stderr, "\t-f Forward flag (default is off :=0)\n");
+	fprintf(stderr, "\t-o output detination IP address (default to tlab: 128.32.129.87)\n");		
+	fprintf(stderr, "\t-p output detination port number (default 49888)\n");	
+	exit(-1);
 }
 
 int main(int argc, char *argv[])
@@ -94,6 +104,16 @@ int main(int argc, char *argv[])
 	posix_timer_typ *ptmr;		/* Timer info */	
 	int option,recv_type;
 	int trig_list[2],trig_nums =2;
+	// for socket
+    struct hostent *fhe;
+    struct sockaddr_in fwd_addr;
+	char *fwdipstr = "128.32.129.87";
+	char fwdbuf[PACKET_SIZE];
+	char msg[PACKET_SIZE];
+    int fwdport = 49888;
+    int sockfd;
+    int fwdbytes;	
+	int fwdflag = 0;	
 	// control variables
 	int site_id = 1, signal_db_id = 1; 
 	int timer_interval = 200; 
@@ -109,12 +129,17 @@ int main(int argc, char *argv[])
 	ix_approach_t *pappr; // pointer to approach array  
 	// time structure
 	struct timespec now;
+	struct timeb timeptr_raw;
+	struct tm time_converted;
+	date_stamp_typ ds;
+	time_stamp_typ ts;
+	
 	int pattern = 0,i,j;
 	float cycle_len,f;
 	double time_gap,fL,fM;
 	
 	// get argument inputs
-	while ( (option = getopt( argc, argv, "d:x:s:S:i:hvV" )) != EOF )
+	while ( (option = getopt( argc, argv, "d:x:s:S:i:o:p:fhvV" )) != EOF )
 	{
 		switch( option )
 		{
@@ -132,17 +157,26 @@ int main(int argc, char *argv[])
 		case 'i':
 			timer_interval = atoi(optarg);
 			break;
+		case 'o':
+			fwdflag = 1;
+			fwdipstr = strdup(optarg);
+			break;			
+		case 'p':
+			fwdport = atoi(optarg);
+			break;
+		case 'f':
+			fwdflag = 1;
+			break;			
 		case 'v':
 			verbose = 1; 
 			break;
 		case 'V':
 			verbose = 2; 
-			break;
+			break;		
 		case 'h':
 			// same as default case
 		default:
 			do_usage(argv[0]);
-			exit(1);
 			break;
 		}
 	}
@@ -151,13 +185,36 @@ int main(int argc, char *argv[])
 	if ( !(site_id >= 1 && site_id <= MAX_SITES) )
 	{
 		fprintf(stderr,"%s: site_id must be between 1 and %d\n",argv[0],MAX_SITES);
-		exit (EXIT_FAILURE);
+		return(-1);
 	}
 	if ( !(signal_db_id >= 1 && signal_db_id <= db_numssig) )
 	{
 		fprintf(stderr,"%s: siingal_id must be between 1 and %d\n",argv[0],db_numssig);
-		exit (EXIT_FAILURE);
+		return(-1);
 	}
+	
+	// open socket for forwarding
+	if (fwdflag == 1)
+	{
+		// hostname
+		if ( (fhe = gethostbyname(fwdipstr)) == NULL)
+		{
+			fprintf(stderr,"%s gethostbyname failed\n",argv[0]);
+			return (-1);
+		}
+		// host address
+		fwd_addr.sin_family = AF_INET;     // host byte order
+		fwd_addr.sin_port = htons(fwdport); // short, network byte order
+		fwd_addr.sin_addr = *((struct in_addr *)fhe->h_addr);
+		memset(&(fwd_addr.sin_zero), '\0', 8);  // zero the rest of the struct
+		// open socket
+		if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) 
+		{
+			fprintf(stderr,"%s open socket failed\n",argv[0]);
+			return (-1);
+		}		
+	}
+				
 	// The current version only deals with rfs_intersection.
 	// Other sites can be added later
 	site_id = 1;
@@ -173,6 +230,7 @@ int main(int argc, char *argv[])
 	// setup db trigger list (SIGNAL_STATUS and PRIORITY_REQUEST)
 	trig_list[0] = DB_SIGNAL_STATUS_VAR_BASE + signal_db_id;
 	trig_list[1] = DB_SIGNAL_PRIORITY_REQUEST_VAR_BASE + signal_db_id;
+	trig_nums = 2;
 	// initial
 	memset(&signal_trace,0,sizeof(signal_trace_typ));	
 	memset(signal_EG_onset,0,sizeof(signal_EG_onset));
@@ -184,7 +242,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr,"Database initialization error in %s\n",argv[0]);
 		db_list_done( pclt, db_vars_list, NUM_DB_VARS, 
 			trig_list, trig_nums );
-		exit( EXIT_FAILURE );
+		return(-1);
 	}
 	// Initialize the timer. 
 	if ((ptmr = timer_init(timer_interval, DB_CHANNEL(pclt))) == NULL)
@@ -192,14 +250,14 @@ int main(int argc, char *argv[])
 		fprintf(stderr,"timer_init failed in %s\n",argv[0]);
 		db_list_done( pclt, db_vars_list, NUM_DB_VARS, 
 			trig_list, trig_nums );
-		exit( EXIT_FAILURE );
+		return(-1);
 	}
 	// Exit code on receiving signal 
 	if (setjmp(exit_env) != 0) 
 	{
 		db_list_done(pclt, db_vars_list, NUM_DB_VARS,
 			trig_list, trig_nums);
-		exit( EXIT_SUCCESS );
+		exit (EXIT_SUCCESS);
 	} else
 		sig_ign( sig_list, sig_hand );
 	
@@ -210,9 +268,21 @@ int main(int argc, char *argv[])
 		recv_type = clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
 		if ( clock_gettime( CLOCK_REALTIME, &now ) != 0 )
 		{
-			fprintf(stderr,"%s clock_gettimg failed\n");
+			fprintf(stderr,"%s clock_gettimg failed\n",argv[0]);
 			continue;
 		}			
+		// get date and time
+		ftime ( &timeptr_raw );
+		localtime_r ( &timeptr_raw.time, &time_converted );
+		memset(&ds,0,sizeof(date_stamp_typ));
+		memset(&ts,0,sizeof(time_stamp_typ));
+		ds.year = time_converted.tm_year + 1900;
+		ds.month = time_converted.tm_mon + 1;
+		ds.day = time_converted.tm_mday;
+		ts.hour = time_converted.tm_hour;
+		ts.min = time_converted.tm_min;
+		ts.sec = time_converted.tm_sec;
+		ts.millisec = timeptr_raw.millitm;					
 		if (recv_type == DB_TIMER)
 		{
 			// time to provide signal state (head color)  and countdown
@@ -224,7 +294,7 @@ int main(int argc, char *argv[])
 			time_gap = ts2sec(&now) - ts2sec(&signal_trace.signal.tp);
 			if (time_gap > 5.0)
 			{
-				fprintf(stderr,"%s didn't receive signal status update for more than 5 sec\n");
+				fprintf(stderr,"%s didn't receive signal status update for more than 5 sec\n",argv[0]);
 				signal_trig = 0;
 				continue;
 			}
@@ -250,7 +320,8 @@ int main(int argc, char *argv[])
 				// upon the finishing of GE execution, phase 4 starts with green
 				signal_trace.priority_status = 0;
 				signal_trace.bus_time_saved = 0;
-				if ( verbose != 0) printf("GE done\n");				
+				if ( verbose != 0) 
+					printf("GE done\n");				
 			}
 			else if ( signal_trace.priority_status == Early_Green &&
 				signal_trace.signal.signal_state[1] == SIGNAL_STATE_GREEN )					
@@ -258,7 +329,8 @@ int main(int argc, char *argv[])
 				// upon the finishing of EG execution, phase 2 starts with green
 				signal_trace.priority_status = 0;
 				signal_trace.bus_time_saved = 0;
-				if ( verbose != 0) printf("EG done\n");				
+				if ( verbose != 0) 
+					printf("EG done\n");				
 			}			
 			// get the countdown time for each permitted phase			
 			for (i=0;i<MAX_PHASES;i++)
@@ -307,6 +379,30 @@ int main(int argc, char *argv[])
 			}
 			// write ix_msg to database
 			assem_ix_msg(pix,pappr,pix_timing,&signal_trace,verbose,pclt,argv[0]);			
+			// forward signal phase and contdown
+			if (fwdflag == 1)
+			{
+				// msg header
+				sprintf(buf,"$count_down,%d,%d,",site_id,signal_db_id);
+				// signal phase and countdown for approaches
+				for (i=0;i<pix->num_approaches;i++) 
+				{
+					sprintf(msg,"%d,%d,",pappr[i].signal_state,pappr[i].time_to_next);
+					strcat(buf,msg);
+				}
+				// tsp info
+				sprintf(msg,"%d,%d,%d\n",pix->bus_priority_calls,pix->reserved[0],pix->reserved[1]);
+				strcat(buf,msg);
+				fwdbytes = 0;
+				bytes_to_send = strlen(buf);
+				fwdbytes = sendto(fwdsockfd,buf,bytes_to_send,0,
+					(struct sockaddr *)&fwd_addr, sizeof(struct sockaddr));
+				if (fwdbytes != bytes_to_send)
+				{
+					fprintf(stderr,"%s: bytes to send %d bytes sent %d\n",
+						argv[0],bytes_to_send,fwdbytes);
+				}
+			}			
 #ifdef DEBUG
 			print_timespec(stderr,&now);
 			for (i=0;i<pix->num_approaches;i++) 
@@ -401,4 +497,272 @@ int main(int argc, char *argv[])
 				argv[0],var);
 		}
 	}
+	return (0);
+}
+// function to roud the clock when passing the cycle end
+void cycle_rounding(float *f, float cycle_len)
+{
+	if ( *f >= cycle_len)
+		*f -= cycle_len;
+	return;
+}
+				  
+// function to convert struct timespec into double
+double ts2sec(struct timespec *ts)
+{
+	return ( ts->tv_sec + ((double) ts->tv_nsec/1000000000L) );
+}
+
+// function to calculate the onset of signal state change for each phase and each control plan
+void get_signal_change_onset(E170_timing_typ *ptiming, float onsets[MAX_PLANS][MAX_PHASES][3])
+{
+	int i,j,k;
+	float f;
+	// plan 0 is running free, and there is no pre-determined onset
+	for (i=1;i<MAX_PLANS;i++)
+	{
+		if (ptiming->plan_timing[i].plan_activated == 0)
+			continue; // not in use plan
+		for (j=0;j<MAX_PHASES;j++)
+		{
+			if (ptiming->phase_timing.permitted_phase[j] == 0)
+				continue; // not in use phase
+			k = ptiming->phase_timing.phase_bf[j] - 1; // k is the previous phase
+			f = ptiming->plan_timing[i].force_off[k] +
+				ptiming->phase_timing.yellow_intv[k] +
+				ptiming->phase_timing.allred_intv[k];
+			cycle_rounding(&f, ptiming->plan_timing[i].cycle_length);	
+			onsets[i][j][0] = f; // green start
+			onsets[i][j][1] = ptiming->plan_timing[i].force_off[j]; // yellow start
+			onsets[i][j][2] = onsets[i][j][1] + ptiming->phase_timing.yellow_intv[j];
+			cycle_rounding(&onsets[i][j][2], ptiming->plan_timing[i].cycle_length);
+		}		
+	}
+	return;
+}	
+
+// function to get the signal head color for active phase
+unsigned char update_head_color(unsigned char intv)
+{
+	if ( intv <= 7) return (SIGNAL_STATE_GREEN);
+	else if ( intv >= 12 && intv <= 14) return (SIGNAL_STATE_YELLOW);
+	else return (SIGNAL_STATE_RED);
+}
+
+// function to update signal status upon db trigger
+void update_signal_state(signal_trace_typ *ptracer, signal_status_typ *pinput)
+{
+	int i,active_phase,active_intv;
+	int active_color;
+	ptracer->signal.ringA_phase = pinput->ringA_phase;
+	ptracer->signal.ringB_phase = pinput->ringB_phase;
+	ptracer->signal.ringA_interval = pinput->ringA_interval;
+	ptracer->signal.ringB_interval = pinput->ringB_interval;
+	ptracer->signal.local_cycle_clock = pinput->local_cycle_clock;
+	ptracer->signal.master_cycle_clock = pinput->master_cycle_clock;
+	for (i=0;i<8;i++)
+	{
+		ptracer->signal.force_off_point[i] = pinput->force_off_point[i];
+	}	
+	ptracer->signal.pattern = pinput->pattern;
+	ptracer->signal.ts.hour = pinput->hour;
+	ptracer->signal.ts.min = pinput->min;
+	ptracer->signal.ts.sec = pinput->sec;
+	ptracer->signal.ts.millisec = pinput->millisec;
+	// get the head color for each phase
+	for (i=0;i<8;i++)
+	{
+		ptracer->signal.signal_state[i] = SIGNAL_STATE_RED;
+	}
+	if (pinput->ringA_phase > 0)
+	{
+		ptracer->signal.signal_state[pinput->ringA_phase - 1] = 
+			update_head_color(pinput->ringA_interval);
+	}
+	if (pinput->ringB_phase > 0)
+	{
+		ptracer->signal.signal_state[pinput->ringB_phase - 1] = 
+			update_head_color(pinput->ringB_interval);
+	}
+	return;
+}
+
+// function to update priority status upon db trigger
+void update_priority_state(signal_trace_typ *ptracer, signal_priority_request_typ *pinput)
+{
+	ptracer->prio.requested_busID = pinput->requested_busID;
+	ptracer->prio.priority_type = pinput->requested_type;
+	ptracer->prio.request_phase = pinput->execution_phase;
+	ptracer->prio.requested_forceoff = pinput->desired_force_off;
+	ptracer->prio.ts.hour = pinput->hour;
+	ptracer->prio.ts.min = pinput->min;
+	ptracer->prio.ts.sec = pinput->sec;
+	ptracer->prio.ts.millisec = pinput->millisec;
+	ptracer->priority_status = pinput->requested_type;
+	return;
+}
+
+// function to assemble ix_msg and write to database 
+void assem_ix_msg(ix_msg_t *pix, ix_approach_t *pappr, E170_timing_typ *ptiming,
+				  signal_trace_typ *psignal_trace, int verbose, db_clt_typ *pclt, char *progname)
+{
+	ix_stop_line_t *pstop;	// Stop line info 
+	int i,j,k;
+	// Fill in the message structure
+	memset(pix,0,sizeof(ix_msg_t));
+	pix->flag = 0x7e;	// identify this as a message
+	pix->version = 0x2;	// message version
+	pix->message_length = (unsigned short)( sizeof(ix_msg_t)-IX_POINTER_SIZE +
+		ptiming->total_no_approaches * (sizeof(ix_approach_t) - IX_POINTER_SIZE) +
+		ptiming->total_no_stoplines * sizeof(ix_stop_line_t) );
+	pix->message_type = 0;
+	pix->control_field = 0;
+	pix->ipi_byte = 0;
+	pix->intersection_id = ptiming->intersection_id;
+	pix->map_node_id = ptiming->map_node_id;
+	pix->ix_center_lat = ptiming->center.latitude;		
+	pix->ix_center_long = ptiming->center.longitude; 
+	pix->ix_center_alt = ptiming->center.altitude;
+	pix->antenna_lat = ptiming->antenna.latitude;    		
+	pix->antenna_long = ptiming->antenna.longitude;
+	pix->antenna_alt = ptiming->antenna.altitude;
+	pix->seconds = (unsigned int)psignal_trace->trace_time.tv_sec;
+	pix->nanosecs = psignal_trace->trace_time.tv_nsec;
+	pix->cabinet_err = 0;
+	pix->preempt_calls = 0;
+	pix->bus_priority_calls = psignal_trace->priority_status;
+	pix->preempt_state = 0;
+	pix->special_alarm = 0;
+	for( i=0;i<4;i++ )
+	{
+		pix->reserved[i] = 0;
+	}
+	// fill in reserve[0] with bus phase and reserve[1] with bus time saved
+	// when the traffic controller is under priority
+	if ( psignal_trace->priority_status != 0)
+	{
+		pix->reserved[0] = 2;
+		pix->reserved[1] = psignal_trace->bus_time_saved;
+	}	
+	pix->num_approaches = ptiming->total_no_approaches;
+	// Fill in the approach structure 
+	memset(pappr,0,pix->num_approaches * sizeof(ix_approach_t));
+	pix->approach_array = pappr;
+	for (i=0;i<pix->num_approaches;i++) 
+	{
+		pappr[i].approach_type = ptiming->approch[i].approach_type;
+		j = ptiming->approch[i].control_phase-1; // signal phase that controls the approach
+		k = ptiming->phase_timing.phase_swap[j] - 1;
+		pappr[i].signal_state = *(psignal_trace->psignal_state + k);
+		pappr[i].time_to_next = (short)(10*psignal_trace->time2next[k]);
+		pappr[i].vehicles_detected = 0;
+		pappr[i].ped_signal_state = 0;  
+		pappr[i].seconds_to_ped_signal_state_change = 255;
+		pappr[i].ped_detected = 0;    
+		pappr[i].seconds_since_ped_detect = 255;
+		pappr[i].seconds_since_ped_phase_started = 255;
+		pappr[i].emergency_vehicle_approach = 0;
+		pappr[i].seconds_until_light_rail = 255;
+		pappr[i].high_priority_freight_train = 0;
+		pappr[i].vehicle_stopped_in_ix = 0;
+		for(j=0;j<2;j++)
+		{
+			pappr[i].reserved[j] = 0;
+		}
+		pappr[i].number_of_stop_lines = ptiming->approch[i].no_stoplines;
+		// Fill in the stop line structure 
+		pstop = malloc(pappr[i].number_of_stop_lines * sizeof(ix_stop_line_t));
+		memset(pstop,0,pappr[i].number_of_stop_lines * sizeof(ix_stop_line_t));
+		pappr[i].stop_line_array = pstop;
+		for( j=0;j<pappr[i].number_of_stop_lines;j++ )
+		{
+			pstop[j].latitude = ptiming->approch[i].stopline_cfg[j].latitude;
+			pstop[j].longitude = ptiming->approch[i].stopline_cfg[j].longitude;
+			pstop[j].line_length = ptiming->approch[i].stopline_cfg[j].line_length;	// cm
+			pstop[j].orientation = ptiming->approch[i].stopline_cfg[j].orientation;	// degrees clockwise from north
+		}
+	}
+	if ( verbose == 2 )
+		ix_msg_print(pix);		
+	// write ix_msg to database
+	ix_msg_update(pclt,pix,DB_IX_MSG_VAR,DB_IX_APPROACH1_VAR);
+	// Free the pstop pointers 
+	for( i=0;i<pix->num_approaches;i++ )
+	{
+		free(pix->approach_array[i].stop_line_array);
+		pix->approach_array[i].stop_line_array = NULL;
+	}
+	return;
+}
+
+// function to echo intersection configurations
+void echo_cfg(E170_timing_typ *ptiming, float onsets[MAX_PLANS][MAX_PHASES][3])
+{
+	int i,j,k;
+	printf("Welcome to %s\n\n",ptiming->name);
+	printf("Approach configurations:\n");
+	printf("\tIntersection ID %d\n",ptiming->intersection_id);
+	printf("\tMap node ID %d\n",ptiming->map_node_id);
+	printf("\tIntersection center gps %d %d %d\n",
+		ptiming->center.latitude,ptiming->center.longitude,ptiming->center.altitude);
+	printf("\tAntenna gps %d %d %d\n",
+		ptiming->antenna.latitude,ptiming->antenna.longitude,ptiming->antenna.altitude);
+	printf("\tNumber of approaches %d\n",ptiming->total_no_approaches);
+	printf("\tNumber of stoplines %d\n",ptiming->total_no_stoplines);
+	printf("\tStopline configurations:\n");
+	printf("\t\t(approach_type, control_phase, no_stoplines)\n");
+	printf("\t\t(stopline_lat, stopline_long, stopline_length, stopline_orient)\n");
+	for (i=0;i<ptiming->total_no_approaches;i++)
+	{
+		printf("\t\t%d %d %d\n",
+			ptiming->approch[i].approach_type,ptiming->approch[i].control_phase,
+			ptiming->approch[i].no_stoplines);
+		for (j=0;j<ptiming->approch[i].no_stoplines;j++)
+		{
+			printf("\t\t%d %d %d %d\n",
+				ptiming->approch[i].stopline_cfg[j].latitude,
+				ptiming->approch[i].stopline_cfg[j].longitude,
+				ptiming->approch[i].stopline_cfg[j].line_length,
+				ptiming->approch[i].stopline_cfg[j].orientation);
+		}
+	}
+	printf("\n");
+	printf("Phase configurations:\n");
+	j = 0;
+	for (i=0;i<MAX_PHASES;i++)
+	{
+		if (ptiming->phase_timing.permitted_phase[i] == 1) 
+			j+= 1;
+	}
+	printf("\tNumber of activated phases %d\n",j);
+	// plan 0 is running free
+	j = 0;
+	for (i=1;i<MAX_PLANS;i++)
+	{
+		if (ptiming->plan_timing[i].plan_activated == 1)
+			j+= 1;
+	}
+	printf("\tNumber of activated plans %d\n",j);
+	for (i=1;i<MAX_PLANS;i++)
+	{
+		if (ptiming->plan_timing[i].plan_activated == 0)
+			continue;
+		printf("\tPlan_no, Synch_phase, Cycle_length\n");
+		k = ptiming->plan_timing[i].synch_phase-1;
+		printf("\t\t%d\t%d\t%d\n",
+			ptiming->plan_timing[i].control_type,
+			ptiming->phase_timing.phase_swap[k],
+			(int)ptiming->plan_timing[i].cycle_length);
+		printf("\tPlan_no, phase, green_start, yellow_start, red_start\n");
+		for (j=0;j<MAX_PHASES;j++)
+		{
+			if (ptiming->phase_timing.permitted_phase[j] == 0)
+				continue;
+			printf("\t\t%d %d %5.1f %5.1f %5.1f\n",
+				i,ptiming->phase_timing.phase_swap[j],
+				onsets[i][j][0],onsets[i][j][1],onsets[i][j][2]);
+		}		
+	}
+	fflush(stdout);
+	return;
 }
