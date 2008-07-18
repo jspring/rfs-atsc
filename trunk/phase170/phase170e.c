@@ -133,10 +133,17 @@ int main(int argc, char *argv[])
 	struct tm time_converted;
 	date_stamp_typ ds;
 	time_stamp_typ ts;
+	date_stamp_typ utc_ds;
+	time_stamp_typ utc_ts;
 	
 	int pattern = 0,i,j;
 	float cycle_len,f;
 	double time_gap,fL,fM;
+	
+	memset(&ds,0,sizeof(date_stamp_typ));
+	memset(&ts,0,sizeof(time_stamp_typ));
+	memset(&utc_ds,0,sizeof(date_stamp_typ));
+	memset(&utc_ts,0,sizeof(time_stamp_typ));
 	
 	// get argument inputs
 	while ( (option = getopt( argc, argv, "d:x:s:S:i:o:p:fhvV" )) != EOF )
@@ -383,7 +390,10 @@ int main(int argc, char *argv[])
 			if (fwdflag == 1)
 			{
 				// msg header
-				sprintf(buf,"$count_down,%d,%d,",site_id,signal_db_id);
+				sprintf(buf,"$countdown,%04d-%02d-%02d,%02d:%02d:%02d,%03d,%04d-%02d-%02d,%02d:%02d:%02d,%03d,%d,%d,",
+					ds.year,ds.month,ds.day,ts.hour,ts.min,ts.sec,ts.millisec,
+					utc_ds.year,utc_ds.month,utc_ds.day,utc_ts.hour,utc_ts.min,
+					utc_ts.sec,utc_ts.millisec,site_id,signal_db_id);
 				// signal phase and countdown for approaches
 				for (i=0;i<pix->num_approaches;i++) 
 				{
