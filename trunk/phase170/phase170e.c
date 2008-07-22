@@ -7,11 +7,6 @@
  * Copyright (c) 2006   Regents of the University of California
  */
  
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-
 #include "sys_os.h"
 #include "stdio.h"
 #include "stdlib.h"
@@ -30,8 +25,7 @@
 #include "int_cfg.h"  // intersection configuration header file
 #include "phase170e.h"
 
-#define PACKET_SIZE 
-//#define DEBUG
+#define DEBUG // if defined, print the countdown info
 
 static int sig_list[] = {
 	SIGINT,
@@ -72,7 +66,7 @@ static db_id_t db_vars_list[] = {
 void do_usage(char *progname)
 {
 	fprintf(stderr, "%s usage:\n",progname);
-	fprintf(stderr, "[-vVh] [-d domain] [-x xport] [-s site_id] [-S signal_id] [-i timer_interval] [-f destination IP] [-p destination port]\n");
+	fprintf(stderr, "[-vVh] [-d domain] [-x xport] [-s site] [-i timer_interval]\n");
 	fprintf(stderr, "\t-v: Verbose level 1. Print debug info for db read\n");
 	fprintf(stderr, "\t-V: Verbose level 2. Print debug info for db write\n");
 	fprintf(stderr, "\t    (default: no print).\n");
@@ -85,9 +79,6 @@ void do_usage(char *progname)
 	fprintf(stderr, "\t    (default: signal_id = 1.\n");		
 	fprintf(stderr, "\t-i: Specify the timer interval in millisec.\n");
 	fprintf(stderr, "\t    (default: 200 millisec interval.\n");		
-	fprintf(stderr, "\t-f Forward flag (default is off :=0)\n");
-	fprintf(stderr, "\t-o output detination IP address (default to tlab: 128.32.129.87)\n");		
-	fprintf(stderr, "\t-p output detination port number (default 49888)\n");	
 	exit(-1);
 }
 
@@ -104,16 +95,6 @@ int main(int argc, char *argv[])
 	posix_timer_typ *ptmr;		/* Timer info */	
 	int option,recv_type;
 	int trig_list[2],trig_nums =2;
-	// for socket
-    struct hostent *fhe;
-    struct sockaddr_in fwd_addr;
-	char *fwdipstr = "128.32.129.87";
-	char fwdbuf[PACKET_SIZE];
-	char msg[PACKET_SIZE];
-    int fwdport = 49888;
-    int sockfd;
-    int fwdbytes;	
-	int fwdflag = 0;	
 	// control variables
 	int site_id = 1, signal_db_id = 1; 
 	int timer_interval = 200; 
@@ -129,24 +110,12 @@ int main(int argc, char *argv[])
 	ix_approach_t *pappr; // pointer to approach array  
 	// time structure
 	struct timespec now;
-	struct timeb timeptr_raw;
-	struct tm time_converted;
-	date_stamp_typ ds;
-	time_stamp_typ ts;
-	date_stamp_typ utc_ds;
-	time_stamp_typ utc_ts;
-	
 	int pattern = 0,i,j;
 	float cycle_len,f;
 	double time_gap,fL,fM;
 	
-	memset(&ds,0,sizeof(date_stamp_typ));
-	memset(&ts,0,sizeof(time_stamp_typ));
-	memset(&utc_ds,0,sizeof(date_stamp_typ));
-	memset(&utc_ts,0,sizeof(time_stamp_typ));
-	
 	// get argument inputs
-	while ( (option = getopt( argc, argv, "d:x:s:S:i:o:p:fhvV" )) != EOF )
+	while ( (option = getopt( argc, argv, "d:x:s:S:i:hvV" )) != EOF )
 	{
 		switch( option )
 		{
@@ -161,25 +130,16 @@ int main(int argc, char *argv[])
 			break;
 		case 'S':
 			signal_db_id = atoi(optarg);
+			break;
 		case 'i':
 			timer_interval = atoi(optarg);
 			break;
-		case 'o':
-			fwdflag = 1;
-			fwdipstr = strdup(optarg);
-			break;			
-		case 'p':
-			fwdport = atoi(optarg);
-			break;
-		case 'f':
-			fwdflag = 1;
-			break;			
 		case 'v':
 			verbose = 1; 
 			break;
 		case 'V':
 			verbose = 2; 
-			break;		
+			break;
 		case 'h':
 			// same as default case
 		default:
@@ -192,52 +152,28 @@ int main(int argc, char *argv[])
 	if ( !(site_id >= 1 && site_id <= MAX_SITES) )
 	{
 		fprintf(stderr,"%s: site_id must be between 1 and %d\n",argv[0],MAX_SITES);
-		return(-1);
+		return (-1);
 	}
 	if ( !(signal_db_id >= 1 && signal_db_id <= db_numssig) )
 	{
 		fprintf(stderr,"%s: siingal_id must be between 1 and %d\n",argv[0],db_numssig);
-		return(-1);
+		return (-1);
 	}
-	
-	// open socket for forwarding
-	if (fwdflag == 1)
-	{
-		// hostname
-		if ( (fhe = gethostbyname(fwdipstr)) == NULL)
-		{
-			fprintf(stderr,"%s gethostbyname failed\n",argv[0]);
-			return (-1);
-		}
-		// host address
-		fwd_addr.sin_family = AF_INET;     // host byte order
-		fwd_addr.sin_port = htons(fwdport); // short, network byte order
-		fwd_addr.sin_addr = *((struct in_addr *)fhe->h_addr);
-		memset(&(fwd_addr.sin_zero), '\0', 8);  // zero the rest of the struct
-		// open socket
-		if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) 
-		{
-			fprintf(stderr,"%s open socket failed\n",argv[0]);
-			return (-1);
-		}		
-	}
-				
 	// The current version only deals with rfs_intersection.
 	// Other sites can be added later
 	site_id = 1;
 	pix_timing = &signal_timing_cfg[site_id-1];	
 	// get the onset of signal state change for each phase and control plan
 	memset(signal_state_onset,0,sizeof(signal_state_onset));
-	get_signal_change_onset(pix_timing,signal_state_onset);
+	get_signal_change_onset(pix_timing, signal_state_onset);
 	if (verbose != 0)
 		// echo intersection configurations
-		echo_cfg(pix_timing,signal_state_onset);	
+		echo_cfg(pix_timing, signal_state_onset);	
 	// allocate memory for pappr, as the total number of approaches for this site is already known 
 	pappr = malloc(pix_timing->total_no_approaches * sizeof(ix_approach_t));	
 	// setup db trigger list (SIGNAL_STATUS and PRIORITY_REQUEST)
 	trig_list[0] = DB_SIGNAL_STATUS_VAR_BASE + signal_db_id;
 	trig_list[1] = DB_SIGNAL_PRIORITY_REQUEST_VAR_BASE + signal_db_id;
-	trig_nums = 2;
 	// initial
 	memset(&signal_trace,0,sizeof(signal_trace_typ));	
 	memset(signal_EG_onset,0,sizeof(signal_EG_onset));
@@ -249,7 +185,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr,"Database initialization error in %s\n",argv[0]);
 		db_list_done( pclt, db_vars_list, NUM_DB_VARS, 
 			trig_list, trig_nums );
-		return(-1);
+		return (-1);
 	}
 	// Initialize the timer. 
 	if ((ptmr = timer_init(timer_interval, DB_CHANNEL(pclt))) == NULL)
@@ -257,14 +193,14 @@ int main(int argc, char *argv[])
 		fprintf(stderr,"timer_init failed in %s\n",argv[0]);
 		db_list_done( pclt, db_vars_list, NUM_DB_VARS, 
 			trig_list, trig_nums );
-		return(-1);
+		return (-1);
 	}
 	// Exit code on receiving signal 
 	if (setjmp(exit_env) != 0) 
 	{
 		db_list_done(pclt, db_vars_list, NUM_DB_VARS,
 			trig_list, trig_nums);
-		exit (EXIT_SUCCESS);
+		exit( EXIT_SUCCESS );
 	} else
 		sig_ign( sig_list, sig_hand );
 	
@@ -278,18 +214,6 @@ int main(int argc, char *argv[])
 			fprintf(stderr,"%s clock_gettimg failed\n",argv[0]);
 			continue;
 		}			
-		// get date and time
-		ftime ( &timeptr_raw );
-		localtime_r ( &timeptr_raw.time, &time_converted );
-		memset(&ds,0,sizeof(date_stamp_typ));
-		memset(&ts,0,sizeof(time_stamp_typ));
-		ds.year = time_converted.tm_year + 1900;
-		ds.month = time_converted.tm_mon + 1;
-		ds.day = time_converted.tm_mday;
-		ts.hour = time_converted.tm_hour;
-		ts.min = time_converted.tm_min;
-		ts.sec = time_converted.tm_sec;
-		ts.millisec = timeptr_raw.millitm;					
 		if (recv_type == DB_TIMER)
 		{
 			// time to provide signal state (head color)  and countdown
@@ -386,34 +310,6 @@ int main(int argc, char *argv[])
 			}
 			// write ix_msg to database
 			assem_ix_msg(pix,pappr,pix_timing,&signal_trace,pclt,argv[0]);			
-			// forward signal phase and contdown
-			if (fwdflag == 1)
-			{
-				// msg header
-				sprintf(buf,"$countdown,%04d-%02d-%02d,%02d:%02d:%02d,%03d,%04d-%02d-%02d,%02d:%02d:%02d,%03d,%d,%d,",
-					ds.year,ds.month,ds.day,ts.hour,ts.min,ts.sec,ts.millisec,
-					utc_ds.year,utc_ds.month,utc_ds.day,utc_ts.hour,utc_ts.min,
-					utc_ts.sec,utc_ts.millisec,site_id,signal_db_id);
-				// signal phase and countdown for approaches
-				for (i=0;i<pix->num_approaches;i++) 
-				{
-					sprintf(msg,"%d,%d,",pappr[i].signal_state,pappr[i].time_to_next);
-					strcat(buf,msg);
-				}
-				// tsp info: requested bus, priority type, approach phase, and bus time saved
-				sprintf(msg,"%d,%d,%d,%d\n",signal_trace.prio.requested_busID,
-					pix->bus_priority_calls,pix->reserved[0],pix->reserved[1]);
-				strcat(buf,msg);
-				fwdbytes = 0;
-				bytes_to_send = strlen(buf);
-				fwdbytes = sendto(fwdsockfd,buf,bytes_to_send,0,
-					(struct sockaddr *)&fwd_addr, sizeof(struct sockaddr));
-				if (fwdbytes != bytes_to_send)
-				{
-					fprintf(stderr,"%s: bytes to send %d bytes sent %d\n",
-						argv[0],bytes_to_send,fwdbytes);
-				}
-			}			
 #ifdef DEBUG
 			print_timespec(stderr,&now);
 			for (i=0;i<pix->num_approaches;i++) 
@@ -448,7 +344,7 @@ int main(int argc, char *argv[])
 			}
 			if ( verbose == 1 ) 
 			{
-				// print received signal status info
+				// print received signal status 
 				printf("signal: %02d:%02d:%02d:%03d, phase=%d%d, intv=%02d%02d, local=%d, pattern=%d\n",
 					psignal_status->hour,psignal_status->min,
 					psignal_status->sec,psignal_status->millisec,
@@ -495,7 +391,7 @@ int main(int argc, char *argv[])
 			}				
 			if ( verbose == 1)
 			{
-				// print received priority request info
+				// print received pririty request info
 				printf("priority: %02d:%02d:%02d.%03d, bus=%d, type=%d, phase=%d, FO=%d\n",
 					pPRS->hour,pPRS->min,pPRS->sec,pPRS->millisec,
 					pPRS->requested_busID,pPRS->requested_type,
@@ -510,6 +406,7 @@ int main(int argc, char *argv[])
 	}
 	return (0);
 }
+
 // function to roud the clock when passing the cycle end
 void cycle_rounding(float *f, float cycle_len)
 {
@@ -777,3 +674,4 @@ void echo_cfg(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MAX_PHASES][3])
 	fflush(stdout);
 	return;
 }
+

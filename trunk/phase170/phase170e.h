@@ -2,19 +2,6 @@
 #define Early_Green     2
 #define Green_Extension 3
 
-typedef struct{
-	int year;
-	int month;
-	int day;
-} date_stamp_typ;
-
-typedef struct{
-	int hour;
-	int min;
-	int sec;
-	unsigned short millisec;
-} time_stamp_typ;
-
 typedef struct {
 	unsigned char ringA_phase;
 	unsigned char ringB_phase;
