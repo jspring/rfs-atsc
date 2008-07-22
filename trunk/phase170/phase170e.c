@@ -590,8 +590,8 @@ void assem_ix_msg(ix_msg_t *pix,ix_approach_t *pappr,E170_timing_typ *ptiming,
 			pstop[j].orientation = ptiming->approch[i].stopline_cfg[j].orientation;	// degrees clockwise from north
 		}
 	}
-	if ( verbose == 2 )
-		ix_msg_print(pix);		
+//	if ( verbose == 2 )
+//		ix_msg_print(pix);		
 	// write ix_msg to database
 	ix_msg_update(pclt,pix,DB_IX_MSG_VAR,DB_IX_APPROACH1_VAR);
 	// Free the pstop pointers 
