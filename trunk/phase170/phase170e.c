@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 	int i,j,k,jj,kk;
 	
 	// get argument inputs
-	while ( (option = getopt( argc, argv, "d:x:s:S:i:tvh" )) != EOF )
+	while ( (option = getopt( argc, argv, "d:x:s:S:i:tvVh" )) != EOF )
 	{
 		switch( option )
 		{

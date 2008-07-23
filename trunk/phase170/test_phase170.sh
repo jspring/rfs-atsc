@@ -10,5 +10,5 @@ sleep 1
 sleep 1
 /home/tsp/test/wrfiles &
 sleep 1
-/home/atsc/test/phase170e -i 500 -v > phase170.log &
+/home/atsc/test/phase170e -i 500 -V > phase170.log &
 
