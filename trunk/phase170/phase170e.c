@@ -68,9 +68,10 @@ static db_id_t db_vars_list[] = {
 void do_usage(char *progname)
 {
 	fprintf(stderr, "%s usage:\n",progname);
-	fprintf(stderr, "[-tvh] [-d domain] [-x xport] [-s site] [-i timer_interval]\n");
+	fprintf(stderr, "[-tvVh] [-d domain] [-x xport] [-s site] [-i timer_interval]\n");
 	fprintf(stderr, "\t-t: Process and write the traffic signal data.\n");
-	fprintf(stderr, "\t-v: Verbose. Print debug info for db read.\n");
+	fprintf(stderr, "\t-v: Verbose level 1. Print TSP related input output info\n");
+	fprintf(stderr, "\t-V: Verbose level 2. Print generated ix_msg atsc_msg and CICAS traffic signal msg\n");	
 	fprintf(stderr, "\t    (default: no print).\n");
 	fprintf(stderr, "\t-h: Print this message.\n");
 	fprintf(stderr, "\t-d: Specify the domain.\n");
@@ -150,6 +151,9 @@ int main(int argc, char *argv[])
 		case 'v':
 			verbose = 1; 
 			break;
+		case 'V':
+			verbose = 2; 
+			break;			
 		case 'h':
 			// same as default case
 		default:
@@ -176,7 +180,7 @@ int main(int argc, char *argv[])
 	// get the onset of signal state change for each phase and control plan
 	memset(signal_state_onset,0,sizeof(signal_state_onset));
 	get_signal_change_onset(pix_timing, signal_state_onset);
-	if (verbose == 1)
+	if (verbose != 0)
 	{
 		// echo intersection configurations
 		echo_cfg(pix_timing, signal_state_onset);	
@@ -333,7 +337,7 @@ int main(int argc, char *argv[])
 			}
 			// write ix_msg to database
 			assem_ix_msg(pix,pappr,pix_timing,&signal_trace,pclt,argv[0]);			
-			if (verbose == 1)
+			if (verbose == 2)
 			{
 				printf("ix_msg: ");
 				print_timespec(stdout,&now);
@@ -377,7 +381,7 @@ int main(int argc, char *argv[])
 				}
 			}	
 			clt_update(pclt,DB_ATSC_BCAST_VAR,DB_ATSC_BCAST_TYPE,sizeof(atsc_typ),(void *) &atsc);
-			if (verbose == 1)
+			if (verbose == 2)
 			{
 				printf("ATSC: %02d.%02d.%03d %d%d%d %d%d%d %d%d %d%d\n",
 					atsc.ts.hour,atsc.ts.min,atsc.ts.sec,atsc.ts.millisec,
@@ -405,7 +409,7 @@ int main(int argc, char *argv[])
 				clt_update(pclt,DB_TRAFFIC_SIGNAL_VAR,DB_TRAFFIC_SIGNAL_TYPE,
 					sizeof(traffic_signal_typ),(void *) &traffic_signal);
 			}
-			if (verbose == 1)
+			if (verbose == 2)
 			{
 				printf("CICAS: %s %.1f %.1f %s %.1f %.1f\n",
 					ix_signal_state_string(traffic_signal.ring_phase[1].phase+1),
