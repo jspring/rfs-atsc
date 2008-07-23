@@ -383,7 +383,7 @@ int main(int argc, char *argv[])
 			clt_update(pclt,DB_ATSC_BCAST_VAR,DB_ATSC_BCAST_TYPE,sizeof(atsc_typ),(void *) &atsc);
 			if (verbose == 2)
 			{
-				printf("ATSC: %02d.%02d.%03d %d%d%d %d%d%d %d%d %d%d\n",
+				printf("ATSC: %02d:%02d:%02d.%03d %d%d%d %d%d%d %d%d %d%d\n",
 					atsc.ts.hour,atsc.ts.min,atsc.ts.sec,atsc.ts.millisec,
 					atsc.phase_status_greens[1],atsc.phase_status_yellows[1],atsc.phase_status_reds[1],
 					atsc.phase_status_greens[3],atsc.phase_status_yellows[3],atsc.phase_status_reds[3],
