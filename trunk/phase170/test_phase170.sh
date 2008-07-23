@@ -8,5 +8,7 @@ sleep 1
 sleep 1
 /home/tsp/test/read232 /dev/ttyS0 &
 sleep 1
+/home/tsp/test/wrfiles &
+sleep 1
 /home/atsc/test/phase170e -i 500 -v &
 

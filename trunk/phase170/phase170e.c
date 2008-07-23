@@ -350,7 +350,7 @@ int main(int argc, char *argv[])
 			// write ATSC to database
 			memset(&atsc,0,sizeof(atsc_typ));
 			get_current_timestamp(&(atsc.ts));
-//			atsc.info_source = ATSC_SOURCE_AB3418;
+			atsc.info_source = ATSC_SOURCE_NTCIP;
 			for (i=0;i<pix->num_approaches;i++)
 			{			
 				j = pix_timing->approch[i].control_phase - 1; // signal phase that controls the approach
