@@ -25,7 +25,8 @@
 #include "int_cfg.h"  // intersection configuration header file
 #include "phase170e.h"
 
-#define DEBUG // if defined, print the countdown info
+#include "alert_vars.h"	// CICAS version of IDS header file
+#include "atsc.h"	// actuated traffic signal controller header file
 
 static int sig_list[] = {
 	SIGINT,
@@ -48,6 +49,7 @@ static void sig_hand( int code )
 // which are created by ATSP
 // Does not include TRAFFIC_SIGNAL, which is created by cicas_create
 static db_id_t db_vars_list[] = {
+	{DB_ATSC_BCAST_VAR, sizeof(atsc_typ)},
 	{DB_IX_MSG_VAR, sizeof(ix_msg_t)},
 	{DB_IX_APPROACH1_VAR, MAX_APPROACH_SIZE},
 	{DB_IX_APPROACH2_VAR, MAX_APPROACH_SIZE},
@@ -66,9 +68,9 @@ static db_id_t db_vars_list[] = {
 void do_usage(char *progname)
 {
 	fprintf(stderr, "%s usage:\n",progname);
-	fprintf(stderr, "[-vVh] [-d domain] [-x xport] [-s site] [-i timer_interval]\n");
-	fprintf(stderr, "\t-v: Verbose level 1. Print debug info for db read\n");
-	fprintf(stderr, "\t-V: Verbose level 2. Print debug info for db write\n");
+	fprintf(stderr, "[-tvh] [-d domain] [-x xport] [-s site] [-i timer_interval]\n");
+	fprintf(stderr, "\t-t: Process and write the traffic signal data.\n");
+	fprintf(stderr, "\t-v: Verbose. Print debug info for db read.\n");
 	fprintf(stderr, "\t    (default: no print).\n");
 	fprintf(stderr, "\t-h: Print this message.\n");
 	fprintf(stderr, "\t-d: Specify the domain.\n");
@@ -94,11 +96,15 @@ int main(int argc, char *argv[])
 	db_data_typ db_data;
 	posix_timer_typ *ptmr;		/* Timer info */	
 	int option,recv_type;
-	int trig_list[2],trig_nums =2;
+	int trig_list[2];
+	int trig_nums = 2;
 	// control variables
-	int site_id = 1, signal_db_id = 1; 
+	int site_id = 1;
+	int signal_db_id = 1; 
 	int timer_interval = 200; 
-	int verbose = 0, signal_trig = 0;
+	int traffic_flag = 0;
+	int verbose = 0;
+	int signal_trig = 0;
 	// local variables
 	float signal_state_onset[MAX_PLANS][MAX_PHASES][3]; // the defaul onsets
 	float signal_EG_onset[MAX_PHASES][3]; // the active onsets for EG priority
@@ -108,14 +114,18 @@ int main(int argc, char *argv[])
 	signal_priority_request_typ *pPRS;  // pointer to receive priority request data from database 
 	ix_msg_t *pix = malloc (sizeof(ix_msg_t)); // pointer to ix_msg
 	ix_approach_t *pappr; // pointer to approach array  
+	traffic_signal_typ traffic_signal;	// CICAS IDS info
+	atsc_typ atsc;			// ATSC info	
 	// time structure
 	struct timespec now;
-	int pattern = 0,i,j;
+	int pattern = 0;
 	float cycle_len,f;
+	float time_left,time_used;
 	double time_gap,fL,fM;
+	int i,j,k,jj,kk;
 	
 	// get argument inputs
-	while ( (option = getopt( argc, argv, "d:x:s:S:i:hvV" )) != EOF )
+	while ( (option = getopt( argc, argv, "d:x:s:S:i:tvh" )) != EOF )
 	{
 		switch( option )
 		{
@@ -134,11 +144,11 @@ int main(int argc, char *argv[])
 		case 'i':
 			timer_interval = atoi(optarg);
 			break;
+		case 't':
+			traffic_flag = 1;
+			break;
 		case 'v':
 			verbose = 1; 
-			break;
-		case 'V':
-			verbose = 2; 
 			break;
 		case 'h':
 			// same as default case
@@ -166,14 +176,17 @@ int main(int argc, char *argv[])
 	// get the onset of signal state change for each phase and control plan
 	memset(signal_state_onset,0,sizeof(signal_state_onset));
 	get_signal_change_onset(pix_timing, signal_state_onset);
-	if (verbose != 0)
+	if (verbose == 1)
+	{
 		// echo intersection configurations
 		echo_cfg(pix_timing, signal_state_onset);	
+	}
 	// allocate memory for pappr, as the total number of approaches for this site is already known 
 	pappr = malloc(pix_timing->total_no_approaches * sizeof(ix_approach_t));	
 	// setup db trigger list (SIGNAL_STATUS and PRIORITY_REQUEST)
 	trig_list[0] = DB_SIGNAL_STATUS_VAR_BASE + signal_db_id;
 	trig_list[1] = DB_SIGNAL_PRIORITY_REQUEST_VAR_BASE + signal_db_id;
+	trig_nums = 2;	
 	// initial
 	memset(&signal_trace,0,sizeof(signal_trace_typ));	
 	memset(signal_EG_onset,0,sizeof(signal_EG_onset));
@@ -251,7 +264,7 @@ int main(int argc, char *argv[])
 				// upon the finishing of GE execution, phase 4 starts with green
 				signal_trace.priority_status = 0;
 				signal_trace.bus_time_saved = 0;
-				if ( verbose != 0) 
+				if ( verbose == 1) 
 					printf("GE done\n");				
 			}
 			else if ( signal_trace.priority_status == Early_Green &&
@@ -260,7 +273,7 @@ int main(int argc, char *argv[])
 				// upon the finishing of EG execution, phase 2 starts with green
 				signal_trace.priority_status = 0;
 				signal_trace.bus_time_saved = 0;
-				if ( verbose != 0) 
+				if ( verbose == 1) 
 					printf("EG done\n");				
 			}			
 			// get the countdown time for each permitted phase			
@@ -280,47 +293,126 @@ int main(int argc, char *argv[])
 				}
 				switch ( *(signal_trace.psignal_state + i) )
 				{
-				case SIGNAL_STATE_GREEN:
+				case SIGNAL_STATE_GREEN:					
 					j = 1; // countdown w.r.t. yellow onset
+					jj = 0; // count used time w.r.t green onset;
 					break;
 				case SIGNAL_STATE_YELLOW:
-					j =2; // countdown w.r.t red onset
+					j = 2; // countdown w.r.t red onset
+					jj = 1; // count used time w.r.t green onset;
 					break;
 				case SIGNAL_STATE_RED:
 					j = 0; // countdown w.r.t green onset
+					jj = 2; // count used time w.r.t green onset;
 					break;
 				default:
 					j = -1; // do not countdown for other signal state types
 					break;
 				}
 				if (j == -1) break;					
-				fL = *(signal_trace.pactive_onsets + j) - signal_trace.active_local_cycle_clock;
-				if ( fL < -1.5) 
+				time_left = *(signal_trace.pactive_onsets + j) - signal_trace.active_local_cycle_clock;				
+				if ( time_left < -1.5) 
 				{
 					// this would happen when crossing the cycle end
-					fL += cycle_len;
+					time_left += cycle_len;
 				}
-				else if (fL < 0)
+				else if (time_left < 0.0)
 				{					
 					// since the signal status is obtained by pulling and the data resolution is at second level, 
 					// the latency could be as large as 1 sec. If it is the case, fix countdown time to 0
-					fL = 0.0;
+					time_left = 0.0;
 				}
-				signal_trace.time2next[i] = (float)fL;
+				signal_trace.time2next[i] = time_left;				
+				time_used = *(signal_trace.pactive_onsets + j) - *(signal_trace.pactive_onsets + jj)
+					- time_left;
+				if (time_used < -1.5)
+					time_used += cycle_len;
+				else if (time_used < 0.0)
+					time_used = 0.0;
+				signal_trace.timeused[i] = time_used;
 			}
 			// write ix_msg to database
 			assem_ix_msg(pix,pappr,pix_timing,&signal_trace,pclt,argv[0]);			
-#ifdef DEBUG
-			print_timespec(stderr,&now);
-			for (i=0;i<pix->num_approaches;i++) 
+			if (verbose == 1)
 			{
-				fprintf(stderr," %s %.1f",
-					ix_signal_state_string(pappr[i].signal_state),
-					(float)pappr[i].time_to_next/10.0);
+				printf("ix_msg: ");
+				print_timespec(stdout,&now);
+				for (i=0;i<pix->num_approaches;i++) 
+				{
+					printf("%s %.1f ",
+						ix_signal_state_string(pappr[i].signal_state),
+						(float)pappr[i].time_to_next/10.0);
+				}
+				printf("%d %d %d\n",
+					pix->bus_priority_calls,pix->reserved[0],pix->reserved[1]);
 			}
-			fprintf(stderr," %d %d %d\n",
-				pix->bus_priority_calls,pix->reserved[0],pix->reserved[1]);
-#endif			
+			
+			// write ATSC to database
+			memset(&atsc,0,sizeof(atsc_typ));
+			get_current_timestamp(&(atsc.ts));
+//			atsc.info_source = ATSC_SOURCE_AB3418;
+			for (i=0;i<pix->num_approaches;i++)
+			{			
+				j = ptiming->approch[i].control_phase - 1; // signal phase that controls the approach
+				k = ptiming->atsc_phase_swap[j] - 1; // swap the phase for CICAS-SLTA application
+				switch (pappr[i].signal_state)
+				{
+				case SIGNAL_STATE_GREEN:
+					atsc.phase_status_greens[k] = 1;
+					atsc.phase_status_ons[k] = 1;
+					break;
+				case SIGNAL_STATE_YELLOW:
+					atsc.phase_status_yellows[k] = 1;
+					atsc.phase_status_ons[k] = 1;
+					break;
+				case SIGNAL_STATE_RED:
+					atsc.phase_status_reds[k] = 1;					
+					break;
+				}
+				if (atsc.phase_status_ons[k] == 1)
+				{
+					jj = ptiming->phase_timing.phase_af[j] - 1;
+					kk = ptiming->atsc_phase_swap[jj] -1;
+					atsc.phase_status_next[kk] = 1;
+				}
+			}	
+			clt_update(pclt,DB_ATSC_BCAST_VAR,DB_ATSC_BCAST_TYPE,sizeof(atsc_typ),(void *) &atsc);
+			if (verbose == 1)
+			{
+				printf("ATSC: %02d.%02d.%03d %d%d%d %d%d%d %d%d %d%d\n",
+					atsc.ts.hour,atsc.ts.min,atsc.ts.sec,atsc.ts.millisec,
+					atsc.phase_status_greens[1],atsc.phase_status_yellows[1],atsc.phase_status_reds[1],
+					atsc.phase_status_greens[3],atsc.phase_status_yellows[3],atsc.phase_status_reds[3],
+					atsc.phase_status_ons[1],atsc.phase_status_ons[3],
+					atsc.phase_status_next[1],atsc.phase_status_next[3]);				
+			}				
+			
+			// write taffic signal for CICAS database
+			memset(&traffic_signal,0,sizeof(traffic_signal_typ));
+			for (i=0;i<pix->num_approaches;i++)
+			{			
+				j = ptiming->approch[i].control_phase - 1; // signal phase that controls the approach
+				k = ptiming->atsc_phase_swap[j] - 1; // swap the phase for CICAS-SLTA application
+				traffic_signal.ring_phase[k].phase = pappr[i].signal_state- 1;
+				traffic_signal.ring_phase[k].time_left = (double)pappr[i].time_to_next/10.0;
+				jj = ptiming->approch[i].control_phase - 1; // signal phase that controls the approach
+				j = ptiming->phase_timing.phase_swap[jj] - 1;
+				k = ptiming->atsc_phase_swap[j] - 1;				
+				traffic_signal.ring_phase[k].time_used = signal_trace.timeused[j];
+			}			
+			if (traffic_flag == 1)
+			{
+				clt_update(pclt,DB_TRAFFIC_SIGNAL_VAR,DB_TRAFFIC_SIGNAL_TYPE,
+					sizeof(traffic_signal_typ),(void *) &traffic_signal);
+			}
+			if (verbose == 1)
+			{
+				printf("CICAS: %s %.1f %.1f %s %.1f %.1f\n",
+					ix_signal_state_string(traffic_signal.ring_phase[1].phase+1),
+					traffic_signal.ring_phase[1].time_used,traffic_signal.ring_phase[1].time_left,
+					ix_signal_state_string(traffic_signal.ring_phase[3].phase+1),
+					traffic_signal.ring_phase[3].time_used,traffic_signal.ring_phase[3].time_left);
+			}
 			continue;
 		}		
 		var = DB_TRIG_VAR(&trig_info);
@@ -590,8 +682,6 @@ void assem_ix_msg(ix_msg_t *pix,ix_approach_t *pappr,E170_timing_typ *ptiming,
 			pstop[j].orientation = ptiming->approch[i].stopline_cfg[j].orientation;	// degrees clockwise from north
 		}
 	}
-//	if ( verbose == 2 )
-//		ix_msg_print(pix);		
 	// write ix_msg to database
 	ix_msg_update(pclt,pix,DB_IX_MSG_VAR,DB_IX_APPROACH1_VAR);
 	// Free the pstop pointers 

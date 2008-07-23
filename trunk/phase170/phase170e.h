@@ -34,6 +34,7 @@ typedef struct {
 	float active_master_cycle_clock;	
 	float *pactive_onsets;
 	unsigned char *psignal_state; 
+	float timeused[MAX_PHASES];
 	float time2next[MAX_PHASES];
 	struct timespec trace_time;
 } IS_PACKED signal_trace_typ;

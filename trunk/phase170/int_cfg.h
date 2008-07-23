@@ -56,6 +56,7 @@ typedef struct{
 	ix_approach_fix approch[MAX_MOVEMENTS];
 	ix_phase_timing_fix phase_timing;
 	ix_control_plan_fix plan_timing[MAX_PLANS];
+	atsc_phase_swap[MAX_PHASES];
 } IS_PACKED E170_timing_typ;
 		
 E170_timing_typ signal_timing_cfg[MAX_SITES] = {
@@ -70,6 +71,7 @@ E170_timing_typ signal_timing_cfg[MAX_SITES] = {
 		}, // phase_timing
 		{	{0,0,2,"2468",60,0}, // plan_timing
 			{1,1,2,"2468",72,0,{0.0,15.0,0.0,45.0,0.0,0.0,0.0,0.0},{0.0,0.0,0.0,51.0,0.0,0.0,0.0,0.0}}
-		}
+		},
+		{0,4,0,2,0,0,0,0}
 	}	
 };
