@@ -106,8 +106,8 @@ int main(int argc, char *argv[])
 	int verbose = 0;
 	int signal_trig = 0;
 	// local variables
-	float signal_state_onset[MAX_PLANS][MAX_PHASES][3]; // the defaul onsets
-	float signal_EG_onset[MAX_PHASES][3]; // the active onsets for EG priority
+	float signal_state_onset[MAX_PLANS][MAX_NMEA_PHAZ][3]; // the defaul onsets
+	float signal_EG_onset[MAX_NMEA_PHAZ][3]; // the active onsets for EG priority
 	signal_trace_typ signal_trace;
 	E170_timing_typ *pix_timing;       // pointer to intersection configurations
 	signal_status_typ *psignal_status; // pointer to receive signal status data from database
@@ -277,7 +277,7 @@ int main(int argc, char *argv[])
 					printf("EG done\n");				
 			}			
 			// get the countdown time for each permitted phase			
-			for (i=0;i<MAX_PHASES;i++)
+			for (i=0;i<MAX_NMEA_PHAZ;i++)
 			{
 				if (pix_timing->phase_timing.permitted_phase[i] == 0)
 					continue;
@@ -353,8 +353,8 @@ int main(int argc, char *argv[])
 //			atsc.info_source = ATSC_SOURCE_AB3418;
 			for (i=0;i<pix->num_approaches;i++)
 			{			
-				j = ptiming->approch[i].control_phase - 1; // signal phase that controls the approach
-				k = ptiming->atsc_phase_swap[j] - 1; // swap the phase for CICAS-SLTA application
+				j = pix_timing->approch[i].control_phase - 1; // signal phase that controls the approach
+				k = pix_timing->atsc_phase_swap[j] - 1; // swap the phase for CICAS-SLTA application
 				switch (pappr[i].signal_state)
 				{
 				case SIGNAL_STATE_GREEN:
@@ -371,8 +371,8 @@ int main(int argc, char *argv[])
 				}
 				if (atsc.phase_status_ons[k] == 1)
 				{
-					jj = ptiming->phase_timing.phase_af[j] - 1;
-					kk = ptiming->atsc_phase_swap[jj] -1;
+					jj = pix_timing->phase_timing.phase_af[j] - 1;
+					kk = pix_timing->atsc_phase_swap[jj] -1;
 					atsc.phase_status_next[kk] = 1;
 				}
 			}	
@@ -391,13 +391,13 @@ int main(int argc, char *argv[])
 			memset(&traffic_signal,0,sizeof(traffic_signal_typ));
 			for (i=0;i<pix->num_approaches;i++)
 			{			
-				j = ptiming->approch[i].control_phase - 1; // signal phase that controls the approach
-				k = ptiming->atsc_phase_swap[j] - 1; // swap the phase for CICAS-SLTA application
+				j = pix_timing->approch[i].control_phase - 1; // signal phase that controls the approach
+				k = pix_timing->atsc_phase_swap[j] - 1; // swap the phase for CICAS-SLTA application
 				traffic_signal.ring_phase[k].phase = pappr[i].signal_state- 1;
 				traffic_signal.ring_phase[k].time_left = (double)pappr[i].time_to_next/10.0;
-				jj = ptiming->approch[i].control_phase - 1; // signal phase that controls the approach
-				j = ptiming->phase_timing.phase_swap[jj] - 1;
-				k = ptiming->atsc_phase_swap[j] - 1;				
+				jj = pix_timing->approch[i].control_phase - 1; // signal phase that controls the approach
+				j = pix_timing->phase_timing.phase_swap[jj] - 1;
+				k = pix_timing->atsc_phase_swap[j] - 1;				
 				traffic_signal.ring_phase[k].time_used = signal_trace.timeused[j];
 			}			
 			if (traffic_flag == 1)
@@ -514,7 +514,7 @@ double ts2sec(struct timespec *ts)
 }
 
 // function to calculate the onset of signal state change for each phase and each control plan
-void get_signal_change_onset(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MAX_PHASES][3])
+void get_signal_change_onset(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MAX_NMEA_PHAZ][3])
 {
 	int i,j,k;
 	float f;
@@ -523,7 +523,7 @@ void get_signal_change_onset(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MA
 	{
 		if (ptiming->plan_timing[i].plan_activated == 0)
 			continue; // not in use plan
-		for (j=0;j<MAX_PHASES;j++)
+		for (j=0;j<MAX_NMEA_PHAZ;j++)
 		{
 			if (ptiming->phase_timing.permitted_phase[j] == 0)
 				continue; // not in use phase
@@ -694,7 +694,7 @@ void assem_ix_msg(ix_msg_t *pix,ix_approach_t *pappr,E170_timing_typ *ptiming,
 }
 
 // function to echo intersection configurations
-void echo_cfg(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MAX_PHASES][3])
+void echo_cfg(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MAX_NMEA_PHAZ][3])
 {
 	int i,j,k;
 	printf("Welcome to %s\n\n",ptiming->name);
@@ -727,7 +727,7 @@ void echo_cfg(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MAX_PHASES][3])
 	printf("\n");
 	printf("Phase configurations:\n");
 	j = 0;
-	for (i=0;i<MAX_PHASES;i++)
+	for (i=0;i<MAX_NMEA_PHAZ;i++)
 	{
 		if (ptiming->phase_timing.permitted_phase[i] == 1) 
 			j+= 1;
@@ -752,7 +752,7 @@ void echo_cfg(E170_timing_typ *ptiming,float onsets[MAX_PLANS][MAX_PHASES][3])
 			ptiming->phase_timing.phase_swap[k],
 			(int)ptiming->plan_timing[i].cycle_length);
 		printf("\tPlan_no, phase, green_start, yellow_start, red_start\n");
-		for (j=0;j<MAX_PHASES;j++)
+		for (j=0;j<MAX_NMEA_PHAZ;j++)
 		{
 			if (ptiming->phase_timing.permitted_phase[j] == 0)
 				continue;

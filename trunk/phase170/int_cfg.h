@@ -1,5 +1,5 @@
 #define MAX_SITES 2
-#define MAX_PHASES 8
+#define MAX_NMEA_PHAZ 8
 #define MAX_STOPLIES 2
 #define MAX_PLANS 5
 #define MAX_MOVEMENTS 10
@@ -25,12 +25,12 @@ typedef struct {
 } IS_PACKED ix_approach_fix;
 
 typedef struct {
-	unsigned char permitted_phase[MAX_PHASES];
-	unsigned char phase_bf[MAX_PHASES];
-	unsigned char phase_af[MAX_PHASES];
-	unsigned char phase_swap[MAX_PHASES]; // at RFS_intersection, phase 2 within 170E is actually phase 4 output
-	float yellow_intv[MAX_PHASES];
-	float allred_intv[MAX_PHASES];
+	unsigned char permitted_phase[MAX_NMEA_PHAZ];
+	unsigned char phase_bf[MAX_NMEA_PHAZ];
+	unsigned char phase_af[MAX_NMEA_PHAZ];
+	unsigned char phase_swap[MAX_NMEA_PHAZ]; // at RFS_intersection, phase 2 within 170E is actually phase 4 output
+	float yellow_intv[MAX_NMEA_PHAZ];
+	float allred_intv[MAX_NMEA_PHAZ];
 } IS_PACKED ix_phase_timing_fix;
 
 typedef struct {
@@ -40,8 +40,8 @@ typedef struct {
 	char *lag_phases;
 	float cycle_length;
 	float offset;
-	float grn_splits[MAX_PHASES];
-	float force_off[MAX_PHASES];
+	float grn_splits[MAX_NMEA_PHAZ];
+	float force_off[MAX_NMEA_PHAZ];
 } IS_PACKED ix_control_plan_fix;
 	
 typedef struct{
@@ -56,7 +56,7 @@ typedef struct{
 	ix_approach_fix approch[MAX_MOVEMENTS];
 	ix_phase_timing_fix phase_timing;
 	ix_control_plan_fix plan_timing[MAX_PLANS];
-	atsc_phase_swap[MAX_PHASES];
+	unsigned char atsc_phase_swap[MAX_NMEA_PHAZ];
 } IS_PACKED E170_timing_typ;
 		
 E170_timing_typ signal_timing_cfg[MAX_SITES] = {
