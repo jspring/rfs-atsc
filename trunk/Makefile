@@ -18,7 +18,7 @@ all: $(ATSC_LIBRARIES)
 	(cd sendmsg2tlab; make; make install)
 
 ix/$(OBJDIR)/libix.a: $(wildcard ix/*.[ch])
-	(cd $(LOCAL_DIR); make; make install)
+	(cd ix; make; make install)
 
 # separate target, not part of "all", because can only 
 # be done if usb_digio library is available
