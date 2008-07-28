@@ -21,7 +21,7 @@
 #include "timestamp.h"
 #include "atsc.h"	/* actuated traffic signal controller header file */
 #include "ix_msg.h"	/* intersection message header file */
-#include "alert_vars.h"	/* CICAS version of IDS header file */
+#include "exp_traffic_signal.h"	/* CICAS version of IDS header file */
 
 #undef DEBUG
 #define DEBUG_ATSC

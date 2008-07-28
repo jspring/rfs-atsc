@@ -1,48 +1,25 @@
 # Makefile
+# Took out build for second executable with -DCOMPARE
 #
-# Copyright (c) 2006   Regents of the University of California
+# Copyright (c) 2008   Regents of the University of California
 #
+include $(CAPATH_MK_DEFS)
 
-ATSC_DIR = ..
-DISTRIB_DIR = ../../path
+PATH_CFLAGS += -I$(ATSC_INC_DIR)
 
-INCLUDE_DIR = $(ATSC_DIR)/include
-DB_DIR = $(DISTRIB_DIR)/db
-LOCAL_DIR = $(DISTRIB_DIR)/local
-PROJ_DIR = /home/cicas
+HDRS = fcs.h msgs.h 
+EXEC = $(OBJDIR)/rd3418 
 
-CC = cc
-CFLAGS += -c -D_GNU_SOURCE
-CFLAGS += -I. -I$(INCLUDE_DIR) -I$(DB_DIR) -I$(LOCAL_DIR) 
-CFLAGS += -g
-			
-AR = ar
-AR_FLAGS += rv
+all: 	$(OBJDIR) $(EXEC)
 
-LINK = cc
-LFLAGS += -L$(LOCAL_DIR)  -L$(DB_DIR)  
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
-LIBS= -ldb_clts -llocals  -lrt
-
-EXEC = rd3418 rd34182 
-
-.c.o:	
-	$(CC) $(CFLAGS) $*.c -o $*.o 
-.o:
-	$(LINK) $(LFLAGS) -o $@ $@.o $(LIBS) 
-
-all: $(EXEC)
-
-rd3418:		rd3418.o 
-
-rd34182.o:	rd3418.c 
-	$(CC) $(CFLAGS) -DCOMPARE -o rd34182.o rd3418.c
-rd34182:	rd34182.o 
-	$(LINK) $(LFLAGS) -o $@ rd34182.o $(LIBS)
+$(OBJDIR)/rd3418: $(OBJDIR)/rd3418.o
 
 clean:
-	rm -f *.o *.err *.a $(EXEC)
+	\rm -f $(OBJDIR)/*.o *.*~ $(EXEC)
 
 install:
 	cp $(EXEC) $(ATSC_DIR)/test
-	cp $(EXEC) $(PROJ_DIR)/test
+

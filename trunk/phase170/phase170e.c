@@ -20,12 +20,12 @@
 
 #include "atsc_clt_vars.h"
 #include "ix_msg.h"	  //intersection message header file
-#include "clt_vars.h" // TSP vatiable header file
+#include "tsp_clt_vars.h" // TSP vatiable header file
 #include "veh_sig.h"  // TSP structure header file
 #include "int_cfg.h"  // intersection configuration header file
 #include "phase170e.h"
 
-#include "alert_vars.h"	// CICAS version of IDS header file
+#include "exp_traffic_signal.h"	// CICAS version of IDS header file
 #include "atsc.h"	// actuated traffic signal controller header file
 
 static int sig_list[] = {

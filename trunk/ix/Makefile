@@ -1,64 +1,35 @@
-# Makefile
+# Makefile, updated for portability
 #
-# Copyright (c) 2006   Regents of the University of California
+# Copyright (c) 2008   Regents of the University of California
 #
+include $(CAPATH_MK_DEFS)
 
-ATSC_DIR = ..
-ifndef PATH_AR
-DISTRIB_DIR = ../../path
-else
-DISTRIB_DIR = /home/gems/sdk/sobos/build_dir/i386/path_util-1.0
-endif
-TSP_DIR = /home/tsp
-INCLUDE_DIR = $(ATSC_DIR)/include
-DB_DIR = $(DISTRIB_DIR)/db
-LOCAL_DIR = $(DISTRIB_DIR)/local
-SENS_INCLUDE = $(DISTRIB_DIR)/sens/include
+PATH_CFLAGS += -I$(ATSC_INC_DIR)
+PATH_CFLAGS += -I$(TSP_INC_DIR)
+PATH_LDFLAGS += -Llnx
+PATH_LIBS += -lix -lsqlite3
 
-ifndef PATH_CC
-PATH_CC = gcc
-endif
-
-PATH_CFLAGS += -c -D_GNU_SOURCE -I$(TSP_DIR)/include
-PATH_CFLAGS += -I. -I$(INCLUDE_DIR) -I$(DB_DIR) -I$(LOCAL_DIR) -I$(SENS_INCLUDE)
-PATH_CFLAGS += -g
-			
-ifndef PATH_AR
-PATH_AR = ar
-endif
-
-AR_FLAGS += rv
-
-ifndef PATH_LINK
-PATH_LINK = gcc
-endif
-
-PATH_LDFLAGS += -L$(DB_DIR) -L$(LOCAL_DIR) -L.
-
-LIBS = -lix -ldb_clts -llocals -lsqlite3 -lrt
-			
 HDRS = ix_msg.h
 
-IX_OBJS = ix_utils.o ix_db_utils.o ix_file_utils.o
+IX_LIB = $(OBJDIR)/libix.a
+IX_OBJS = $(OBJDIR)/ix_utils.o $(OBJDIR)/ix_db_utils.o $(OBJDIR)/ix_file_utils.o
 
-EXEC = rcv_ix_msg snd_ix_msg ix_byte_count
+EXEC = $(OBJDIR)/rcv_ix_msg $(OBJDIR)/snd_ix_msg $(OBJDIR)/ix_byte_count
 
-.c.o:	$(HDRS) 
-	$(PATH_CC) $(CFLAGS) $(PATH_CFLAGS) $*.c -o $*.o 
-.o:	libix.a
-	$(PATH_LINK) $(LDFLAGS)  $(PATH_LDFLAGS) -o $@ $@.o $(LIBS) 
+all: $(OBJDIR) $(IX_LIB) $(EXEC)
 
-all: libix.a $(EXEC)
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
-libix.a: $(IX_OBJS)
-	$(PATH_AR) $(AR_FLAGS) $@ $(IX_OBJS)
+$(IX_LIB): $(IX_OBJS)
+	$(PATH_AR) $(PATH_AR_FLAGS) $@ $(IX_OBJS)
 
-rcv_ix_msg:	rcv_ix_msg.o
-snd_ix_msg:	snd_ix_msg.o
-ix_byte_count:	ix_byte_count.o
+$(OBJDIR)/rcv_ix_msg:	$(OBJDIR)/rcv_ix_msg.o
+$(OBJDIR)/snd_ix_msg:	$(OBJDIR)/snd_ix_msg.o
+$(OBJDIR)/ix_byte_count:	$(OBJDIR)/ix_byte_count.o
 
 clean:
-	rm -f *.o *.err *.a $(EXEC)
+	rm -f $(OBJDIR)/*.o *.err $(OBJDIR)/*.a $(EXEC)
 
 install:
 	cp $(EXEC) $(ATSC_DIR)/test

@@ -2,50 +2,34 @@
 #
 # Copyright (c) 2006   Regents of the University of California
 #
+include $(CAPATH_MK_DEFS)
 
-ATSC_DIR = ..
-DISTRIB_DIR = /home/path
+PATH_CFLAGS += -I$(ATSC_INC_DIR)
+PATH_LIBS += -lusb
+PATH_LDFLAGS += -Llnx
+RD_OBJS = $(OBJDIR)/atsc_dio.o $(OBJDIR)/atsc_db.o
+TEST_OBJS = $(OBJDIR)/atsc_fake.o $(OBJDIR)/atsc_db.o
 
-INCLUDE_DIR = $(ATSC_DIR)/include
-LOCAL_DIR = $(DISTRIB_DIR)/local
-DB_DIR = $(DISTRIB_DIR)/db
-CICAS_DIR = /home/cicas
+DIGIO_LIB = $(OBJDIR)/libusb_digio.a
 
-CC = cc
-CFLAGS += -c -D_GNU_SOURCE
-CFLAGS += -I. -I$(LOCAL_DIR) -I$(DB_DIR) -I$(INCLUDE_DIR)
-CFLAGS += -g
-			
-AR = ar
-AR_FLAGS += rv
+EXEC = $(OBJDIR)/rdsniff $(OBJDIR)/testsniff 
 
-LINK = cc
-LFLAGS += -L$(LOCAL_DIR) -L$(DB_DIR)
+all: $(OBJDIR) $(DIGIO_LIB) $(RD_OBJS) $(TEST_OBJS) $(EXEC)
 
-LIBS = -ldb_clts -llocals -lrt -lusb
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
-EXEC = rdsniff testsniff 
+$(DIGIO_LIB): $(OBJDIR)/usb_digio.o 
+	$(PATH_AR) $(PATH_AR_FLAGS) $@ $(OBJDIR)/usb_digio.o
 
-.c.o:	
-	$(CC) $(CFLAGS) $*.c -o $*.o 
-.o:
-	$(LINK) $(LFLAGS) -o $@ $@.o $(LIBS) 
+$(OBJDIR)/rdsniff: $(RD_OBJS)	
+	$(PATH_LINK) $(LDFLAGS) $(PATH_LDFLAGS) -o $@ $(RD_OBJS) $(PATH_LIBS) -lusb_digio
 
-all: libusb_digio.a $(EXEC)
-
-libusb_digio.a: usb_digio.o 
-	$(AR) $(AR_FLAGS) $@ usb_digio.o
-
-rdsniff:	atsc_dio.o atsc_db.o
-	$(LINK) $(LFLAGS) -o $@ atsc_dio.o atsc_db.o $(LIBS) libusb_digio.a
-
-testsniff:	atsc_fake.o atsc_db.o
-	$(LINK) $(LFLAGS) -o $@ atsc_fake.o atsc_db.o $(LIBS) 
+$(OBJDIR)/testsniff: $(TEST_OBJS)	
+	$(PATH_LINK) $(LDFLAGS) $(PATH_LDFLAGS) -o $@ $(TEST_OBJS) $(PATH_LIBS)
 
 clean:
-	rm -f *.o *.err *.a $(EXEC)
+	rm -f $(OBJDIR)/*.o *.err *.a $(EXEC)
 
 install:
 	cp $(EXEC) $(ATSC_DIR)/test
-	cp $(EXEC) $(CICAS_DIR)/test
-

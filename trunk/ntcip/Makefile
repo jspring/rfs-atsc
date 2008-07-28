@@ -1,49 +1,27 @@
 # Makefile
+# Took out build for special version used for comparing latency.
+# Use compiler flag -DCOMPARE if it is wanted.
 #
 # Copyright (c) 2006   Regents of the University of California
 #
+include $(CAPATH_MK_DEFS)
 
-ATSC_DIR = ..
-DISTRIB_DIR = ../../path
-
-INCLUDE_DIR = $(ATSC_DIR)/include
-DB_DIR = $(DISTRIB_DIR)/db
-LOCAL_DIR = $(DISTRIB_DIR)/local
-
-CC = cc
-CFLAGS += -c -D_GNU_SOURCE
-CFLAGS += -I. -I$(INCLUDE_DIR) -I$(DB_DIR) -I$(LOCAL_DIR)
-CFLAGS += -g
-
-LINK = cc 
-LFLAGS += -L$(DB_DIR) -L$(LOCAL_DIR) -L. 
-
-LIBS = -ldb_clts -llocals -lrt 
-
-EXEC = rdntcip rdntcip2
+PATH_CFLAGS += -I$(ATSC_INC_DIR)
+PATH_OBJS = $(OBJDIR)/asc_get.o $(OBJDIR)/parse_asc.o \
+		$(OBJDIR)/format_asc.o $(OBJDIR)/fcs.o
 
 HDRS = atsc.h mibdefs.h 
+EXEC = $(OBJDIR)/rdntcip 
 
-.c.o:	$(HDRS) 
-	$(CC) $(CFLAGS) $*.c -o $*.o
+all: 	$(OBJDIR) $(PATH_OBJS) $(EXEC)
 
-.o:	
-	$(LINK) $(LFLAGS) -o $@ $@.o $(LIBS)
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
-all: 	$(EXEC)
-
-asc2_get.o: asc_get.c 
-	$(CC) $(CFLAGS) -DCOMPARE -o asc2_get.o asc_get.c
-parse_asc2.o: parse_asc.c 
-	$(CC) $(CFLAGS) -DCOMPARE -o parse_asc2.o parse_asc.c
-
-rdntcip: asc_get.o parse_asc.o format_asc.o fcs.o
-	$(LINK) $(LFLAGS) -o $@ asc_get.o parse_asc.o format_asc.o fcs.o $(LIBS)
-rdntcip2: asc2_get.o parse_asc2.o format_asc.o fcs.o
-	$(LINK) $(LFLAGS) -o $@ asc2_get.o parse_asc2.o format_asc.o fcs.o $(LIBS)
-
+$(OBJDIR)/rdntcip:
+	$(PATH_LINK) $(LDFLAGS) $(PATH_LDFLAGS) -o $@ $(PATH_OBJS) $(PATH_LIBS)
 clean:
-	\rm -f *.o *.*~ $(EXEC)
+	\rm -f $(OBJDIR)/*.o *.*~ $(EXEC)
 
 install:
 	cp $(EXEC) $(ATSC_DIR)/test
