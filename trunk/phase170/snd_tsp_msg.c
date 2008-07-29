@@ -171,8 +171,8 @@ int main(int argc, char *argv[])
 			// ix_msg_t trigger
 			ix_msg_t *pmsg = (ix_msg_t *) malloc(sizeof(ix_msg_t));
 			ix_msg_read(pclt,pmsg,DB_IX_MSG_VAR,DB_IX_APPROACH1_VAR); 
-			if (verbose == 1)
-				ix_msg_print(pmsg);		
+//			if (verbose == 1)
+//				ix_msg_print(pmsg);		
 			// determine the driver advisory flag for stpo-go
 			ix_approach_t *pappr;
 			pappr = pmsg->approach_array;
@@ -221,6 +221,11 @@ int main(int argc, char *argv[])
 			{
 				fprintf(stderr,"%s: bytes to send %d bytes sent %d\n", argv[0],
 					bytes_to_send,bytes_sent);
+			}
+			if (verbose == 1)
+			{
+				fprintf(stdout,"%s",send_buf);
+				fflush(stdout);
 			}
 			ix_msg_free(&pmsg);
 		}
