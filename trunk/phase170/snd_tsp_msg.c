@@ -164,8 +164,9 @@ int main(int argc, char *argv[])
 	{
 		// now waite for a trigger
 		recv_type = clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
-		get_ds_ts(&ds,&ts);
+		get_ds_ts(&ds,&ts);		
 		var = DB_TRIG_VAR(&trig_info);
+printf("received %d\n",var);		
 		if (var == trig_list[0])
 		{
 			// ix_msg_t trigger
