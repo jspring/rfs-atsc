@@ -16,7 +16,6 @@
 #include "sys_os.h"
 #include "stdio.h"
 #include "stdlib.h"
-#include "sys/time.h"
 #include "signal.h"
 #include "local.h"
 #include "sys_rt.h"
@@ -166,7 +165,6 @@ int main(int argc, char *argv[])
 		recv_type = clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
 		get_ds_ts(&ds,&ts);		
 		var = DB_TRIG_VAR(&trig_info);
-printf("received %d\n",var);		
 		if (var == trig_list[0])
 		{
 			// ix_msg_t trigger
@@ -251,15 +249,15 @@ printf("received %d\n",var);
 void get_ds_ts(datestamp_t *pds,timestamp_t *pts)
 {
 	struct timeb timeptr_raw;
-	struct tm *time_converted;
+	struct tm time_converted;
 	ftime ( &timeptr_raw );
 	localtime_r ( &timeptr_raw.time, &time_converted );	
-	pds->year = time_converted->tm_year + 1900;
-	pds->month = time_converted->tm_mon + 1;
-	pds->day = time_converted->tm_mday;
-	pts->hour = time_converted->tm_hour;
-	pts->min = time_converted->tm_min;
-	pts->sec = time_converted->tm_sec;
+	pds->year = time_converted.tm_year + 1900;
+	pds->month = time_converted.tm_mon + 1;
+	pds->day = time_converted.tm_mday;
+	pts->hour = time_converted.tm_hour;
+	pts->min = time_converted.tm_min;
+	pts->sec = time_converted.tm_sec;
 	pts->millisec = timeptr_raw.millitm;			
 	return;
 }
