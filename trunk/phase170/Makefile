@@ -8,14 +8,15 @@ PATH_CFLAGS += -I$(ATSC_INC_DIR) -I$(ATSC_IX_DIR) -I$(TSP_INC_DIR)
 PATH_LDFLAGS += -L$(ATSC_IX_DIR)/$(OBJDIR)
 PATH_LIBS += -lix 
 
-EXEC = $(OBJDIR)/phase170e 
+EXEC = $(OBJDIR)/phase170e $(OBJDIR)/snd_tsp_msg 
 
-all: 	$(OBJDIR) $(EXEC)
+all: $(OBJDIR) $(EXEC)
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
-$(OBJDIR)/phase170e:		$(OBJDIR)/phase170e.o
+$(OBJDIR)/phase170e: $(OBJDIR)/phase170e.o
+$(OBJDIR)/snd_tsp_msg: $(OBJDIR)/snd_tsp_msg.o	
 
 clean:
 	\rm -f $(OBJDIR)/*.o *.*~ $(EXEC)
