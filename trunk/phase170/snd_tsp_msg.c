@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	// socket variables
 	int fdout;		/// output file descriptor
 	char *foutname = "128.32.129.87";	/// default output address
-	int port_out = 49888;	/// Default destination UDP port 	
+	int port_out = 49988;	/// Default destination UDP port 	
 	struct sockaddr_in snd_addr;	/// used by sendto
 	// arguments
 	int option;		/// for getopt
