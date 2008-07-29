@@ -20,6 +20,7 @@
 
 #include "atsc_clt_vars.h"
 #include "ix_msg.h"	  //intersection message header file
+#include "ix_db_utils.h"
 #include "tsp_clt_vars.h" // TSP vatiable header file
 #include "veh_sig.h"  // TSP structure header file
 #include "int_cfg.h"  // intersection configuration header file
