@@ -28,6 +28,9 @@
 #include "veh_sig.h"
 #include "tsp_clt_vars.h"
 
+#define CAN_PASS 1
+#define CANNOT_PASS 0
+#define UNKNOWN -1
 #define BUFFER_SIZE 200
 
 typedef struct{
@@ -57,7 +60,8 @@ void do_usage(char *progname)
 	fprintf(stderr, "-o output destination IP address\n");
 	fprintf(stderr, "\t (default to 128.32.129.87, i.e., tlab.path.berkeley.edu\n");
 	fprintf(stderr, "-p port for send (default to 49888");
-	fprintf(stderr, "-b bus_id in the datahub (default to 1\n");	
+	fprintf(stderr, "-b bus_id in the datahub (default to 1\n");
+	fprintf(stderr, "-B bus_port for DPI\n");	
 	fprintf(stderr, "-v verbose (default to 0)");
 	fprintf(stderr, "-h print this usage");
 	fprintf(stderr, "\n");
@@ -84,6 +88,7 @@ int main(int argc, char *argv[])
 	// arguments
 	int option;		/// for getopt
 	int bus_id = 1;
+	int bus_port = 0;
 	int verbose = 0;	/// extra output to stdout 	
 	// local variables
 	unsigned char send_buf[BUFFER_SIZE];
@@ -99,7 +104,7 @@ int main(int argc, char *argv[])
 	bus_prediction_output_typ bus_pred;
 	bus_pred_len = sizeof(bus_prediction_output_typ);
 	
-	while ((option = getopt(argc, argv, "o:p:b:vh")) != EOF) 
+	while ((option = getopt(argc, argv, "o:p:b:B:vh")) != EOF) 
 	{
 		switch(option) 
 		{
@@ -112,6 +117,9 @@ int main(int argc, char *argv[])
 		case 'b':
 			bus_id = atoi(optarg);
 			break;
+		case 'B':
+			bus_port = atoi(optarg);
+			break;		
 		case 'v':
 			verbose = 1;
 			break;
@@ -123,6 +131,8 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
+	if (bus_port == 0)
+		do_usage(argv[0]);	
 
 	// setup db trigger list 
 	trig_list[0] = DB_IX_MSG_VAR;
@@ -177,42 +187,43 @@ int main(int argc, char *argv[])
 			pappr = pmsg->approach_array;
 			if ( !(bus_pred.next_signal_number == pmsg->intersection_id &&
 				bus_pred.next_signal_number == bus_pred.next_node_number) )
-				driver_adv_flag = -1;
+				driver_adv_flag = UNKNOWN;
 			else
 			{
-				driver_adv_flag = -1;				
+				driver_adv_flag = UNKNOWN;				
 				time2go = bus_pred.time_togo_signal - (TS_TO_MS(&ts)-TS_TO_MS(&bus_pred_ts));
 				time_left = (float)pappr[0].time_to_next/10.0;
 				switch (pappr[0].signal_state)
 				{
 				case SIGNAL_STATE_GREEN:
 					if (time2go > time_left + 2.0) // within 2 seconds of yellow
-						driver_adv_flag = 1;
+						driver_adv_flag = CANNOT_PASS;
 					else
-						driver_adv_flag = 0;
+						driver_adv_flag = CAN_PASS;
 					break;
 				case SIGNAL_STATE_YELLOW:
 					if (time2go > time_left - 2.0) // within 2 seconds of yellow
-						driver_adv_flag = 1;
+						driver_adv_flag = CANNOT_PASS;
 					else
-						driver_adv_flag = 0;
+						driver_adv_flag = CAN_PASS;
 					break;
 				case SIGNAL_STATE_RED:
 					if (time2go > 0.0 && time2go < time_left)
-						driver_adv_flag = 1;
+						driver_adv_flag = CANNOT_PASS;
 					else
-						driver_adv_flag = 0;
+						driver_adv_flag = CAN_PASS;
 					break;
 				default:
-					driver_adv_flag = -1;				
+					driver_adv_flag = UNKNOWN;				
 					break;
 				}
 			}
 			// form the packet and sendto
-			sprintf(send_buf,"$TSPMSG,%04d-%02d-%02d,%02d:%02d:%02d,%d,%d,%d,%d,%d\n",
+			sprintf(send_buf,"$TSPMSG,%04d-%02d-%02d,%02d:%02d:%02d,%03d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 				ds.year,ds.month,ds.day,ts.hour,ts.min,ts.sec,ts.millisec,
-				pappr[0].signal_state,pappr[0].time_to_next,pmsg->bus_priority_calls,
-				pmsg->reserved[0],pmsg->reserved[1]);				
+				pmsg->intersection_id,pappr[0].signal_state,pappr[0].time_to_next,
+				bus_port,pmsg->bus_priority_calls,pmsg->reserved[0],pmsg->reserved[1],
+				driver_adv_flag);				
 			bytes_to_send = (int)strlen(send_buf);
 			bytes_sent = sendto(fdout,send_buf,bytes_to_send,0,
 				(struct sockaddr *) &snd_addr,sizeof(snd_addr));
