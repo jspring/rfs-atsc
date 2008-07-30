@@ -315,6 +315,7 @@ int main(int argc, char *argv[])
 					break;
 				}
 				if (j == -1) break;					
+				
 				time_left = *(signal_trace.pactive_onsets + j) - signal_trace.active_local_cycle_clock;				
 				if ( time_left < -1.5) 
 				{
@@ -327,13 +328,43 @@ int main(int argc, char *argv[])
 					// the latency could be as large as 1 sec. If it is the case, fix countdown time to 0
 					time_left = 0.0;
 				}
-				signal_trace.time2next[i] = time_left;				
-				time_used = *(signal_trace.pactive_onsets + j) - *(signal_trace.pactive_onsets + jj)
-					- time_left;
+				time_used = *(signal_trace.pactive_onsets + j) - *(signal_trace.pactive_onsets + jj);
+				if (time_used < 0)
+					time_used += cycle_len;
+				time_used -= time_left;
 				if (time_used < -1.5)
 					time_used += cycle_len;
 				else if (time_used < 0.0)
 					time_used = 0.0;
+				
+				// special GE case
+				if (i == 1 && signal_trace.priority_status == Green_Extension &&
+					signal_trace.signal.signal_state[i] == SIGNAL_STATE_GREEN &&
+					signal_trace.active_master_cycle_clock <= 10)
+				{
+					// phase 2 during the 10 sec GE
+					time_left = *(signal_trace.pactive_onsets + j) - signal_trace.active_master_cycle_clock;				
+					time_used = *(signal_trace.pactive_onsets + j) - *(signal_trace.pactive_onsets + jj);
+					if (time_used < 0)
+						time_used += cycle_len;
+					time_used -= time_left;
+					if (time_used < -1.5)
+						time_used += cycle_len;
+					else if (time_used < 0.0)
+						time_used = 0.0;
+				}
+				else if (i == 3 && signal_trace.priority_status == Green_Extension &&
+					signal_trace.signal.signal_state[i] == SIGNAL_STATE_RED &&
+					signal_trace.signal.signal_state[1] == SIGNAL_STATE_GREEN &&
+					signal_trace.active_master_cycle_clock <= 10)
+				{
+					// phase 4 during the 10 sec GE
+					time_left = 10.0 - signal_trace.active_master_cycle_clock;
+					if (time_left < 0.0)
+						time_left = 0.0;
+					time_used = 17.0 + signal_trace.active_master_cycle_clock;
+				}								
+				signal_trace.time2next[i] = time_left;				
 				signal_trace.timeused[i] = time_used;
 			}
 			// write ix_msg to database
