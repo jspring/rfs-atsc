@@ -59,7 +59,7 @@ void do_usage(char *progname)
 	fprintf(stderr, "Usage %s:\n", progname);
 	fprintf(stderr, "-o output destination IP address\n");
 	fprintf(stderr, "\t (default to 128.32.129.87, i.e., tlab.path.berkeley.edu\n");
-	fprintf(stderr, "-p port for send (default to 49888");
+	fprintf(stderr, "-p port for send (default to 49988");
 	fprintf(stderr, "-b bus_id in the datahub (default to 1\n");
 	fprintf(stderr, "-B bus_port for DPI\n");	
 	fprintf(stderr, "-v verbose (default to 0)");
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 				switch (pappr[0].signal_state)
 				{
 				case SIGNAL_STATE_GREEN:
-					if (time2go > time_left + 2.0) // within 2 seconds of yellow
+					if (time2go > fabs(time_left) + 2.0) // within 2 seconds of yellow
 						driver_adv_flag = CANNOT_PASS;
 					else
 						driver_adv_flag = CAN_PASS;
