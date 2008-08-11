@@ -29,7 +29,8 @@
 #include "exp_traffic_signal.h"	// CICAS version of IDS header file
 #include "atsc.h"	// actuated traffic signal controller header file
 
-static int sig_list[] = {
+static int sig_list[] = 
+{
 	SIGINT,
 	SIGQUIT,
 	SIGTERM,
@@ -359,10 +360,12 @@ int main(int argc, char *argv[])
 					signal_trace.active_master_cycle_clock <= 10)
 				{
 					// phase 4 during the 10 sec GE
-					time_left = 10.0 - signal_trace.active_master_cycle_clock;
+					time_left = (10.0 + pix_timing->phase_timing.yellow_intv[1]+pix_timing->phase_timing.allred_intv[1])
+						- signal_trace.active_master_cycle_clock;
 					if (time_left < 0.0)
 						time_left = 0.0;
-					time_used = 17.0 + signal_trace.active_master_cycle_clock;
+					time_used = (cycle_len - pix_timing->plan_timing[1].force_off[i] - pix_timing->phase_timing.yellow_intv[i])
+						+ signal_trace.active_master_cycle_clock;
 				}								
 				signal_trace.time2next[i] = time_left;				
 				signal_trace.timeused[i] = time_used;
