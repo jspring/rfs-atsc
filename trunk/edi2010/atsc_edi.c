@@ -14,7 +14,7 @@
 #include	"atsc.h"
 #include	<udp_utils.h>
 
-extern int write_atsc_db_var(db_clt_typ *pclt, unsigned char *buf);
+extern int write_atsc_db_var(db_clt_typ *pclt, unsigned char *buf, unsigned char verbos);
 extern int print_log(unsigned char *);
 
 
@@ -23,7 +23,6 @@ extern int print_log(unsigned char *);
 #define MYSQL           4
 int output_mask = 0;    // 1 trace, 2 DB server, 4 MySQL
 
-unsigned char debug = 0;
 
 int newsockfd;
 struct sockaddr_storage edibcast;
@@ -61,6 +60,7 @@ int main (int argc, char** argv)
 	unsigned char buf[BUFSIZE];
 	int error = 0;
     	int tcp_input = 1;     // 1 TCP socket, 0 file or stdin redirect
+	unsigned char debug = 0;
 
 	while ((opt = getopt(argc, argv, "x:D:o:fvd")) != -1) {
 		switch (opt) {
@@ -132,6 +132,6 @@ int main (int argc, char** argv)
             print_log(buf);
 
     	if (output_mask & USE_DATABASE)
-	    write_atsc_db_var(pclt, buf);
+	    write_atsc_db_var(pclt, buf, verbose);
 	}
 }
