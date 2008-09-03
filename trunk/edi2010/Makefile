@@ -4,9 +4,9 @@
 #
 include $(CAPATH_MK_DEFS)
 
-PATH_CFLAGS += -I$(ATSC_INC_DIR)
+PATH_CFLAGS += -I$(ATSC_INC_DIR) -Wall
 PATH_LDFLAGS += -Llnx
-PATH_OBJS = $(OBJDIR)/atsc_db.o
+PATH_OBJS = $(OBJDIR)/atsc_db_edi.o $(OBJDIR)/edilib.o
 
 EXEC = $(OBJDIR)/atsc_edi 
 
