@@ -83,7 +83,7 @@ int main (int argc, char** argv)
             	tcp_input = 0;
             	break;
          default:
-            printf("Usage: %s -d (debug)\n\t\t    -o (output mask, 1=trace file 2=use DB 4=MySQL)\n\t\t    -f < \"input file\" >\n", argv[0]);
+            printf("Usage: %s -d (debug)\n\t\t    -v (verbose)\n\t\t    -o (output mask, 1=trace file 2=use DB 4=MySQL)\n\t\t    -f < \"input file\" >\n", argv[0]);
             exit(EXIT_FAILURE);
 		}
 	}

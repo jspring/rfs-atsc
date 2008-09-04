@@ -36,6 +36,7 @@
 #define ATSC_SOURCE_NTCIP	1
 #define ATSC_SOURCE_AB3418	2
 #define ATSC_SOURCE_SNIFF	3 
+#define ATSC_SOURCE_EDI		4 
 
 /** In the following structure, phase_status_reds, yellow and greens are
  *  set in a straightforward way to one if the phase is that color, 0
