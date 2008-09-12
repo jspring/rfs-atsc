@@ -138,14 +138,14 @@ int main (int argc, char** argv)
             print_log(buf);
 
     	if (output_mask & DEMO){
-			p2fd = fopen("/opt/lampp/htdocs/p2_color.txt","w");	
+			p2fd = fopen("./demo/p2_color.txt","w");	
 			if( buf[18] != 0 ) p2color = 1;
 			else
 				p2color = buf[2] != 0 ? 2:0;
 			fprintf(p2fd,"%d", p2color);
 			fclose(p2fd);
 
-			p4fd = fopen("/opt/lampp/htdocs/p4_color.txt","w");	
+			p4fd = fopen("./demo/p4_color.txt","w");	
 			if( buf[20] != 0 ) p4color = 1;
 			else
 				p4color = buf[4] != 0 ? 2:0;
