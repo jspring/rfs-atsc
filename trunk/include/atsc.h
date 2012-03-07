@@ -69,7 +69,7 @@ typedef struct {
  *  -1 if the phase number is out of bounds. 
  */
 
-static inline atsc_is_set(unsigned char *status, int num, int max)
+static inline int atsc_is_set(unsigned char *status, int num, int max)
 {
 	int index = (num - 1)/8;
 	int bit_position = (num - 1) % 8;
