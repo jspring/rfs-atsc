@@ -12,6 +12,8 @@
  * Copyright (c) 2005   Regents of the University of California
  *
  */
+ 
+#include "timestamp.h"
 
 #undef DEBUG_SET // define for low-level debugging
 
