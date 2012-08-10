@@ -8,7 +8,7 @@ include $(CAPATH_MK_DEFS)
 PATH_CFLAGS += -I$(ATSC_INC_DIR)
 
 HDRS = fcs.h msgs.h 
-EXEC = $(OBJDIR)/rd3418  $(OBJDIR)/set_max_green
+EXEC = $(OBJDIR)/rd3418  $(OBJDIR)/set_min_max_green
 
 all: 	$(OBJDIR) $(EXEC)
 
