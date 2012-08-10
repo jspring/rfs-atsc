@@ -10,7 +10,7 @@
  */
 
 
-#define SERIAL_DEVICE_NAME "/dev/ttyS0"
+#define SERIAL_DEVICE_NAME "/dev/ttyUSB0"
 
 /* Following is format for GetLongStatus8 message. */
 
@@ -26,7 +26,7 @@ typedef struct
 	char      FCSmsb;       /* FCS (Frame Checking Sequence) MSB */
 	char      FCSlsb;       /* FCS least significant byte */
 	char      end_flag;     /* 0x7e */
-} get_long_status8_mess_typ;
+} IS_PACKED get_long_status8_mess_typ;
 
 /* Message sent from 2070 to RSU has the following
  * format. */
@@ -90,8 +90,26 @@ typedef struct
 	unsigned char FCSmsb;        /* FCS (Frame Checking Sequence) MSB */
 	unsigned char FCSlsb;        /* FCS least significant byte */
 	char          end_flag;      /* 0x7e */
-} get_long_status8_resp_mess_typ;
+} IS_PACKED get_long_status8_resp_mess_typ;
 
+/* Message sent from RSU to 2070 controller
+ * has the following format. */
+typedef struct
+{
+	char      start_flag;   /* 0x7e */
+	char      address;      /* 0x05 2070 controller */
+	char      control;      /* 0x13 - unnumbered information, individual address */
+	char      ipi;          /* 0xc0 - NTCIP Class B Protocol */
+	char      mess_type;    /* 0x99 - set controller timing data*/
+	char	  num_cells;    /* 0x02 - number of cells to set */
+	char	  cell1_addr[2]; /* Cell 1 address */
+	char	  cell1_data; 	/* Cell 1 data */
+	char	  cell2_addr[2]; /* Cell 2 address */
+	char	  cell2_data; 	/* Cell 2 data */
+	char      FCSmsb;       /* FCS (Frame Checking Sequence) MSB */
+	char      FCSlsb;       /* FCS least significant byte */
+	char      end_flag;     /* 0x7e */
+} IS_PACKED set_controller_timing_data_t;
 
 typedef struct
 {
@@ -105,5 +123,6 @@ typedef union
 	get_long_status8_mess_typ         get_long_status8_mess;
 	get_long_status8_resp_mess_typ    get_long_status8_resp_mess;
 	gen_mess_typ                      gen_mess;
-} mess_union_typ;
+	set_controller_timing_data_t      set_controller_timing_data_mess;
+} IS_PACKED mess_union_typ;
 
