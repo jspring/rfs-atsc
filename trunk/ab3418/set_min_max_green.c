@@ -91,11 +91,12 @@ int main( int argc, char *argv[] )
 	static unsigned char last_greens = 0;
 	timestamp_t ts, last_ts, elapsed_ts;
 	int max_green = -1;
+	int min_green = -1;
 	int phase = -1; 
 
 int jjj;
 
-	while ((opt = getopt(argc, argv, "d:i:p:g:")) != -1)
+	while ((opt = getopt(argc, argv, "d:i:p:G:g:")) != -1)
 	{
 		switch (opt)
 		{
@@ -108,8 +109,11 @@ int jjj;
                   case 'p':
 			phase = atoi(optarg);	
 			break;
+                  case 'G':
+			max_green = (int)strtol(optarg, NULL, 0);	
+			break;
                   case 'g':
-			max_green = atoi(optarg);	
+			min_green = (int)strtol(optarg, NULL, 0);	
 			break;
 		  default:
 			printf( "Usage %s: clt_update -d [domain] ", argv[0]);
@@ -117,8 +121,8 @@ int jjj;
 			exit(1);
 		}
 	}
-	if( (phase < 0) || (max_green < 0) ) {
-		printf("Usage: %s -g <maximum green time> -p <phase>\n", argv[0]);
+	if( (phase < 0) || ( (min_green < 0) && (max_green < 0)) ) {
+		printf("Usage: %s -g <minimum green time> -G <maximum green time> -p <phase>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 //	get_local_name(hostname, MAXHOSTNAMELEN+1);
@@ -169,8 +173,8 @@ int jjj;
 	else 
 		sig_ign( sig_list, sig_hand);
 
-	while(1)
-	    {
+//	while(1)
+//	    {
 printf("Starting SetControllerTimingData request\n");
 	    /* Send the message to request GetLongStatus8 from 2070. */
 	writeBuff.set_controller_timing_data_mess.start_flag = 0x7e;
@@ -183,8 +187,16 @@ printf("Starting SetControllerTimingData request\n");
 	writeBuff.set_controller_timing_data_mess.cell1_addr[1] = 0x92;
 	writeBuff.set_controller_timing_data_mess.cell1_data = 0x02;
 	writeBuff.set_controller_timing_data_mess.cell2_addr[0] = 0x01;
-	writeBuff.set_controller_timing_data_mess.cell2_addr[1] = ((phase << 4) + 8) & 0xff;
-	writeBuff.set_controller_timing_data_mess.cell2_data = max_green;
+	if(max_green >= 0) {
+		writeBuff.set_controller_timing_data_mess.cell2_addr[1] = 
+			((phase << 4) + 8) & 0xff;
+		writeBuff.set_controller_timing_data_mess.cell2_data= max_green;
+	}
+	if(min_green >= 0) {
+		writeBuff.set_controller_timing_data_mess.cell2_addr[1] = 
+			((phase << 4) + 2) & 0xff;
+		writeBuff.set_controller_timing_data_mess.cell2_data= min_green;
+	}
 printf("phase %x cell2_addr[1] %hhx\n", phase, writeBuff.set_controller_timing_data_mess.cell2_addr[1]);
 	writeBuff.set_controller_timing_data_mess.FCSmsb = 0x00;
 	writeBuff.set_controller_timing_data_mess.FCSlsb = 0x00;
@@ -233,14 +245,14 @@ for (jjj=0; jjj<msg_len+2; jjj++)
 printf("\n");
 	        write ( fpout, &writeBuff, msg_len+2 );
 fflush(NULL);
-
+/*
 	    if (ser_driver_read ( &readBuff ) )
 	        {
 printf("msg %x ",readBuff.data[4]);
 	        switch( readBuff.data[4] )
 	            {
 	            case 0xcc:    // GetLongStatus8 message
-	                /* Get time of day and save in the database. */
+	                /* Get time of day and save in the database. 
 	                ftime ( &timeptr_raw );
 	                localtime_r ( &timeptr_raw.time, &time_converted );
 	                atsc.ts.hour = time_converted.tm_hour;
@@ -296,7 +308,8 @@ printf("%x %x\n", atsc.phase_status_greens[0],pget_long_status8_resp_mess->inter
 	            }  
 		TIMER_WAIT(ptmr);
 	        }
-	    }
+*/
+//	    }
 }
 
 static bool_typ ser_driver_read( gen_mess_typ *pMessagebuff) 
