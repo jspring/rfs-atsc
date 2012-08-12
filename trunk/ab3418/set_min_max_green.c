@@ -37,6 +37,7 @@
 int fpin;	
 int fpout;
 static jmp_buf exit_env;
+int verbose = 0; 
 
 static bool_typ ser_driver_read( gen_mess_typ *pMessagebuff);
 
@@ -93,10 +94,9 @@ int main( int argc, char *argv[] )
 	int max_green = -1;
 	int min_green = -1;
 	int phase = -1; 
+	int jjj;
 
-int jjj;
-
-	while ((opt = getopt(argc, argv, "d:i:p:G:g:")) != -1)
+	while ((opt = getopt(argc, argv, "d:i:p:G:g:v")) != -1)
 	{
 		switch (opt)
 		{
@@ -114,6 +114,9 @@ int jjj;
 			break;
                   case 'g':
 			min_green = (int)strtol(optarg, NULL, 0);	
+			break;
+                  case 'v':
+			verbose = 1;	
 			break;
 		  default:
 			printf( "Usage %s: clt_update -d [domain] ", argv[0]);
@@ -149,7 +152,7 @@ int jjj;
 	}
 
 	chid = ChannelCreate(0);
-	printf("chid %d\n", chid);
+//	printf("chid %d\n", chid);
 
 	if ((ptmr = timer_init(interval, chid)) == NULL) {
 		printf("timer_init failed\n");
@@ -175,7 +178,8 @@ int jjj;
 
 //	while(1)
 //	    {
-printf("Starting SetControllerTimingData request\n");
+	if(verbose) 
+		printf("Starting SetControllerTimingData request\n");
 	    /* Send the message to request GetLongStatus8 from 2070. */
 	writeBuff.set_controller_timing_data_mess.start_flag = 0x7e;
 	writeBuff.set_controller_timing_data_mess.address = 0x05;
@@ -197,97 +201,103 @@ printf("Starting SetControllerTimingData request\n");
 			((phase << 4) + 2) & 0xff;
 		writeBuff.set_controller_timing_data_mess.cell2_data= min_green;
 	}
-printf("phase %x cell2_addr[1] %hhx\n", phase, writeBuff.set_controller_timing_data_mess.cell2_addr[1]);
+	if(verbose) 
+		printf("phase %x cell2_addr[1] %hhx\n", 
+		phase, writeBuff.set_controller_timing_data_mess.cell2_addr[1]);
 	writeBuff.set_controller_timing_data_mess.FCSmsb = 0x00;
 	writeBuff.set_controller_timing_data_mess.FCSlsb = 0x00;
 
-	    /* Now append the FCS. */
-	    msg_len = sizeof(set_controller_timing_data_t) - 4;
-	    pchar = (char *) &writeBuff;
-	    get_modframe_string( pchar+1, &msg_len );
+	/* Now append the FCS. */
+	msg_len = sizeof(set_controller_timing_data_t) - 4;
+	pchar = (char *) &writeBuff;
+	get_modframe_string( pchar+1, &msg_len );
 
-	    /* Check for any 0x7e in message and replace with the
-	     * combo 0x7d, 0x5e.  Replace any 0x7d with 0x7d, 0x5d. */
-	    for( i=1; i <= msg_len; i++)
-	        {
-	        /* Within a message, replace any 0x7e with 0x7d, 0x5e. */
-	        if ( writeBuff.gen_mess.data[i] == 0x7e )
-	            {
-	            for ( j=msg_len; j > i; j-- )
-	                {
-	                writeBuff.gen_mess.data[j+1] = writeBuff.gen_mess.data[j];
-	                }
-	            writeBuff.gen_mess.data[i] = 0x7d;
-	            writeBuff.gen_mess.data[i+1] = 0x5e;
-	            msg_len++;
-	            i++;
-	            }
+	/* Check for any 0x7e in message and replace with the
+	* combo 0x7d, 0x5e.  Replace any 0x7d with 0x7d, 0x5d. */
+	for( i=1; i <= msg_len; i++) {
+	/* Within a message, replace any 0x7e with 0x7d, 0x5e. */
+		if ( writeBuff.gen_mess.data[i] == 0x7e ) {
+			for ( j=msg_len; j > i; j-- ) {
+				writeBuff.gen_mess.data[j+1] = writeBuff.gen_mess.data[j];
+			}
+			writeBuff.gen_mess.data[i] = 0x7d;
+			writeBuff.gen_mess.data[i+1] = 0x5e;
+			msg_len++;
+			i++;
+		}
 
-	        /* Within a message, replace any 0x7d with 0x7d, 0x5d. */
-	        if ( writeBuff.gen_mess.data[i] == 0x7d )
-	            {
-	            for ( j=msg_len; j > i; j-- )
-	                {
-	                writeBuff.gen_mess.data[j+1] = writeBuff.gen_mess.data[j];
-	                writeBuff.gen_mess.data[i] = 0x7d;
-	                writeBuff.gen_mess.data[i+1] = 0x5d;
-	                msg_len++;
-	                i++;
-	                }
-	            }
-	        }
+		/* Within a message, replace any 0x7d with 0x7d, 0x5d. */
+		if ( writeBuff.gen_mess.data[i] == 0x7d ) {
+			for ( j=msg_len; j > i; j-- ) {
+				writeBuff.gen_mess.data[j+1] = writeBuff.gen_mess.data[j];
+				writeBuff.gen_mess.data[i] = 0x7d;
+				writeBuff.gen_mess.data[i+1] = 0x5d;
+				msg_len++;
+				i++;
+			}
+		}
+	}
 
-	        /* Now add the end flag and send message. */
-	        writeBuff.gen_mess.data[msg_len+1] = 0x7e;
-printf("New msg request\n");
-for (jjj=0; jjj<msg_len+2; jjj++)
- printf("%x ",writeBuff.gen_mess.data[jjj]);
-printf("\n");
+	/* Now add the end flag and send message. */
+	writeBuff.gen_mess.data[msg_len+1] = 0x7e;
+	if(verbose) {
+		printf("New msg request\n");
+		for (jjj=0; jjj<msg_len+2; jjj++)
+		 printf("%x ",writeBuff.gen_mess.data[jjj]);
+		printf("\n");
+	}
 	        write ( fpout, &writeBuff, msg_len+2 );
-fflush(NULL);
+		fflush(NULL);
 /*
-	    if (ser_driver_read ( &readBuff ) )
-	        {
-printf("msg %x ",readBuff.data[4]);
-	        switch( readBuff.data[4] )
-	            {
-	            case 0xcc:    // GetLongStatus8 message
-	                /* Get time of day and save in the database. 
-	                ftime ( &timeptr_raw );
-	                localtime_r ( &timeptr_raw.time, &time_converted );
-	                atsc.ts.hour = time_converted.tm_hour;
-	                atsc.ts.min = time_converted.tm_min;
-	                atsc.ts.sec = time_converted.tm_sec;
-	                atsc.ts.millisec = timeptr_raw.millitm;
+    if (ser_driver_read ( &readBuff ) ) {
+	if(verbose) 
+		printf("msg %x ",readBuff.data[4]);
+        switch( readBuff.data[4] ) {
+            case 0xcc:    // GetLongStatus8 message
+                /* Get time of day and save in the database. 
+                ftime ( &timeptr_raw );
+                localtime_r ( &timeptr_raw.time, &time_converted );
+                atsc.ts.hour = time_converted.tm_hour;
+                atsc.ts.min = time_converted.tm_min;
+                atsc.ts.sec = time_converted.tm_sec;
+                atsc.ts.millisec = timeptr_raw.millitm;
 
-printf("%02d:%02d:%02d:%03d\n",atsc.ts.hour,atsc.ts.min,atsc.ts.sec,atsc.ts.millisec );
-	                pget_long_status8_resp_mess = (get_long_status8_resp_mess_typ *) &readBuff;
-		
-			atsc.phase_status_greens[0] = pget_long_status8_resp_mess->active_phase;
-			interval_mask = pget_long_status8_resp_mess->interval;
-			interval_mask = interval_mask & 0x0f;
-printf("%x ",interval_mask);
-			if (( interval_mask == 0x0c) || (interval_mask == 0x0d) ||
-			    (interval_mask == 0x0e ) || (interval_mask == 0x0f))
-			atsc.phase_status_greens[0] = atsc.phase_status_greens[0] & 0xf0;
-			interval_mask = pget_long_status8_resp_mess->interval;
-			interval_mask = interval_mask & 0xf0;
-printf("%x ",interval_mask);
-			if (( interval_mask == 0xc0) || (interval_mask == 0xd0) ||
-			    (interval_mask == 0xe0 ) || (interval_mask == 0xf0))
-			atsc.phase_status_greens[0] = atsc.phase_status_greens[0] & 0x0f;
-printf("%x %x\n", atsc.phase_status_greens[0],pget_long_status8_resp_mess->interval);
-
-	                atsc.info_source = ATSC_SOURCE_AB3418;
-	    		printf("write to database\n");
-			if (atsc.phase_status_greens[0] != last_greens) {
+		if(verbose) 
+			printf("%02d:%02d:%02d:%03d\n",atsc.ts.hour,atsc.ts.min,			atsc.ts.sec,atsc.ts.millisec );
+                pget_long_status8_resp_mess = 
+			(get_long_status8_resp_mess_typ *) &readBuff;
+	
+		atsc.phase_status_greens[0] = 
+			pget_long_status8_resp_mess->active_phase;
+		interval_mask = pget_long_status8_resp_mess->interval;
+		interval_mask = interval_mask & 0x0f;
+		if(verbose) 
+			printf("%x ",interval_mask);
+		if (( interval_mask == 0x0c) || (interval_mask == 0x0d) ||
+		    (interval_mask == 0x0e ) || (interval_mask == 0x0f))
+		atsc.phase_status_greens[0] = 
+			atsc.phase_status_greens[0] & 0xf0;
+		interval_mask = pget_long_status8_resp_mess->interval;
+		interval_mask = interval_mask & 0xf0;
+		if(verbose) 
+			printf("%x ",interval_mask);
+		if (( interval_mask == 0xc0) || (interval_mask == 0xd0) ||
+		    (interval_mask == 0xe0 ) || (interval_mask == 0xf0))
+		atsc.phase_status_greens[0] = 
+			atsc.phase_status_greens[0] & 0x0f;
+		if(verbose) 
+			printf("%x %x\n", atsc.phase_status_greens[0],
+			pget_long_status8_resp_mess->interval);
+                atsc.info_source = ATSC_SOURCE_AB3418;
+    		printf("write to database\n");
+		if (atsc.phase_status_greens[0] != last_greens) {
 
 #ifdef COMPARE
-//				db_clt_write(pclt, DB_ATSC2_VAR,
-//					 sizeof(atsc_typ), &atsc);
+//			db_clt_write(pclt, DB_ATSC2_VAR,
+//			 sizeof(atsc_typ), &atsc);
 #else
-//				db_clt_write(pclt, DB_ATSC_VAR,
-//					 sizeof(atsc_typ), &atsc);
+//			db_clt_write(pclt, DB_ATSC_VAR,
+//			 sizeof(atsc_typ), &atsc);
 #endif
 #ifdef DEBUG_TRIG
 			get_current_timestamp(&ts);
@@ -298,100 +308,103 @@ printf("%x %x\n", atsc.phase_status_greens[0],pget_long_status8_resp_mess->inter
 				 atsc.phase_status_greens[0], last_greens,
 				 TS_TO_MS(&elapsed_ts)/1000.0);
 #endif
-			}
-			last_greens = atsc.phase_status_greens[0];
-	                break;
-
-	            default:
-	                printf("Unknown message type : 0x%x\n", readBuff.data[4] );
-	                break;
-	            }  
-		TIMER_WAIT(ptmr);
-	        }
+		}
+		last_greens = atsc.phase_status_greens[0];
+		break;
+	    default:
+	    	printf("Unknown message type : 0x%x\n", readBuff.data[4] );
+	    	break;
+	}  
+	TIMER_WAIT(ptmr);
+    }
 */
 //	    }
 }
 
 static bool_typ ser_driver_read( gen_mess_typ *pMessagebuff) 
 {
-unsigned char msgbuf [100];
-int i;
-int ii;
-unsigned short oldfcs;
-unsigned short newfcs;
+	unsigned char msgbuf [100];
+	int i;
+	int ii;
+	unsigned short oldfcs;
+	unsigned short newfcs;
 
 	/* Read from serial port. */
 	/* Blocking read is used, so control doesn't return unless data is
 	 * available.  Keep reading until the beginning of a message is 
 	 * determined by reading the start flag 0x7e.  */
 	memset( msgbuf, 0x0, 100 );
-	while ( msgbuf[0] != 0x7e )
-	    {
-printf("1: Ready to read:\n");
+	while ( msgbuf[0] != 0x7e ) {
+		if(verbose) 
+			printf("1: Ready to read:\n");
 	    read ( fpin, &msgbuf[0], 1);
-printf("%x \n",msgbuf[0]);
-fflush(stdout);
-	    }
-
-printf("\n");
-
-	/* Read next character.  If this is 0x7e, then this is really
-	 * the start of new message, previous 0x7e was end of previous message. */
-	read ( fpin, &msgbuf[1], 1 );
-printf("%x ", msgbuf[1] );
-	if ( msgbuf[1] != 0x7e )
-	{
-	    ii=2;
-		printf("%x ",msgbuf[1]);
+		if(verbose) {
+			printf("%x \n",msgbuf[0]);
+			fflush(stdout);
+		}
+	
+		if(verbose) 
+			printf("\n");
+	
+		/* Read next character.  If this is 0x7e, then this is really
+		 * the start of new message, previous 0x7e was end of previous message.
+		*/
+		read ( fpin, &msgbuf[1], 1 );
+		if(verbose) 
+			printf("%x ", msgbuf[1] );
+		if ( msgbuf[1] != 0x7e ) {
+			ii=2;
+			if(verbose) 
+				printf("%x ",msgbuf[1]);
+		}
+		else {
+			ii=1;
+			if(verbose) 
+				printf("\n");
+		}
+	
+		/* Header found, now read remainder of message. Continue reading
+		 * until end flag is found (0x7e).  If more than 95 characters are
+		 * read, this message is junk so just take an error return. */
+		for ( i=ii; i<100; i++ ) {
+			read ( fpin, &msgbuf[i], 1);
+			if(verbose) {
+				printf("%x ", msgbuf[i]);
+				fflush(stdout);
+			}
+			if ( i>95 )
+			return( FALSE );
+			if ( msgbuf[i] == 0x7e )
+			break;
+			/* If the byte read was 0x7d read the next byte.  If the next
+			* byte is 0x5e, convert the first byte to 0x7e.  If the next
+			* byte is 0x5d, the first byte really should be 0x7d.  If
+			* the next byte is neither 0x5e nor 0x5d, take an error exit. */
+			if ( msgbuf[i] == 0x7d ) {
+				read ( fpin, &msgbuf[i+1], 1 );
+				if(verbose) 
+				printf("%x ", msgbuf[i+1] );
+				if ( msgbuf[i+1] == 0x5e )
+				msgbuf[i] = 0x7e;
+				else if ( msgbuf[i+1] != 0x5d ) {
+					printf("Illegal 0x7d\n");
+					return (FALSE);
+				}
+			}
+		}
+	
+		memcpy( pMessagebuff->data, &msgbuf[0], 100);
+	
+		oldfcs = ~(msgbuf[i-2] << 8) | ~msgbuf[i-1];
+		newfcs = pppfcs( oldfcs, &msgbuf[1], i-1 );
+		if(verbose) 
+			printf("newfcs=%x\n",newfcs);
+		if ( newfcs != 0xf0b8 ) {
+			printf( "FCS error, msg type %x\n", msgbuf[4] );
+			return (FALSE);
+		}
+		else {
+		    return (TRUE);
+		}
 	}
-	else 
-	{
-	    ii=1;
-		printf("\n");
-	}
-
-	/* Header found, now read remainder of message. Continue reading
-	 * until end flag is found (0x7e).  If more than 95 characters are
-	 * read, this message is junk so just take an error return. */
-	for ( i=ii; i<100; i++ )
-	    {
-	    read ( fpin, &msgbuf[i], 1);
-printf("%x ", msgbuf[i]);
-fflush(stdout);
-	    if ( i>95 )
-	        return( FALSE );
-	    if ( msgbuf[i] == 0x7e )
-	        break;
-	    /* If the byte read was 0x7d read the next byte.  If the next
-	     * byte is 0x5e, convert the first byte to 0x7e.  If the next
-	     * byte is 0x5d, the first byte really should be 0x7d.  If
-	     * the next byte is neither 0x5e nor 0x5d, take an error exit. */
-	    if ( msgbuf[i] == 0x7d )
-	        {
-	        read ( fpin, &msgbuf[i+1], 1 );
-printf("%x ", msgbuf[i+1] );
-	        if ( msgbuf[i+1] == 0x5e )
-	            msgbuf[i] = 0x7e;
-	        else if ( msgbuf[i+1] != 0x5d )
-	            {
-	            printf("Illegal 0x7d\n");
-	            return (FALSE);
-	            }
-	        }
-	    }
-
-	memcpy( pMessagebuff->data, &msgbuf[0], 100);
-
-	oldfcs = ~(msgbuf[i-2] << 8) | ~msgbuf[i-1];
-	newfcs = pppfcs( oldfcs, &msgbuf[1], i-1 );
-printf("newfcs=%x\n",newfcs);
-	if ( newfcs != 0xf0b8 )
-	    {
-		printf( "FCS error, msg type %x\n", msgbuf[4] );
-	    return (FALSE);
-	    }
-	else
-	    {
-	    return (TRUE);
-	    }
 }
