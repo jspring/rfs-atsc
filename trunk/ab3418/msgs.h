@@ -10,7 +10,8 @@
  */
 
 
-#define SERIAL_DEVICE_NAME "/dev/ttyUSB0"
+//#define SERIAL_DEVICE_NAME "/dev/ttyUSB0"
+#define SERIAL_DEVICE_NAME "/dev/ttyS8"
 
 /* Following is format for GetLongStatus8 message. */
 
@@ -118,11 +119,31 @@ typedef struct
 	unsigned char    data[100];
 } gen_mess_typ;
 
+typedef struct
+{
+	char	start_flag;	/* 0x7e */
+	char	address;	/* 0x05 2070 controller */
+	char	control;	/* 0x13 - unnumbered information, individual address */
+	char	ipi;		/* 0xc0 - NTCIP Class B Protocol */
+	char	mess_type;	/* 0x92 - set time request */
+	char	day_of_week;	/* Day of week (1-7) 1=Sunday */	
+	char	month;		/* Month (1-12) 1=January */
+	char	day_of_month;	/* Day of month (1-31) */
+	char	year;		/* Last two digits of year (00-99) 95=1995, 0=2000, 94=2094 */
+	char 	hour;		/* Hour (0-23) */
+	char 	minute;		/* Minute (0-59) */
+	char 	second;		/* Second (0-59) */
+	char 	tenths;		/* Tenth second (0-9) */
+	unsigned char FCSmsb;        /* FCS (Frame Checking Sequence) MSB */
+	unsigned char FCSlsb;        /* FCS least significant byte */
+	char          end_flag;      /* 0x7e */
+} IS_PACKED set_time_t;
+
 typedef union
 {
 	get_long_status8_mess_typ         get_long_status8_mess;
 	get_long_status8_resp_mess_typ    get_long_status8_resp_mess;
 	gen_mess_typ                      gen_mess;
 	set_controller_timing_data_t      set_controller_timing_data_mess;
+	set_time_t			  set_time_mess;
 } IS_PACKED mess_union_typ;
-
