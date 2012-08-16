@@ -34,7 +34,11 @@ int fpout;
 static jmp_buf exit_env;
 int verbose = 0; 
 
-char *usage = "Usage: %s -g <minimum green time> -G <maximum green time> -p <phase>\nor\n %s -c <cell address> -d <data>\n\", argv[0], argv[0]";
+char *usage = "\nUsage: \n \
+set_min_max_green -g <minimum green time> -p <phase> \n \
+set_min_max_green -G <maximum green time> -p <phase> \n \
+set_min_max_green -c <cell address> -d <data> \n \
+set_min_max_green -t (to set controller time to system time)\n\n";
 
 static bool_typ ser_driver_read( gen_mess_typ *pMessagebuff);
 
@@ -92,7 +96,7 @@ int main( int argc, char *argv[] )
 	int min_green = -1;
 	int phase = -1; 
 	int cell_addr = 0; 
-	int data;
+	int data = -99999999;
 	int jjj;
 	int do_set_time = 0;
 	int do_set_controller_timing = 0;
@@ -131,14 +135,9 @@ int main( int argc, char *argv[] )
 		}
 	}
 	if(   (do_set_time == 0) && 
-	      (cell_addr == 0) && 
-	      (
-		(phase < 0) || 
-		   (  (min_green < 0) && 
-	              (max_green < 0)
-		   )
-	      ) 
-	  )
+	      ((cell_addr == 0) || (data == -99999999)) && 
+	      ((phase < 0) || ((min_green < 0) && (max_green < 0)))
+	)
 	{
 		printf("%s", usage);
 		exit(EXIT_FAILURE);
