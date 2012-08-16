@@ -21,12 +21,7 @@
  *
  */
 
-#include <sys_os.h>
-#include <sys_rt.h>
-#include <timestamp.h>
-
-#include "db_clt.h"
-#include "db_utils.h"
+#include <db_include.h>
 #include "atsc_clt_vars.h"
 #include "atsc.h"
 #include "msgs.h"
@@ -38,6 +33,8 @@ int fpin;
 int fpout;
 static jmp_buf exit_env;
 int verbose = 0; 
+
+char *usage = "Usage: %s -g <minimum green time> -G <maximum green time> -p <phase>\nor\n %s -c <cell address> -d <data>\n\", argv[0], argv[0]";
 
 static bool_typ ser_driver_read( gen_mess_typ *pMessagebuff);
 
@@ -94,22 +91,27 @@ int main( int argc, char *argv[] )
 	int max_green = -1;
 	int min_green = -1;
 	int phase = -1; 
+	int cell_addr = 0; 
+	int data;
 	int jjj;
 	int do_set_time = 0;
 	int do_set_controller_timing = 0;
 
-	while ((opt = getopt(argc, argv, "d:i:p:G:g:vt")) != -1)
+	while ((opt = getopt(argc, argv, "d:i:c:p:G:g:vt")) != -1)
 	{
 		switch (opt)
 		{
-		  case 'd':
-			domain = strdup(optarg);
-			break;
+                  case 'd':
+			data = (int)strtol(optarg, NULL, 0);	
+                        break;
                   case 'i':
                         interval = atoi(optarg);
                         break;
+                  case 'c':
+			cell_addr = (int)strtol(optarg, NULL, 0);	
+			break;
                   case 'p':
-			phase = atoi(optarg);	
+			phase = (int)strtol(optarg, NULL, 0);	
 			break;
                   case 'G':
 			max_green = (int)strtol(optarg, NULL, 0);	
@@ -120,20 +122,26 @@ int main( int argc, char *argv[] )
                   case 'v':
 			verbose = 1;	
 			break;
-                  case 't':
-			do_set_time = 1;	
+		  case 't':
+			do_set_time = 1;
 			break;
 		  default:
-			printf( "Usage %s: clt_update -d [domain] ", argv[0]);
-			printf("-x [xport]\n");
+			printf("%s", usage);
 			exit(1);
 		}
 	}
-	if(do_set_time == 0) {
-		if( (phase < 0) || ( (min_green < 0) && (max_green < 0)) ) {
-			printf("Usage: %s -g <minimum green time> -G <maximum green time> -p <phase>\n", argv[0]);
-			exit(EXIT_FAILURE);
-		}
+	if(   (do_set_time == 0) && 
+	      (cell_addr == 0) && 
+	      (
+		(phase < 0) || 
+		   (  (min_green < 0) && 
+	              (max_green < 0)
+		   )
+	      ) 
+	  )
+	{
+		printf("%s", usage);
+		exit(EXIT_FAILURE);
 	}
 //	get_local_name(hostname, MAXHOSTNAMELEN+1);
 //printf("hostname %s\n",hostname);
@@ -185,77 +193,88 @@ int main( int argc, char *argv[] )
 
 //	while(1)
 //	    {
-	if(do_set_controller_timing) {
-		if(verbose) 
-			printf("Starting SetControllerTimingData request\n");
-		/* Send the message to request GetLongStatus8 from 2070. */
-		writeBuff.set_controller_timing_data_mess.start_flag = 0x7e;
-		writeBuff.set_controller_timing_data_mess.address = 0x05;
-		writeBuff.set_controller_timing_data_mess.control = 0x13;
-		writeBuff.set_controller_timing_data_mess.ipi = 0xc0;
-		writeBuff.set_controller_timing_data_mess.mess_type = 0x99;
-		writeBuff.set_controller_timing_data_mess.num_cells = 0x2;
-		writeBuff.set_controller_timing_data_mess.cell1_addr[0] = 0x01;
-		writeBuff.set_controller_timing_data_mess.cell1_addr[1] = 0x92;
-		writeBuff.set_controller_timing_data_mess.cell1_data = 0x02;
-		writeBuff.set_controller_timing_data_mess.cell2_addr[0] = 0x01;
-		if(max_green >= 0) {
-			writeBuff.set_controller_timing_data_mess.cell2_addr[1] = 
-				((phase << 4) + 8) & 0xff;
-			writeBuff.set_controller_timing_data_mess.cell2_data= max_green;
-		}
-		if(min_green >= 0) {
-			writeBuff.set_controller_timing_data_mess.cell2_addr[1] = 
-				((phase << 4) + 2) & 0xff;
-			writeBuff.set_controller_timing_data_mess.cell2_data= min_green;
-		}
-		if(verbose) 
-			printf("phase %x cell2_addr[1] %hhx\n", 
-			phase, writeBuff.set_controller_timing_data_mess.cell2_addr[1]);
-		writeBuff.set_controller_timing_data_mess.FCSmsb = 0x00;
-		writeBuff.set_controller_timing_data_mess.FCSlsb = 0x00;
-	
-		/* Now append the FCS. */
-		msg_len = sizeof(set_controller_timing_data_t) - 4;
-	}
-	if(do_set_time) {
-		if(verbose) 
-			printf("Starting SetTime request\n");
-		/* Send the message to request GetLongStatus8 from 2070. */
-		writeBuff.set_time_mess.start_flag = 0x7e;
-		writeBuff.set_time_mess.address = 0x05;
-		writeBuff.set_time_mess.control = 0x13;
-		writeBuff.set_time_mess.ipi = 0xc0;
-		writeBuff.set_time_mess.mess_type = 0x92;
+        if(do_set_controller_timing) {
+                if(verbose)
+                        printf("Starting SetControllerTimingData request\n");
+                /* Send the message to request GetLongStatus8 from 2070. */
+                writeBuff.set_controller_timing_data_mess.start_flag = 0x7e;
+                writeBuff.set_controller_timing_data_mess.address = 0x05;
+                writeBuff.set_controller_timing_data_mess.control = 0x13;
+                writeBuff.set_controller_timing_data_mess.ipi = 0xc0;
+                writeBuff.set_controller_timing_data_mess.mess_type = 0x99;
+                writeBuff.set_controller_timing_data_mess.num_cells = 0x2;
+                writeBuff.set_controller_timing_data_mess.cell1_addr[0] = 0x01;
+                writeBuff.set_controller_timing_data_mess.cell1_addr[1] = 0x92;
+                writeBuff.set_controller_timing_data_mess.cell1_data = 0x02;
+                writeBuff.set_controller_timing_data_mess.cell2_addr[0] = 0x01;
+                if(max_green >= 0) {
+                        writeBuff.set_controller_timing_data_mess.cell2_addr[1]=
+                                ((phase << 4) + 8) & 0xff;
+                        writeBuff.set_controller_timing_data_mess.cell2_data = 
+				max_green;
+                }
+                if(min_green >= 0) {
+                        writeBuff.set_controller_timing_data_mess.cell2_addr[1] 
+				= ((phase << 4) + 2) & 0xff;
+                        writeBuff.set_controller_timing_data_mess.cell2_data
+				= min_green;
+                }
+                if(verbose)
+		    printf("phase %x cell2_addr[1] %hhx\n", phase, 
+		       writeBuff.set_controller_timing_data_mess.cell2_addr[1]);
+                writeBuff.set_controller_timing_data_mess.FCSmsb = 0x00;
+                writeBuff.set_controller_timing_data_mess.FCSlsb = 0x00;
+
+                /* Now append the FCS. */
+                msg_len = sizeof(set_controller_timing_data_t) - 4;
+        }
+        if(do_set_time) {
+                if(verbose)
+                        printf("Starting SetTime request\n");
+                /* Send the message to request GetLongStatus8 from 2070. */
+                writeBuff.set_time_mess.start_flag = 0x7e;
+                writeBuff.set_time_mess.address = 0x05;
+                writeBuff.set_time_mess.control = 0x13;
+                writeBuff.set_time_mess.ipi = 0xc0;
+                writeBuff.set_time_mess.mess_type = 0x92;
 
                 ftime ( &timeptr_raw );
                 localtime_r ( &timeptr_raw.time, &time_converted );
-		writeBuff.set_time_mess.day_of_week = time_converted.tm_wday + 1;
-		writeBuff.set_time_mess.month = time_converted.tm_mon + 1;
-		writeBuff.set_time_mess.day_of_month = time_converted.tm_mday;
-		writeBuff.set_time_mess.year = time_converted.tm_year - 100;
-		writeBuff.set_time_mess.hour = time_converted.tm_hour;
-		writeBuff.set_time_mess.minute = time_converted.tm_min;
-		writeBuff.set_time_mess.second = time_converted.tm_sec;
-		writeBuff.set_time_mess.tenths = timeptr_raw.millitm / 100;
+                writeBuff.set_time_mess.day_of_week = time_converted.tm_wday + 1
+;
+                writeBuff.set_time_mess.month = time_converted.tm_mon + 1;
+                writeBuff.set_time_mess.day_of_month = time_converted.tm_mday;
+                writeBuff.set_time_mess.year = time_converted.tm_year - 100;
+                writeBuff.set_time_mess.hour = time_converted.tm_hour;
+                writeBuff.set_time_mess.minute = time_converted.tm_min;
+                writeBuff.set_time_mess.second = time_converted.tm_sec;
+                writeBuff.set_time_mess.tenths = timeptr_raw.millitm / 100;
 
-		if(verbose) {
+                if(verbose) {
 
-			printf("set_time_mess.day_of_week %d\n", writeBuff.set_time_mess.day_of_week);
-			printf("set_time_mess.month %d\n", writeBuff.set_time_mess.month);
-			printf("set_time_mess.day_of_month %d\n", writeBuff.set_time_mess.day_of_month);
-			printf("set_time_mess.year %d\n", writeBuff.set_time_mess.year);
-			printf("set_time_mess.hour %d\n", writeBuff.set_time_mess.hour);
-			printf("set_time_mess.minute %d\n", writeBuff.set_time_mess.minute);
-			printf("set_time_mess.second %d\n", writeBuff.set_time_mess.second);
-			printf("set_time_mess.tenths %d\n", writeBuff.set_time_mess.tenths);
-		}
-		writeBuff.set_time_mess.FCSmsb = 0x00;
-		writeBuff.set_time_mess.FCSlsb = 0x00;
-	
-		/* Now append the FCS. */
-		msg_len = sizeof(set_time_t) - 4;
-	}
+                        printf("set_time_mess.day_of_week %d\n",
+                                writeBuff.set_time_mess.day_of_week);
+                        printf("set_time_mess.month %d\n",
+                                writeBuff.set_time_mess.month);
+                        printf("set_time_mess.day_of_month %d\n",
+                                writeBuff.set_time_mess.day_of_month);
+                        printf("set_time_mess.year %d\n",
+                                writeBuff.set_time_mess.year);
+                        printf("set_time_mess.hour %d\n",
+                                writeBuff.set_time_mess.hour);
+                        printf("set_time_mess.minute %d\n",
+                                writeBuff.set_time_mess.minute);
+                        printf("set_time_mess.second %d\n",
+                                writeBuff.set_time_mess.second);
+                        printf("set_time_mess.tenths %d\n",
+                                writeBuff.set_time_mess.tenths);
+                }
+                writeBuff.set_time_mess.FCSmsb = 0x00;
+                writeBuff.set_time_mess.FCSlsb = 0x00;
+
+                /* Now append the FCS. */
+                msg_len = sizeof(set_time_t) - 4;
+        }
 	pchar = (char *) &writeBuff;
 	get_modframe_string( pchar+1, &msg_len );
 
@@ -295,76 +314,75 @@ int main( int argc, char *argv[] )
 	}
 	        write ( fpout, &writeBuff, msg_len+2 );
 		fflush(NULL);
-/*
-    if (ser_driver_read ( &readBuff ) ) {
-	if(verbose) 
-		printf("msg %x ",readBuff.data[4]);
-        switch( readBuff.data[4] ) {
-            case 0xcc:    // GetLongStatus8 message
-                Get time of day and save in the database. 
-                ftime ( &timeptr_raw );
-                localtime_r ( &timeptr_raw.time, &time_converted );
-                atsc.ts.hour = time_converted.tm_hour;
-                atsc.ts.min = time_converted.tm_min;
-                atsc.ts.sec = time_converted.tm_sec;
-                atsc.ts.millisec = timeptr_raw.millitm;
 
-		if(verbose) 
-			printf("%02d:%02d:%02d:%03d\n",atsc.ts.hour,atsc.ts.min,			atsc.ts.sec,atsc.ts.millisec );
-                pget_long_status8_resp_mess = 
-			(get_long_status8_resp_mess_typ *) &readBuff;
-	
-		atsc.phase_status_greens[0] = 
-			pget_long_status8_resp_mess->active_phase;
-		interval_mask = pget_long_status8_resp_mess->interval;
-		interval_mask = interval_mask & 0x0f;
-		if(verbose) 
-			printf("%x ",interval_mask);
-		if (( interval_mask == 0x0c) || (interval_mask == 0x0d) ||
-		    (interval_mask == 0x0e ) || (interval_mask == 0x0f))
-		atsc.phase_status_greens[0] = 
-			atsc.phase_status_greens[0] & 0xf0;
-		interval_mask = pget_long_status8_resp_mess->interval;
-		interval_mask = interval_mask & 0xf0;
-		if(verbose) 
-			printf("%x ",interval_mask);
-		if (( interval_mask == 0xc0) || (interval_mask == 0xd0) ||
-		    (interval_mask == 0xe0 ) || (interval_mask == 0xf0))
-		atsc.phase_status_greens[0] = 
-			atsc.phase_status_greens[0] & 0x0f;
-		if(verbose) 
-			printf("%x %x\n", atsc.phase_status_greens[0],
-			pget_long_status8_resp_mess->interval);
-                atsc.info_source = ATSC_SOURCE_AB3418;
-    		printf("write to database\n");
-		if (atsc.phase_status_greens[0] != last_greens) {
-
-#ifdef COMPARE
+//    if (ser_driver_read ( &readBuff ) ) {
+//	if(verbose) 
+//		printf("msg %x ",readBuff.data[4]);
+//        switch( readBuff.data[4] ) {
+//            case 0xcc:    // GetLongStatus8 message
+//                Get time of day and save in the database. 
+//                ftime ( &timeptr_raw );
+//                localtime_r ( &timeptr_raw.time, &time_converted );
+//                atsc.ts.hour = time_converted.tm_hour;
+//                atsc.ts.min = time_converted.tm_min;
+//                atsc.ts.sec = time_converted.tm_sec;
+//                atsc.ts.millisec = timeptr_raw.millitm;
+//
+//		if(verbose) 
+//			printf("%02d:%02d:%02d:%03d\n",atsc.ts.hour,atsc.ts.min,			atsc.ts.sec,atsc.ts.millisec );
+//                pget_long_status8_resp_mess = 
+//			(get_long_status8_resp_mess_typ *) &readBuff;
+//	
+//		atsc.phase_status_greens[0] = 
+//			pget_long_status8_resp_mess->active_phase;
+//		interval_mask = pget_long_status8_resp_mess->interval;
+//		interval_mask = interval_mask & 0x0f;
+//		if(verbose) 
+//			printf("%x ",interval_mask);
+//		if (( interval_mask == 0x0c) || (interval_mask == 0x0d) ||
+//		    (interval_mask == 0x0e ) || (interval_mask == 0x0f))
+//		atsc.phase_status_greens[0] = 
+//			atsc.phase_status_greens[0] & 0xf0;
+//		interval_mask = pget_long_status8_resp_mess->interval;
+//		interval_mask = interval_mask & 0xf0;
+//		if(verbose) 
+//			printf("%x ",interval_mask);
+//		if (( interval_mask == 0xc0) || (interval_mask == 0xd0) ||
+//		    (interval_mask == 0xe0 ) || (interval_mask == 0xf0))
+//		atsc.phase_status_greens[0] = 
+//			atsc.phase_status_greens[0] & 0x0f;
+//		if(verbose) 
+//			printf("%x %x\n", atsc.phase_status_greens[0],
+//			pget_long_status8_resp_mess->interval);
+//                atsc.info_source = ATSC_SOURCE_AB3418;
+//    		printf("write to database\n");
+//		if (atsc.phase_status_greens[0] != last_greens) {
+//
+//#ifdef COMPARE
 //			db_clt_write(pclt, DB_ATSC2_VAR,
 //			 sizeof(atsc_typ), &atsc);
-#else
+//#else
 //			db_clt_write(pclt, DB_ATSC_VAR,
 //			 sizeof(atsc_typ), &atsc);
-#endif
-#ifdef DEBUG_TRIG
-			get_current_timestamp(&ts);
-			print_timestamp(stdout, &ts);
-			decrement_timestamp(&ts, &last_ts, &elapsed_ts);
-			last_ts = ts;
-			printf(" current: 0x%2hhx last: 0x%2hhx elapsed %.3f\n",
-				 atsc.phase_status_greens[0], last_greens,
-				 TS_TO_MS(&elapsed_ts)/1000.0);
-#endif
-		}
-		last_greens = atsc.phase_status_greens[0];
-		break;
-	    default:
-	    	printf("Unknown message type : 0x%x\n", readBuff.data[4] );
-	    	break;
-	}  
-	TIMER_WAIT(ptmr);
-    }
-*/
+//#endif
+//#ifdef DEBUG_TRIG
+//			get_current_timestamp(&ts);
+//			print_timestamp(stdout, &ts);
+//			decrement_timestamp(&ts, &last_ts, &elapsed_ts);
+//			last_ts = ts;
+//			printf(" current: 0x%2hhx last: 0x%2hhx elapsed %.3f\n",
+//				 atsc.phase_status_greens[0], last_greens,
+//				 TS_TO_MS(&elapsed_ts)/1000.0);
+//#endif
+//		}
+//		last_greens = atsc.phase_status_greens[0];
+//		break;
+//	    default:
+//	    	printf("Unknown message type : 0x%x\n", readBuff.data[4] );
+//	    	break;
+//	}  
+//	TIMER_WAIT(ptmr);
+//    }
 //	    }
 }
 
