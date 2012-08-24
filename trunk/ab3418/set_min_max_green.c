@@ -38,7 +38,9 @@ char *usage = "\nUsage: \n \
 set_min_max_green -g <minimum green time> -p <phase> \n \
 set_min_max_green -G <maximum green time> -p <phase> \n \
 set_min_max_green -c <cell address> -d <data> \n \
-set_min_max_green -t (to set controller time to system time)\n\n";
+set_min_max_green -t (to set controller time to system time) \n \
+                  -v verbose \n \
+                  -s run standalone (no db)\n" ;
 
 static bool_typ ser_driver_read( gen_mess_typ *pMessagebuff);
 
@@ -100,8 +102,9 @@ int main( int argc, char *argv[] )
 	int jjj;
 	int do_set_time = 0;
 	int do_set_controller_timing = 0;
+	int use_db = 1;
 
-	while ((opt = getopt(argc, argv, "d:i:c:p:G:g:vt")) != -1)
+	while ((opt = getopt(argc, argv, "d:i:c:p:G:g:vts")) != -1)
 	{
 		switch (opt)
 		{
@@ -129,6 +132,9 @@ int main( int argc, char *argv[] )
 		  case 't':
 			do_set_time = 1;
 			break;
+                  case 's':
+                        use_db = 0;
+                        break;
 		  default:
 			printf("%s", usage);
 			exit(1);
@@ -142,15 +148,16 @@ int main( int argc, char *argv[] )
 		printf("%s", usage);
 		exit(EXIT_FAILURE);
 	}
-//	get_local_name(hostname, MAXHOSTNAMELEN+1);
-//printf("hostname %s\n",hostname);
-//	if ((pclt = db_list_init( argv[0], hostname, domain, xport,
-//			db_vars_list, NUM_DB_VARS, NULL, 0))
-//			== NULL)
-//	{
-//		printf("Database initialization error in %s\n", argv[0]);
-//		exit(EXIT_FAILURE);
-//	}
+	if(use_db) {
+		get_local_name(hostname, MAXHOSTNAMELEN+1);
+		if ((pclt = db_list_init( argv[0], hostname, domain, xport,
+				db_vars_list, NUM_DB_VARS, NULL, 0))
+				== NULL)
+		{
+			printf("Database initialization error in %s\n", argv[0]);
+			exit(EXIT_FAILURE);
+		}
+	}
 
 	/* Initialize serial port. */  
 	fpin = open( SERIAL_DEVICE_NAME,  O_RDONLY );
