@@ -46,8 +46,28 @@ static u16 fcstab[256] = {
 /* pppfcs calculates fcs */
 u16 pppfcs(u16 fcs, unsigned char *cp, int len)
 {
-	while (len--)
+
+#ifdef DEBUG
+	u16 fcs1;
+	printf("fcs\tfcs>>8\t*cp\tfcs^*cp\t&ff\tfcstab[&ff]\tA^B\n");
+#endif
+	while (len--) {
+#ifdef DEBUG
+		fcs1 = fcs;
+#endif
 		fcs = (fcs >> 8) ^ fcstab[(fcs ^ *cp++) & 0xff];
+#ifdef DEBUG
+		    printf("%#hx\t%#hx\t%#hhx\t%#hx\t%#hhx\t%#hx\t%#hx\n",
+			fcs1,
+			fcs1>>8,
+			*(cp-1),
+			fcs1^*(cp-1),
+			(fcs1^*(cp-1)) & 0xff,
+			fcstab[(fcs1 ^ *(cp-1)) & 0xff],
+			(fcs1 >> 8) ^ fcstab[(fcs1 ^ *(cp-1)) & 0xff]
+		    );
+#endif
+	}
 	return (fcs);
 }
 
@@ -63,4 +83,5 @@ void get_modframe_string( unsigned char *frame, int *framebytes )
 	*(frame + temp++) = (unsigned char) ~ newfcs;        /* get ms byte FCS */
 	*(frame + temp++) = (unsigned char) ~ (newfcs >> 8); /* get ls byte FCS */
 	*framebytes = temp;                             /* get new frame length */
+//	printf("get_modframe_string: newfcs %#x *framebytes %d\n", newfcs, *framebytes);
 }

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2006   Regents of the University of California
  *
- *	static char rcsid[] = "$Id$";
+ *	static char rcsid[] = "$Id: rd3418.c 1089 2007-10-04 05:23:17Z dickey $";
  *
  *
  *	$Log$
@@ -33,6 +33,7 @@
 #include "fcs.h"
 
 #define DEBUG_TRIG
+#define SERIAL_DEVICE_NAME "/dev/ttyS0"
 
 int fpin;	
 int fpout;
@@ -80,7 +81,7 @@ int main( int argc, char *argv[] )
 	atsc_typ atsc;
 	mess_union_typ writeBuff;
 	int msg_len;
-	char *pchar;
+	unsigned char *pchar;
 	int j;
 	int chid;
 	posix_timer_typ *ptmr;	
@@ -126,13 +127,14 @@ printf("hostname %s\n",hostname);
 	fpin = open( SERIAL_DEVICE_NAME,  O_RDONLY );
 	if ( fpin <= 0 ) {
 		printf( "Error opening device %s for input\n", SERIAL_DEVICE_NAME );
+		return -1;
 	}
 
 	/* Initialize serial port. */  
 	fpout = open( SERIAL_DEVICE_NAME,  O_WRONLY | O_NONBLOCK );
 	if ( fpout <= 0 ) {
 		printf( "Error opening device %s for output\n", SERIAL_DEVICE_NAME );
-	    return;
+		return -1;
 	}
 
 	chid = ChannelCreate(0);
@@ -173,7 +175,7 @@ printf("hostname %s\n",hostname);
 
 	    /* Now append the FCS. */
 	    msg_len = sizeof(get_long_status8_mess_typ) - 4;
-	    pchar = (char *) &writeBuff;
+	    pchar = (unsigned char *) &writeBuff;
 	    get_modframe_string( pchar+1, &msg_len );
 
 	    /* Check for any 0x7e in message and replace with the

@@ -1,0 +1,1 @@
+echo "chx /f0/cmds"      chx /f0/cmdsecho "tar xvpf /r2/tscp220bxxx.tar"      tar xvpf /r2/tscp220bxxx.tarecho "tar xvpf /f0/tscp/startup.tar"      tar xvpf /f0/tscp/startup.tarecho "del /f0/tscp/startup.tar"      del /f0/tscp/startup.tar

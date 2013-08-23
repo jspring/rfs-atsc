@@ -1,0 +1,1 @@
+-nt -np** Caltrans' Model 2070 Controller Startup file****************************************************   Traffic Signal Control Program   **********					 *****chd /f0/tscpchx /f0/tscpstarttscp**********************************************chd /f0chx /f0/cmds/f0/sys/startspfex tsmon /sp4** The End !*

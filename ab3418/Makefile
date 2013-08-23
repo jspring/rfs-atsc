@@ -5,22 +5,36 @@
 #
 include $(CAPATH_MK_DEFS)
 
-PATH_CFLAGS += -I$(ATSC_INC_DIR)
+SET_MIN_MAX_GREEN_LIB = $(OBJDIR)/libset_min_max_green_lib.a
+SET_MIN_MAX_GREEN_OBJS = $(OBJDIR)/set_min_max_green_lib.o
 
-HDRS = fcs.h msgs.h 
-EXEC = $(OBJDIR)/rd3418  $(OBJDIR)/set_min_max_green
+SERVER_LIB = $(OBJDIR)/libserver_lib.a
+SERVER_LIB_OBJS = $(OBJDIR)/server_lib.o
 
-all: 	$(OBJDIR) $(EXEC)
+AB3418_LIB = $(OBJDIR)/libab3418_lib.a
+AB3418_LIB_OBJS = $(OBJDIR)/ab3418_lib.o
+
+PATH_LIBS += -lset_min_max_green_lib -lserver_lib -lab3418_lib -ldl
+PATH_LDFLAGS += -L./lnx
+PATH_CFLAGS += -I$(ATSC_INC_DIR) -pg
+
+HDRS = fcs.h msgs.h ab3418comm.h ab3418_lib.h server_lib.h set_min_max_green.h
+
+EXEC =  $(OBJDIR)/rd3418  $(OBJDIR)/server $(OBJDIR)/client $(OBJDIR)/ab3418comm $(OBJDIR)/set_min_max_green_db_test $(OBJDIR)/tscp_memory_probe $(OBJDIR)/receive_urms_data
+
+all: $(OBJDIR) $(SET_MIN_MAX_GREEN_LIB) $(SERVER_LIB) $(AB3418_LIB) $(EXEC) 
+
+$(SET_MIN_MAX_GREEN_LIB): $(SET_MIN_MAX_GREEN_OBJS)
+	$(PATH_AR) $(PATH_AR_FLAGS) $@ $(SET_MIN_MAX_GREEN_OBJS)
+
+$(SERVER_LIB): $(SERVER_LIB_OBJS)
+	$(PATH_AR) $(PATH_AR_FLAGS) $@ $(SERVER_LIB_OBJS)
+
+$(AB3418_LIB): $(AB3418_LIB_OBJS)
+	$(PATH_AR) $(PATH_AR_FLAGS) $@ $(AB3418_LIB_OBJS)
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
-#$(OBJDIR)/rd3418: $(OBJDIR)/rd3418.o
-#$(OBJDIR)/set_max_green: $(OBJDIR)/set_max_green.o
-
 clean:
-	\rm -f $(OBJDIR)/*.o *.*~ $(EXEC)
-
-install:
-	cp $(EXEC) $(ATSC_DIR)/test
-
+	\rm -f $(OBJDIR)/*.[oa] *.*~ $(EXEC) $(ALGORITHM_DIR)/$(OBJDIR)/*.[oa]

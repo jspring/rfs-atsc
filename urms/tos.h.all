@@ -1,0 +1,375 @@
+//proposed communication packet description
+
+#define BYTE	unsigned char
+#define BOOL	unsigned char
+
+#define	MAX_PEAK_PERIODS   2
+#define	MAX_RMETERS        4
+#define	MAX_HOLIDAYS      16
+#define	MAX_TOD_ENTRIES   16
+#define	MAX_PLAN_TABLES    6
+#define	MAX_PLAN_ENTRIES  16
+
+#define CODE_GET_DATE		c
+typedef struct {
+        char	start_flag;   // 0x7e
+        char	address;      // 0x05 2070 controller
+        char	comm_code;    // c = get clock/calendar
+        char	FCSmsb;       /* FCS (Frame Checking Sequence) MSB */
+        char	FCSlsb;       /* FCS least significant byte */
+        char	end_flag;     /* 0x7e */
+} IS_PACKED tos_get_date_request_msg_t;
+
+#define CODE_GET_DETECTOR	d
+typedef struct {
+        char	start_flag;   // 0x7e
+        char	address;      // 0x05 2070 controller
+        char	comm_code;    // d = get detector data (both RM and MLM)
+        char	FCSmsb;       /* FCS (Frame Checking Sequence) MSB */
+        char	FCSlsb;       /* FCS least significant byte */
+        char	end_flag;     /* 0x7e */
+} IS_PACKED tos_get_detector_request_msg_t;
+
+Byte stuffing as needed
+Communications codes
+Get clock / calendar	‘c
+Set clock / calendar	'C
+Get detector data	'd	/* both RM and MLM */
+Set meter action	‘D	/* both RM and MLM */
+Set detector enables	‘E
+Set HAR EMS	‘H
+Upload parameters	'b
+Download parameters	'B
+Constants
+Enumerated types
+ml_det_mode	{DISABLED = 1, SINGLE_LEAD, SINGLE_TRAIL, DUAL}
+rm_action_code_tos2	{SKIP = 0, REST_IN_DARK, REST_IN_GREEN,
+	0x15 – 0x90,	/* fixed rate in BCD vphpl * 10 */
+	0xD1 – 0xD6,	/* traffic responsive occupancy only */
+	0xE1 – 0xE6,	/* traffic responsive flow only */
+	0xF1 – 0xF6}	/* traffic responsive occupancy / flow */
+		/* other values not assigned */
+mlm_action_code_met22	{SKIP = 0, REST_IN_DARK, REST_IN_GREEN, TRAF_RESP,
+	20 – 200}	/* fixed rate in vpm */
+		/* other values not assigned */
+rm_source_type	{MANUAL=1, INTER, COMM, TOD, DEFAULT}
+mlm_source_type	{MANUAL=1, LOCAL, COMM, TOD, DEFAULT}
+action_code_type	{REST_IN_DARK=1, REST_IN_GREEN, TRAF_RESP, FIXED, 	HOLD_METER, HOLD_NON_METER, HOLD_GREEN}
+Data field definitions (meter / detector)
+Get detector data request = 0 Bytes:
+Get RM detector data reply = variable:
+
+BYTE configuration_code;
+uint16 SW_version;
+BYTE controller_alarms;
+#ifconfig MAINLINE_LANES
+{
+	up_vol_count:5;
+	up_occ_count:11;
+	down_vol_count:5;
+	down_occ_count:11;
+	speed_samples:5;
+	total_travel_time:11;
+}[number_of_configured_mainline_lanes];	/* regardless of enables */
+#endif
+#ifconfig RAMP_LANES
+{
+	ramp_vol_count:5;
+	ramp_occ_count:11;
+}[number_of_configured_ramp_lanes];	/* regardless of enables */
+#endif
+#ifconfig RAMP_METER
+uint16 station_average_flow;	/* BCD vph */
+uint16 station_average_occ;	/* BCD % */
+{
+	source_type active_meter_source;
+	op_mode active_operation_mode;
+	BYTE active_meter_rate;	/* BCD vph*10 */
+	BYTE passage_count;
+	BYTE violation_count;
+	BOOL queue_detected;
+	BYTE queue_length;
+	uint16 queue_average_occ;	/* BCD % */
+}[number_of_configured_metered_lanes];	/* regardless of enables */
+#endif
+BOOL HAR_EMS_status;
+Set RM action command = variable:
+{
+	rm_action_code_tos2 communications_action_code;
+}[number_of_metered_lanes];
+Set RM action reply = 0 Bytes:
+Get MLM detector data reply = variable:
+
+BYTE configuration_code;
+uint16 SW_version;
+BYTE controller_alarms;
+#ifconfig MAINLINE_LANES
+{
+	up_vol_count:5;
+	up_occ_count:11;
+	down_vol_count:5;
+	down_occ_count:11;
+	speed_samples:5;
+	total_travel_time:11;
+}[number_of_configured_mainline_lanes];	/* regardless of enables */
+#endif
+uint16 station_average_flow;	/* BCD vph */
+uint16 station_average_occ;	/* BCD 0.01% */
+source_type active_meter_source;
+op_mode active_operation_mode;
+BYTE active_meter_rate;	/* vpm */
+BYTE skip_count;
+BYTE new_meter_seq_table_num;
+{
+	BYTE passage_count;
+}[number_of_configured_lane_groups];	/* regardless of enables */
+Set MLM meter action command = 2 Bytes:
+mlm_action_code_met22 communications_action_code;
+BYTE active_meter_seq_table_num;
+Set MLM action reply = 0 Bytes:
+Set detector enables command = variable:
+BYTE station_type;	/* mainline=1, ramp=2 */
+BYTE first_logical_lane;
+BYTE number_of_lanes;
+#if mainline
+{
+	ml_det_mode lane_mode;
+}[number_of_lanes];
+#endif
+#if ramp
+{
+	BOOL det_enable;
+}[number_of_lanes];
+#endif
+Set detector enables reply = 0 Bytes:
+Data field definitions (HAR EMS)
+Set HAR EMS command = 1 Bytes:
+BOOL new_har_ems;
+Set HAR EMS reply = 0 Bytes:
+Data field definitions (get / set clock)
+Get clock / calendar request = 0 Bytes:
+Get clock / calendar reply = 8 Bytes:
+
+BYTE configuration_code;
+BYTE controller_alarms;
+BYTE hour;	/* not BCD */
+BYTE minute;	/* not BCD */
+BYTE second;	/* not BCD */
+BYTE year;	/* not BCD */
+BYTE month;	/* not BCD */
+BYTE day_of_month;	/* not BCD */
+Set clock / calendar command = 6 Bytes:
+
+BYTE hour;	/* not BCD */
+BYTE minute;	/* not BCD */
+BYTE second;	/* not BCD */
+BYTE year;	/* not BCD */
+BYTE month;	/* not BCD */
+BYTE day_of_month;	/* not BCD */
+Set clock / calendar reply = 0 Bytes:
+Upload / Download block numbers
+Global parameters	0
+Metered lane 1	1
+Metered lane 2	2
+Metered lane 3	3
+Metered lane 4	4
+Holiday / special event table	5
+Time-of-day table	6
+Metering plan 1	7
+Metering plan 2	8
+Metering plan 3	9
+Metering plan 4	10
+Metering plan 5	11
+Metering plan 6	12
+Data field definitions (upload / download)
+Upload parameters request = 1 Byte:
+
+BYTE block_number;
+Download parameters reply = 0 Bytes:
+Download global parameters command = 11 Bytes:
+
+BYTE block_number;
+BOOL adv_warn_sign_flash;
+BYTE day_of_week_1hour;	/* 5 days */
+struct storage_str{	/* parameters for local data storage only */
+	BYTE start_hour_1min;	/* BCD */
+	BYTE day_of_week_1min;	/* 1 day */
+	BYTE start_hour_5min	/* BCD */
+	BYTE day_of_week_5min;	/* 3 days */
+	}[MAX_PEAK_PERIODS];
+
+Upload global parameters reply = 16 Bytes:
+
+BYTE block_number;
+BOOL adv_warn_sign_flash;
+BYTE day_of_week_1hour;	/* 5 days */
+struct storage_str{	/* parameters for local data storage only */
+	BYTE start_hour_1min;	/* BCD */
+	BYTE day_of_week_1min;	/* 1 day */
+	BYTE start_hour_5min	/* BCD */
+	BYTE day_of_week_5min;	/* 3 days */
+	}[MAX_PEAK_PERIODS];
+BOOL is_mline;
+BOOL is_ramp;
+BOOL is_rmeter;
+BOOL is_wire;
+BOOL is_bus;
+
+Download metered lane command = 45 Bytes:
+
+BYTE block_number;
+BOOL rmet_enable;
+BOOL dem_recall;
+BOOL pas_recall;
+BOOL que_enable;
+BYTE depend_group;
+BYTE min_meter_time;	/* minutes */
+BYTE min_non_meter_time;	/* minutes */
+BYTE shut_normal_time;	/* minutes */
+BYTE start_alert_time;	/* seconds */
+BYTE start_warning_time;	/* seconds */
+BYTE start_green_time;	/* seconds */
+BYTE start_yellow_time;	/* 0.1 seconds */
+BYTE start_red_time;	/* 0.1 seconds */
+BYTE min_red_time;	/* 0.1 seconds */
+BYTE min_green_time;	/* 0.1 seconds */
+BYTE max_green_time;	/* 0.1 seconds */
+BYTE vehicles_per_green;
+BYTE yellow_time;	/* 0.1 seconds */
+BYTE shut_warn_time;	/* seconds */
+BYTE post_met_green_time;	/* seconds */
+BYTE manual_action;
+BYTE default_action;
+BYTE demand_gap_time;	/* 0.1 seconds */
+BYTE demand_red_time;	/* 0.1 seconds */
+BYTE shut_rate;	/* BCD */
+BYTE min_bcd_rate;	/* BCD */
+BYTE max_bcd_rate;	/* BCD */
+BYTE max_rate_decrease;	/* BCD */
+BYTE max_rate_increase;	/* BCD */
+BOOL bus_enable;
+BYTE dem_error_yellow_time;	/* 0.1 seconds */
+BYTE dem_stuck_on_time;	/ seconds */
+BYTE dem_fail_count;
+BYTE pas_stuck_on_time;	/* seconds */
+BYTE pas_fail_count;
+BYTE que_stuck_on_time;	/* seconds */
+BYTE que_fail_count;
+BYTE que_length_upper_limit;
+unsigned int que_occ_upper_limit;	/* BCD % */
+BYTE que_length_lower_limit;
+unsigned int que_occ_lower_limit;	/* BCD % */
+BYTE queue_rate_adjust;	/* BCD */
+Upload metered lane reply = 55 Bytes:
+
+BYTE block_number;
+BOOL rmet_enable;
+BOOL dem_recall;
+BOOL pas_recall;
+BOOL que_enable;
+BYTE depend_group;
+BYTE min_meter_time;	/* minutes */
+BYTE min_non_meter_time;	/* minutes */
+BYTE shut_normal_time;	/* minutes */
+BYTE start_alert_time;	/* seconds */
+BYTE start_warning_time;	/* seconds */
+BYTE start_green_time;	/* seconds */
+BYTE start_yellow_time;	/* 0.1 seconds */
+BYTE start_red_time;	/* 0.1 seconds */
+BYTE min_red_time;	/* 0.1 seconds */
+BYTE min_green_time;	/* 0.1 seconds */
+BYTE max_green_time;	/* 0.1 seconds */
+BYTE vehicles_per_green;
+BYTE yellow_time;	/* 0.1 seconds */
+BYTE shut_warn_time;	/* seconds */
+BYTE post_met_green_time;	/* seconds */
+BYTE manual_action;
+BYTE default_action;
+BYTE demand_gap_time;	/* 0.1 seconds */
+BYTE demand_red_time;	/* 0.1 seconds */
+BYTE shut_rate;	/* BCD */
+BYTE min_bcd_rate;	/* BCD */
+BYTE max_bcd_rate;	/* BCD */
+BYTE max_rate_decrease;	/* BCD */
+BYTE max_rate_increase;	/* BCD */
+BOOL bus_enable;
+BYTE dem_error_yellow_time;	/* 0.1 seconds */
+BYTE dem_stuck_on_time;	/ seconds */
+BYTE dem_fail_count;
+BYTE pas_stuck_on_time;	/* seconds */
+BYTE pas_fail_count;
+BYTE que_stuck_on_time;	/* seconds */
+BYTE que_fail_count;
+BYTE que_length_upper_limit;
+unsigned int que_occ_upper_limit;	/* BCD 0.01% */
+BYTE que_length_lower_limit;
+unsigned int que_occ_lower_limit;	/* BCD 0.01% */
+BYTE queue_rate_adjust;	/* BCD */
+BOOL rmet_config;
+BYTE dem_status;
+BYTE pas_status;
+BYTE que_status;
+BYTE intercon_action;
+BYTE comm_action;
+BYTE time_of_day_action;
+BYTE request_op_mode;
+BYTE request_rate;	/* BCD */
+BYTE meter_state;
+
+Download holiday / special event table command = 33 B:
+
+BYTE block_number;
+struct holiday_str{
+	BYTE month_entry;	/* BCD */
+	BYTE day_entry;	/* BCD */
+	}[MAX_HOLIDAYS];
+
+Upload holiday / special event table reply = 33 Bytes:
+
+BYTE block_number;
+struct holiday_str{
+	BYTE month_entry;	/* BCD */
+	BYTE day_entry;	/* BCD */
+	}[MAX_HOLIDAYS];
+
+Download time-of-day table command = 129 Bytes:
+
+BYTE block_number;
+struct time_of_day_str{
+	BYTE day_of_week_entry;
+	BYTE hour_entry;	/* BCD */
+	BYTE minute_entry;	/* BCD */
+	BYTE action_entry[MAX_RMETERS];
+	BYTE hov_entry;
+	}[MAX_TOD_ENTRIES];
+
+Upload time-of-day table reply = 129 Bytes:
+
+BYTE block_number;
+struct time_of_day_str{
+	BYTE day_of_week_entry;
+	BYTE hour_entry;	/* BCD */
+	BYTE minute_entry;	/* BCD */
+	BYTE action_entry[MAX_RMETERS];
+	BYTE hov_entry;
+	}[MAX_TOD_ENTRIES];
+
+Download metering plan command = 81 Bytes:
+
+BYTE block_number;
+struct met_plan_str{
+	unsigned int occup_entry;	/* BCD */
+	unsigned int flow_entry;	/* BCD */
+	BYTE rate_entry;	/* BCD */
+	}[MAX_PLAN_ENTRIES];
+
+Upload metering plan reply = 81 Bytes:
+
+BYTE block_number;
+struct met_plan_str{
+	unsigned int occup_entry;	/* BCD */
+	unsigned int flow_entry;	/* BCD */
+	BYTE rate_entry;	/* BCD */
+	}[MAX_PLAN_ENTRIES];
+
+

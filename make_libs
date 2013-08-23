@@ -1,0 +1,9 @@
+#!/bin/sh
+# Creates a link to all libraries (i.e. files 
+# named *.a) under the current directory. Duplicated
+# libraries will appear in include/make_lib.err
+
+mkdir -p lib
+cd lib
+rm -f *.a make_lib.err
+ln -f -s `find .. -name *.a` . 2>make_lib.err
