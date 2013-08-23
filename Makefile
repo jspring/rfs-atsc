@@ -10,15 +10,16 @@ include $(CAPATH_MK_DEFS)
 
 ATSC_LIBRARIES = ix/$(OBJDIR)/libix.a
 
-all: $(ATSC_LIBRARIES) 
-	(cd ab3418; make; make install)
+all: $(ATSC_LIBRARIES) includes libs
+	(cd ab3418; make)
+	(cd urms; make)
 	(cd ntcip; make; make install)
 	(cd phases; make; make install)
-	(cd phase170; make; make install)
+#	(cd phase170; make; make install)
 #	(cd sendmsg2tlab; make; make install)
 
-ix/$(OBJDIR)/libix.a: $(wildcard ix/*.[ch])
-	(cd ix; make; make install)
+#ix/$(OBJDIR)/libix.a: $(wildcard ix/*.[ch])
+#	(cd ix; make; make install)
 
 # separate target, not part of "all", because can only 
 # be done if usb_digio library is available
@@ -26,10 +27,17 @@ sniff:
 	(cd sniffer; make; make install)
 	echo "Don't forget to set sniffer suid root"
 
+includes:
+	./make_includes
+
+libs:
+	./make_libs
+
 clean:
 	(cd sniffer; make clean)
 	(cd ab3418; make clean)
+	(cd urms; make clean)
 	(cd ntcip; make clean)
 	(cd phases; make clean)
-	(cd phase170; make clean)
+#	(cd phase170; make clean)
 #	(cd sendmsg2tlab; make clean)

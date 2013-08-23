@@ -7,7 +7,8 @@ include $(CAPATH_MK_DEFS)
 PATH_CFLAGS += -I$(ATSC_INC_DIR)
 PATH_CFLAGS += -I$(TSP_INC_DIR)
 PATH_LDFLAGS += -L$(OBJDIR)
-PATH_LIBS += -lix -lsqlite3
+#PATH_LIBS += -lix -lsqlite3
+PATH_LIBS += -lix
 
 HDRS = ix_msg.h
 
