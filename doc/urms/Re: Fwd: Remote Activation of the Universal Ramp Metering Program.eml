@@ -1,0 +1,610 @@
+Return-Path: <david_j_wells@dot.ca.gov>
+Received: from cm02fe.ist.berkeley.edu (cm02fe.IST.Berkeley.EDU [169.229.218.143])
+	 by cm07ms.ist.berkeley.edu (Cyrus v2.3.16-CalMail-v2.4) with LMTPA;
+	 Tue, 16 Oct 2012 10:42:32 -0700
+X-Sieve: CMU Sieve 2.3
+Received: from va3ehsobe002.messaging.microsoft.com ([216.32.180.12] helo=va3outboundpool.messaging.microsoft.com)
+	by cm02fe.ist.berkeley.edu with esmtps (TLSv1:AES128-SHA:128)
+	(Exim 4.76)
+	(envelope-from <david_j_wells@dot.ca.gov>)
+	id 1TOB9y-0000gv-8z
+	for jspring@path.berkeley.edu; Tue, 16 Oct 2012 10:42:32 -0700
+Received: from mail106-va3-R.bigfish.com (10.7.14.240) by
+ VA3EHSOBE005.bigfish.com (10.7.40.25) with Microsoft SMTP Server id
+ 14.1.225.23; Tue, 16 Oct 2012 17:42:29 +0000
+Received: from mail106-va3 (localhost [127.0.0.1])	by
+ mail106-va3-R.bigfish.com (Postfix) with ESMTP id 339A5600C3	for
+ <jspring@path.berkeley.edu>; Tue, 16 Oct 2012 17:42:29 +0000 (UTC)
+X-Forefront-Antispam-Report: CIP:149.136.17.12;KIP:(null);UIP:(null);IPV:NLI;H:trmx001.dot.ca.gov;RD:svhqsacsmtp01.dot.ca.gov;EFVD:NLI
+X-SpamScore: -13
+X-BigFish: VPS-13(zf7Izbb2dI98dI9371Ic85fh103dK542M1432Izz1202h1d1ah1d2ahzzz2fh70h668h839ha12hd25hf0ah107ah1288h12a5h12bdh137ah139eh1441h34h1155h)
+Received-SPF: pass (mail106-va3: domain of dot.ca.gov designates 149.136.17.12 as permitted sender) client-ip=149.136.17.12; envelope-from=david_j_wells@dot.ca.gov; helo=trmx001.dot.ca.gov ;1.dot.ca.gov ;
+Received: from mail106-va3 (localhost.localdomain [127.0.0.1]) by mail106-va3
+ (MessageSwitch) id 1350409347470893_18787; Tue, 16 Oct 2012 17:42:27 +0000
+ (UTC)
+Received: from VA3EHSMHS007.bigfish.com (unknown [10.7.14.254])	by
+ mail106-va3.bigfish.com (Postfix) with ESMTP id 628954007B	for
+ <jspring@path.berkeley.edu>; Tue, 16 Oct 2012 17:42:27 +0000 (UTC)
+Received: from trmx001.dot.ca.gov (149.136.17.12) by VA3EHSMHS007.bigfish.com
+ (10.7.99.17) with Microsoft SMTP Server id 14.1.225.23; Tue, 16 Oct 2012
+ 17:42:26 +0000
+In-Reply-To: <507D988D.9000108@path.berkeley.edu>
+Subject: Re: Fwd: Remote Activation of the Universal Ramp Metering Program
+To: John Spring <jspring@path.berkeley.edu>
+X-Mailer: Lotus Notes Release 6.5.4 March 27, 2005
+Message-ID: <OF0B173235.EF8EEEFF-ON88257A99.00608050-88257A99.00614360@dot.ca.gov>
+From: David J Wells <david_j_wells@dot.ca.gov>
+Date: Tue, 16 Oct 2012 10:42:19 -0700
+X-MIMETrack: Serialize by Router on SACSMTP01/SVR/Caltrans/CAGov(Release 8.5.2FP3|July
+ 10, 2011) at 10/16/2012 10:42:25
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="0__=07BBF00ADFF306C08f9e8a93df938690918c07BBF00ADFF306C0"
+Content-Disposition: inline
+X-OriginatorOrg: dot.ca.gov
+X-Ucb-Scan-Signature: 2a6ef9f4b156036de12d577cf0c9a57dc4e2c8c6
+X-Ucb-Spam: Gauge=IIIIIII, Probability=7%, Report='RCVD_IN_DNSWL_LOW -0.7'
+X-Ucb-Notice: This message has been processed by a spam tagging system.
+
+--0__=07BBF00ADFF306C08f9e8a93df938690918c07BBF00ADFF306C0
+Content-Type: text/plain; charset="US-ASCII"
+
+The URMS can handle many messages. Most of these are in support of legacy
+170 ramp metering programs such as TOS, SDRMS, SATAMS and OCRMS.
+
+In this case we are actually emulating a SDRMS SET packet at address
+0x7001.
+
+As such, the checksum in a simple additive 8 bit checksum of bytes 0 to 20
+
+
+
+David J. Wells
+Traffic Operations, ITS Projects & Standards
+david_j_wells@dot.ca.gov
+(916) 653-1342
+
+
+
+                                                                           
+             John Spring                                                   
+             <jspring@path.ber                                             
+             keley.edu>                                                 To 
+                                       David J Wells                       
+             10/16/2012 10:25          <david_j_wells@dot.ca.gov>          
+             AM                                                         cc 
+                                                                           
+                                                                   Subject 
+                                       Re: Fwd: Remote Activation of the   
+                                       Universal Ramp Metering Program     
+                                                                           
+                                                                           
+                                                                           
+                                                                           
+                                                                           
+                                                                           
+
+
+
+
+There's more than one?  Do you have documentation?  I'm talking about
+the message format in the Word document (attached) you sent to Xiao-Yun
+back on May 17.
+
+On 10/16/2012 9:57 AM, David J Wells wrote:
+> Which URMS message are you talking about?
+>
+>
+> David J. Wells
+> Traffic Operations, ITS Projects & Standards
+> david_j_wells@dot.ca.gov
+> (916) 653-1342
+>
+>
+>
+>
+
+>               John Spring
+>               <jspring@path.ber
+>               keley.edu>
+To
+>                                         David J Wells
+>               10/15/2012 08:28          <david_j_wells@dot.ca.gov>
+>               PM
+cc
+>
+
+>
+Subject
+>                                         Re: Fwd: Remote Activation of the
+>                                         Universal Ramp Metering Program
+>
+
+>
+
+>
+
+>
+
+>
+
+>
+
+>
+>
+>
+>
+> Quick question:
+>
+> The checksum in the urms message:  is this just an additive checksum, or
+> the frame checking sequence that Caltrans uses?  The latter is a 16-bit
+> number and the checksum is an 8-bit number.
+>
+> Thanks!
+>
+> John
+>
+> On 10/11/2012 09:55 AM, David J Wells wrote:
+>> In the /f0 directory there is a file named "startup"
+>>
+>> This file tell the controller what to do when it starts up (ie. run TSCP
+> or
+>> the URMS)
+>>
+>> Within each of the URMS and TSCP folders there is also a copy of the
+>> startup script.
+>>
+>> Basicly to change it to a TSCP controller from a URMS controller
+>>
+>>      1.  chd /f0
+>>      2. rename startup URMSstartup
+>>      3. copy tscp/startup startup
+>>      4. break
+>>
+>> Basicly to change it to a URMS controller from a TSCP controller
+>>
+>>      1.  chd /f0
+>>      2. rename startup TSCPstartup
+>>      3. copy urms/startup startup
+>>      4. break
+>>
+>> Sometimes I have a little more problems when the TSCP is installed
+> because
+>> that application does not always allow renaming the startup file while
+> the
+>> program is being run.
+>>
+>>
+>>
+>>
+>> David J. Wells
+>> Traffic Operations, ITS Projects & Standards
+>> david_j_wells@dot.ca.gov
+>> (916) 653-1342
+>>
+>>
+>>
+>>
+>>                John Spring
+>>                <jspring@path.ber
+>>                keley.edu>
+> To
+>>                                          David J Wells
+>>                10/10/2012 05:56          <david_j_wells@dot.ca.gov>
+>>                PM
+> cc
+> Subject
+>>                                          Re: Fwd: Remote Activation of
+the
+>>                                          Universal Ramp Metering Program
+>>
+>>
+>>
+>>
+>>
+>>
+>> David J Wells wrote:
+>>> Yes both the URMS and the TSCP can be loaded onto the controller at the
+>>> same time.
+>>>
+>>> Odds are, you still have both loaded on the controller as loading the
+>> TSCP
+>>> typically does not delete the URMS files.
+>>>
+>>> Do you have access to the 2070's operating system?
+>> Yes, I do.  If I execute "dir -e" in the directory /f0 I see, among
+>> other directories:
+>>
+>> d-ewrewr ... URMS
+>> d-ewrewr ... URMS2
+>> ------wr ... URMS_9922_UPGRADE
+>>
+>> Is this what I need?
+>>
+>>>
+>>> David J. Wells
+>>> Traffic Operations, ITS Projects & Standards
+>>> david_j_wells@dot.ca.gov
+>>> (916) 653-1342
+>>>
+>>>
+>>>
+>>>
+>>>                John Spring
+>>>                <jspring@path.ber
+>>>                keley.edu>
+>> To
+>>>                                          David J Wells
+>>>                10/09/2012 08:33          <david_j_wells@dot.ca.gov>
+>>>                PM
+>> cc
+>>>                                          Xiao-Yun Lu
+>>>                                          <xylu@path.berkeley.edu>
+>> Subject
+>>>                                          Re: Fwd: Remote Activation of
+> the
+>>>                                          Universal Ramp Metering
+Program
+>>>
+>>>
+>>>
+>>> Hi David:
+>>>
+>>> Is it possible to load the modified version of URMS alongside of TSCP,
+>>> so that I can choose which software to run at boot time?
+>>>
+>>> I have only one 2070 (gotta find another one!), and am developing code
+>>> for both the ramp metering and signal controller 2070s.  It would be
+>>> helpful to have both programs available.
+>>>
+>>> I had District 4 load TSCP 2.16 on the 2070 you sent me, but that wiped
+>>> out the URMS that was installed.  If necessary, I can come out to Sac
+>>> and meet with you to load the modified version of URMS.
+>>>
+>>> Regards,
+>>> John
+>>>
+>>> On 05/17/2012 01:01 PM, David J Wells wrote:
+>>>> It is a binary message packet which can be used with the controller
+> over
+>>>> Ethernet or Serial Communications.
+>>>>
+>>>> Plan number refers to the metering plans used for Traffic Responsive
+>>>> Metering. For Fixed Rate Timing I suggest entering a value of 1 for
+>>>> metering plan. (Range is 1 to 10)
+>>>> The controller however will not be using the plan for Fixed Rate
+>>> Metering.
+>>>> I do not know what data is collected at the District 4 site. You might
+>>> want
+>>>> to ask Sean Couglin about that.
+>>>> Normally we collect volume and occupancy of the queues, demand and
+>>> passage
+>>>> detectors of the metered lanes and the occupancy, volume and speed on
+>>>> mainline lanes.
+>>>>
+>>>>
+>>>>
+>>>> David J. Wells
+>>>> Traffic Operations, ITS Projects & Standards
+>>>> david_j_wells@dot.ca.gov
+>>>> (916) 653-1342
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>                 John Spring
+>>>>                 <jspring@path.ber
+>>>>                 keley.edu>
+>>> To
+>>>>                                           David Wells
+>>>>                 05/17/2012 12:52          <david_j_wells@dot.ca.gov>
+>>>>                 PM
+>>> cc
+>>>>                                           Xiao-Yun Lu
+>>>>                                           <xylu@path.berkeley.edu>
+>>>>
+>>> Subject
+>>>>                                           Re: Fwd: Remote Activation
+of
+>> the
+>>>>                                           Universal Ramp Metering
+> Program
+>>>
+>>>
+>>>
+>>>
+>>>>
+>>>> Hi David:
+>>>>
+>>>> I looked at the message format.  Just a couple of questions:
+>>>>
+>>>> 1. This is a packed binary message in an ethernet packet, right?
+>>>> 2. Is "Plan Number" something we define?  That is, would the
+controller
+>>>> select the sequencing plan according to some structure already
+> contained
+>>>> in memory that is indexed by the plan number?
+>>>>
+>>>> Also a question I should have gotten clarified at the meeting:
+>>>> What data is collected at the Rte 87/Taylor intersection by the TMC?
+>>>> Queue length, occupancy, etc.
+>>>>
+>>>> Thanks very much!
+>>>>
+>>>> Best regards,
+>>>> John Spring
+>>>>
+>>>>
+>>>> On 05/17/2012 12:37 PM, Xiao-Yun Lu wrote:
+>>>>> -------- Original Message --------
+>>>>> Subject: Remote Activation of the Universal Ramp Metering Program
+>>>>> Date: Thu, 17 May 2012 12:31:37 -0700
+>>>>> From: David J Wells<david_j_wells@dot.ca.gov>
+>>>>> To: Xiao-Yun Lu<xylu@path.berkeley.edu>
+>>>>>
+>>>>>
+>>>>> Dr. Xiao-Yun Lu.
+>>>>>
+>>>>> I will need to modify the URMS Slightly to allow remote activation
+> from
+>>> a
+>>>>> non-TMC source.
+>>>>>
+>>>>> When the URMS is updated, here is what the protocol will be.
+>>>>>
+>>>>> (See attached file: Remote Activtion of the Universal Ramp Metering
+>>>>> Program.docx)
+>>>>>
+>>>>> Let me know if you have any questions,
+>>>>>
+>>>>>
+>>>>> David J. Wells
+>>>>> Traffic Operations, ITS Projects&  Standards
+>>>>> david_j_wells@dot.ca.gov
+>>>>> (916) 653-1342
+>>>>>
+>>>
+>>>
+>>>
+>>
+>>
+>
+>
+>
+>
+
+(See attached file: Remote Activation of the Universal Ramp Metering
+Program.docx)
+--0__=07BBF00ADFF306C08f9e8a93df938690918c07BBF00ADFF306C0
+Content-Type: application/octet-stream;
+	name="Remote Activation of the Universal Ramp Metering Program.docx"
+Content-Disposition: attachment;
+	filename="Remote Activation of the Universal Ramp Metering Program.docx"
+Content-Transfer-Encoding: base64
+
+UEsDBBQABgAIAAAAIQDd/JU3ZgEAACAFAAATAAgCW0NvbnRlbnRfVHlwZXNdLnhtbCCiBAIooAAC
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC0
+VMtuwjAQvFfqP0S+Vomhh6qqCBz6OLZIpR9g7A1Y9Uv28vr7bgJEVQtBKuUSKVnvzOzsxIPR2pps
+CTFp70rWL3osAye90m5Wso/JS37PsoTCKWG8g5JtILHR8PpqMNkESBl1u1SyOWJ44DzJOViRCh/A
+UaXy0Qqk1zjjQchPMQN+2+vdcekdgsMcaww2HDxBJRYGs+c1fd4qiWASyx63B2uukokQjJYCSSlf
+OvWDJd8xFNTZnElzHdINyWD8IENdOU6w63sja6JWkI1FxFdhSQZf+ai48nJhaYaiG+aATl9VWkLb
+X6OF6CWkRJ5bU7QVK7Tb6z+qI+HGQPp/FVvcLnrSOY4+JE57OZsf6s0rUDlZESCihnZ1x0cHRLLs
+EsPvkLvGb1KAlHfgzbN/tgcNzEnKin6JiZgaOJvvV/Ja6JMiVjB9v5j738C7hLT5kz7+wYz9dVF3
+H0gdb+634RcAAAD//wMAUEsDBBQABgAIAAAAIQAekRq38wAAAE4CAAALAAgCX3JlbHMvLnJlbHMg
+ogQCKKAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAjJLbSgNBDIbvBd9hyH032woi0tneSKF3IusDhJnsAXcOzKTavr2jILpQ217m9OfLT9ab
+g5vUO6c8Bq9hWdWg2JtgR99reG23iwdQWchbmoJnDUfOsGlub9YvPJGUoTyMMaui4rOGQSQ+ImYz
+sKNchci+VLqQHEkJU4+RzBv1jKu6vsf0VwOamabaWQ1pZ+9AtcdYNl/WDl03Gn4KZu/Yy4kVyAdh
+b9kuYipsScZyjWop9SwabDDPJZ2RYqwKNuBpotX1RP9fi46FLAmhCYnP83x1nANaXg902aJ5x687
+HyFZLBZ9e/tDg7MvaD4BAAD//wMAUEsDBBQABgAIAAAAIQDWZLNR+gAAADEDAAAcAAgBd29yZC9f
+cmVscy9kb2N1bWVudC54bWwucmVscyCiBAEooAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+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
+
+--0__=07BBF00ADFF306C08f9e8a93df938690918c07BBF00ADFF306C0--

@@ -1,0 +1,212 @@
+Return-Path: <david_j_wells@dot.ca.gov>
+Received: from cm04fe.ist.berkeley.edu (cm04fe.IST.Berkeley.EDU [169.229.218.145])
+	 by cm07ms.ist.berkeley.edu (Cyrus v2.3.16-CalMail-v2.4) with LMTPA;
+	 Tue, 16 Oct 2012 16:46:36 -0700
+
+Just a comment about the remote activation packet :
+
+Metered Lane Actions (default should be 6)
+        1 - Rest in Dark
+        2 - Rest in Green
+        3 - Fixed Rate
+        4 - Traffic Responsive
+        6 - Skip (Normal Case)
+        7 - Slave Responsive (slave data being used from a master
+controller)
+
+Metered Lane  Release Rate in VPH (MSB) (default should be 0x03)
+Metered Lane  Release Rate in VPH (LSB)  (default should be 0x84)
+Metered Lane  Plan Number   (default should be 0x1)
+
+Essentially the default is: Action = Skip to Time of Day, VPH = 900 , Plan
+= 1
+
+
+
+
+David J. Wells
+Traffic Operations, ITS Projects & Standards
+david_j_wells@dot.ca.gov
+(916) 653-1342
+
+
+Return-Path: <david_j_wells@dot.ca.gov>
+Received: from cm02fe.ist.berkeley.edu (cm02fe.IST.Berkeley.EDU [169.229.218.143])
+	 by cm07ms.ist.berkeley.edu (Cyrus v2.3.16-CalMail-v2.4) with LMTPA;
+	 Tue, 16 Oct 2012 10:42:32 -0700
+
+The URMS can handle many messages. Most of these are in support of legacy
+170 ramp metering programs such as TOS, SDRMS, SATAMS and OCRMS.
+
+In this case we are actually emulating a SDRMS SET packet at address
+0x7001.
+
+As such, the checksum in a simple additive 8 bit checksum of bytes 0 to 20
+
+
+
+> Quick question:
+>
+> The checksum in the urms message:  is this just an additive checksum, or
+> the frame checking sequence that Caltrans uses?  The latter is a 16-bit
+> number and the checksum is an 8-bit number.
+>
+> Thanks!
+>
+> John
+>
+> On 10/11/2012 09:55 AM, David J Wells wrote:
+>> In the /f0 directory there is a file named "startup"
+>>
+>> This file tell the controller what to do when it starts up (ie. run TSCP
+> or
+>> the URMS)
+>>
+>> Within each of the URMS and TSCP folders there is also a copy of the
+>> startup script.
+>>
+>> Basicly to change it to a TSCP controller from a URMS controller
+>>
+>>      1.  chd /f0
+>>      2. rename startup URMSstartup
+>>      3. copy tscp/startup startup
+>>      4. break
+>>
+>> Basicly to change it to a URMS controller from a TSCP controller
+>>
+>>      1.  chd /f0
+>>      2. rename startup TSCPstartup
+>>      3. copy urms/startup startup
+>>      4. break
+>>
+>> Sometimes I have a little more problems when the TSCP is installed
+> because
+>> that application does not always allow renaming the startup file while
+> the
+>> program is being run.
+>>
+>>
+>>
+>>
+>> David J Wells wrote:
+>>> Yes both the URMS and the TSCP can be loaded onto the controller at the
+>>> same time.
+>>>
+>>> Odds are, you still have both loaded on the controller as loading the
+>> TSCP
+>>> typically does not delete the URMS files.
+>>>
+>>> Do you have access to the 2070's operating system?
+>> Yes, I do.  If I execute "dir -e" in the directory /f0 I see, among
+>> other directories:
+>>
+>> d-ewrewr ... URMS
+>> d-ewrewr ... URMS2
+>> ------wr ... URMS_9922_UPGRADE
+>>
+>> Is this what I need?
+>>
+>>>
+>>> David J. Wells
+>>> Traffic Operations, ITS Projects & Standards
+>>> david_j_wells@dot.ca.gov
+>>> (916) 653-1342
+>>>
+>>>
+>>>                John Spring
+>>>                <jspring@path.ber
+>>>                keley.edu>
+>> To
+>>>                                          David J Wells
+>>>                10/09/2012 08:33          <david_j_wells@dot.ca.gov>
+>>>                PM
+>> Subject    Re: Fwd: Remote Activation of the Universal Ramp Metering Program
+>>>
+>>>
+>>> Hi David:
+>>>
+>>> Is it possible to load the modified version of URMS alongside of TSCP,
+>>> so that I can choose which software to run at boot time?
+>>>
+>>> I have only one 2070 (gotta find another one!), and am developing code
+>>> for both the ramp metering and signal controller 2070s.  It would be
+>>> helpful to have both programs available.
+>>>
+>>> I had District 4 load TSCP 2.16 on the 2070 you sent me, but that wiped
+>>> out the URMS that was installed.  If necessary, I can come out to Sac
+>>> and meet with you to load the modified version of URMS.
+>>>
+>>> Regards,
+>>> John
+>>>
+>>> On 05/17/2012 01:01 PM, David J Wells wrote:
+>>>> It is a binary message packet which can be used with the controller
+> over
+>>>> Ethernet or Serial Communications.
+>>>>
+>>>> Plan number refers to the metering plans used for Traffic Responsive
+>>>> Metering. For Fixed Rate Timing I suggest entering a value of 1 for
+>>>> metering plan. (Range is 1 to 10)
+>>>> The controller however will not be using the plan for Fixed Rate
+>>> Metering.
+>>>> I do not know what data is collected at the District 4 site. You might
+>>> want
+>>>> to ask Sean Couglin about that.
+>>>> Normally we collect volume and occupancy of the queues, demand and
+>>> passage
+>>>> detectors of the metered lanes and the occupancy, volume and speed on
+>>>> mainline lanes.
+>>>>
+>>>>
+>>>>
+>>>
+>>>>
+>>>> Hi David:
+>>>>
+>>>> I looked at the message format.  Just a couple of questions:
+>>>>
+>>>> 1. This is a packed binary message in an ethernet packet, right?
+>>>> 2. Is "Plan Number" something we define?  That is, would the
+controller
+>>>> select the sequencing plan according to some structure already
+> contained
+>>>> in memory that is indexed by the plan number?
+>>>>
+>>>> Also a question I should have gotten clarified at the meeting:
+>>>> What data is collected at the Rte 87/Taylor intersection by the TMC?
+>>>> Queue length, occupancy, etc.
+>>>>
+>>>> Thanks very much!
+>>>>
+>>>> Best regards,
+>>>> John Spring
+>>>>
+>>>>
+>>>> On 05/17/2012 12:37 PM, Xiao-Yun Lu wrote:
+>>>>> -------- Original Message --------
+>>>>> Subject: Remote Activation of the Universal Ramp Metering Program
+>>>>> Date: Thu, 17 May 2012 12:31:37 -0700
+>>>>> From: David J Wells<david_j_wells@dot.ca.gov>
+>>>>> To: Xiao-Yun Lu<xylu@path.berkeley.edu>
+>>>>>
+>>>>>
+>>>>> Dr. Xiao-Yun Lu.
+>>>>>
+>>>>> I will need to modify the URMS Slightly to allow remote activation
+> from
+>>> a
+>>>>> non-TMC source.
+>>>>>
+>>>>> When the URMS is updated, here is what the protocol will be.
+>>>>>
+>>>>> (See attached file: Remote Activtion of the Universal Ramp Metering
+>>>>> Program.docx)
+>>>>>
+>>>>> Let me know if you have any questions,
+>>>>>
+>>>>>
+>>>>> David J. Wells
+>>>>> Traffic Operations, ITS Projects&  Standards
+>>>>> david_j_wells@dot.ca.gov
+>>>>> (916) 653-1342
+

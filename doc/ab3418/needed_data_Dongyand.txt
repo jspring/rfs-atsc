@@ -1,0 +1,11 @@
+1. Phase greens and yellows
+2. Vehicle calls
+3. Ped calls
+
+
+Ramp meter
+1. mainline occupancy
+2. onramp detector statuses
+	passage, demand, and queue for all metered lanes
+3. phase greens and yellows
+4. current release rate

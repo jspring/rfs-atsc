@@ -1,0 +1,26 @@
+jspring@blue-truck:/home/atsc/doc/tscp$ sudo minicom
+
+Welcome to minicom 2.5                                                                                                
+                                                                                                                      
+OPTIONS: I18n                                                                                                         
+Compiled on May  2 2011, 00:39:27.                                                                                    
+Port /dev/ttyUSB0                                                                                                     
+                                                                                                                      
+Press CTRL-A Z for help on special keys                                                                               
+                                                                                                                      
+                                                                                                                      
+A valid OS-9 bootfile was found.                                                                                      
+Starting SYSGO                                                                                                        
+Executing /f0/CMDS/etcsenet                                                                                           
++13                                                                                                                   
+/f0wp/opexec was not started (Error 216)                                                                              
+Executing /f0wp/startup                                                                                                                                                  
++18                                                                                                                                                                      
++19                                                                                                                                                                      
++20                                                                                                                                                                      
++21                                                                                                                                                                      
++22                                                                                                                                                                      
+shell: can't execute "/f0/sys/startspf"  -                                                                                                                               
+Problem doing User Startup file: Error 216                                                                                                                               
+                                                                                                                                                                         
+Forking Shell #1                                                                                                                                                         
