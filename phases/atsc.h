@@ -12,6 +12,9 @@
  * Copyright (c) 2005   Regents of the University of California
  *
  */
+
+#ifndef ATSC_H
+#define ATSC_H
  
 #include "timestamp.h"
 
@@ -143,3 +146,5 @@ static inline int clear_atsc_phase(unsigned char *status, int phase_num)
 {
 	return clear_atsc(status, phase_num, MAX_PHASE_STATUS_GROUPS);
 }
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef AB3418_LIB_H
+#define AB3418_LIB_H
+
 #include "msgs.h"
 #include "ab3418comm.h"
 
@@ -36,3 +39,5 @@ int check_and_reconnect_serial(int retval, int *fpin, int *fpout, char *port);
 extern int set_timing(db_timing_set_2070_t *db_timing_set_2070, int *msg_len, int fpin, int fpout, char verbose);
 extern int print_status(get_long_status8_resp_mess_typ *status);
 extern void fcs_hdlc(int msg_len, void *msgbuf, char verbose);
+
+#endif
