@@ -23,7 +23,7 @@ static void sig_hand(int code)
                 longjmp(exit_env, code);
 }
 
-const char *usage = "-v (verbose) -r <controller IP address (def. 192.168.1.126)> -p <port (def. 10011)> -s (standalone, no DB) -l (print log)\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t";
+const char *usage = "-v (verbose) -r <controller IP address (def. 10.0.1.7)> -p <port (def. 4444)> -s (standalone, no DB) -l (print log)\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t";
 
 db_id_t db_vars_list[] =  {
         {DB_URMS_STATUS_VAR, sizeof(db_urms_status_t)}
@@ -126,9 +126,14 @@ int main(int argc, char *argv[]) {
 		clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
 		if( DB_TRIG_VAR(&trig_info) == DB_URMS_STATUS_VAR ) {
 			db_clt_read(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
-			printf("Got DB_URMS_STATUS_VAR trigger sizeof(db_urms_status_t) %d\n", sizeof(db_urms_status_t));
-			printf("%#hhx %#hhx \n", db_urms_status.metered_lane_stat[0].metered_lane_rate_msb, db_urms_status.metered_lane_stat[0].metered_lane_rate_lsb);
-			printf("%#hhx %#hhx \n", db_urms_status.queue_stat[0].occ_msb, db_urms_status.queue_stat[0].occ_lsb);
+			if(verbose) {
+			    printf("Got DB_URMS_STATUS_VAR trigger sizeof(db_urms_status_t) %d\n", sizeof(db_urms_status_t));
+			    for(i=0; i < sizeof(db_urms_status_t); i++)
+			       	printf("%d:%#hhx ", i, buf[i]);
+			    printf("\n");
+			    printf("%#hhx %#hhx \n", db_urms_status.metered_lane_stat[0].metered_lane_rate_msb, db_urms_status.metered_lane_stat[0].metered_lane_rate_lsb);
+			    printf("%#hhx %#hhx \n", db_urms_status.queue_stat[0].occ_msb, db_urms_status.queue_stat[0].occ_lsb);
+			}
 			write(urmsfd, &db_urms_status, sizeof(db_urms_status_t));
 		}
 		else {
