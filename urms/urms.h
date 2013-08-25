@@ -214,26 +214,37 @@ typedef struct {
 typedef struct {
 		// URMS Poll Response   
 		// Dec Hex Parameter 
-	char num_meter;	//1 1 Number of Metered Lanes 
-	char num_main;	//2 2 Number of Mainline Lanes 
-	char num_opp;	//3 3 Number of Opposite Mainline Lanes 
-	char num_addl_det;	//4 4 Number of Additional Detectors 
-	struct mainline_stat mainline_stat[3]; //5-28
-	char mainline_dir;	//29 Mainline Direction Bits (Each Lane 0=Normal, 1=Reverse) 
-	struct metered_lane_stat metered_lane_stat[3]; //30-59
-	char is_metering;	//60 Is Metering (1 = YES) 
-	struct queue_stat queue_stat[3]; //61-75
+	char num_meter;	//0 1 Number of Metered Lanes 
+	char num_main;	//1 2 Number of Mainline Lanes 
+	char num_opp;	//2 3 Number of Opposite Mainline Lanes 
+	char num_addl_det;	//3 4 Number of Additional Detectors 
+	struct mainline_stat mainline_stat[3]; //4-33
+	char mainline_dir;	//34 Mainline Direction Bits (Each Lane 0=Normal, 1=Reverse) 
+	struct metered_lane_stat metered_lane_stat[3]; //35-58
+	char is_metering;	//59 Is Metering (1 = YES) 
+	struct queue_stat queue_stat[3]; //60-74
 } IS_PACKED db_urms_status_t;
 
 /*
-ML1	I1U	1.8	46
-MT1	I1L	1.1	39	
-ML2	I2U	2.4	50	
-MT2	I2L	2.1	47	
-ML3	I3U	2.3	49
+Det	File	Port	Pin	Vol	Occ
+ML1	I1U	1.8	46	???	???
+MT1	I1L	1.1	39	???	???
+ML2	I2U	2.4	50	36	37-8
+MT2	I2L	2.1	47	40	41-2
+ML3	I3U	2.3	49	46	47-8
 MT3	I3L	2.2	48	
 ML4	I4U	3.1	55
 MT4	I4L	3.2	56	
+D1	I9U	6.7	81	251
+D2	I11U	2.7	53	259
+D3	I13U	1.5	43	267
+P1	I9L	6.6	80	253	???
+P2	I11L	2.8	54	264	???
+P3	I13L	1.4	42	270	???
+Q1-1	I10U	6.5	79	335	336-7
+Q2-1	I12U	1.3	41	340	341-2
+Q3-1	I14U	1.7	45	345	346-7
+
 OL1	I5U	2.5	51
 OT1	I5L	2.6	52	
 OL2	I6U	3.3	57
@@ -242,16 +253,7 @@ OL3	I7U	3.5	59
 OT3	I7L	3.6	60	
 OL4	I8U	3.7	61
 OT4	I8L	3.8	62	
-D1	I9U	6.7	81	
-D2	I11U	2.7	53	
-D3	I13U	1.5	43	
-P1	I9L	6.6	80	
-P2	I11L	2.8	54	
-P3	I13L	1.4	42	
-Q1-1	I10U	6.5	79	
-Q2-1	I12U	1.3	41	
-Q3-1	I14U	1.7	45	
-F1	I10L	6.8	39	
+F1	I10L	6.8	82	
 F2	I12L	1.2	40	
 F3	I14L	1.6	44	
 
