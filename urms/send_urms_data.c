@@ -215,6 +215,9 @@ static int OpenSOBUConnection(char *SOBUIP, char *port) {
 			perror("socket");
 			continue;
 		}
+               if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
+                   break;                  /* Success */
+
 		if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1) {
 			break;		    /* Success */
 		}
