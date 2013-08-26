@@ -223,12 +223,16 @@ typedef struct {
 	struct metered_lane_stat metered_lane_stat[3]; //35-58
 	char is_metering;	//59 Is Metering (1 = YES) 
 	struct queue_stat queue_stat[3]; //60-74
+	char	cmd_src[3];
+	char	action[3];
 } IS_PACKED db_urms_status_t;
 
 /*
-Det	File	Port	Pin	Vol	Occ
-ML1	I1U	1.8	46	???	???
-MT1	I1L	1.1	39	???	???
+				URMS	URMS
+				Poll	Poll	db_urms_status
+Det	File	Port	Pin	Vol	Occ	Vol	Occ
+ML1	I1U	1.8	46	26	27-8	4	5-6
+MT1	I1L	1.1	39	30	31-2	9	10-1		
 ML2	I2U	2.4	50	36	37-8
 MT2	I2L	2.1	47	40	41-2
 ML3	I3U	2.3	49	46	47-8
