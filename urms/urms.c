@@ -325,6 +325,8 @@ int main(int argc, char *argv[]) {
 				printf("1:ML%d occ %.1f\n", i+1, urms_datafile.mainline_lead_occ[i]);
 			 	printf("1:MT%d occ %.1f\n", i+1, urms_datafile.mainline_trail_occ[i]);
 				printf("1:Q%d-1 occ %.1f\n", i+1, urms_datafile.queue_occ[i]);
+				printf("1:lane %d cmd_src %hhu\n", i+1, db_urms_status.cmd_src[i]);
+				printf("1:lane %d action %hhu\n", i+1, db_urms_status.action[i]);
 			    }
 			    // Writing to the datafile variable is only necessary if there's
 			    // going to be a datafile on the ramp meter computer

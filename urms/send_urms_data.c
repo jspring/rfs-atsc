@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
         get_local_name(hostname, MAXHOSTNAMELEN);
         if ( (pclt = db_list_init(argv[0], hostname, domain,
             xport, NULL, 0, db_trig_list,
+//            xport, db_vars_list, num_db_variables, db_trig_list,
             num_trig_variables)) == NULL) {
             exit(EXIT_FAILURE);
 	}
@@ -105,6 +106,7 @@ int main(int argc, char *argv[]) {
         if (setjmp(exit_env) != 0) {
                 close(urmsfd);
                 db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
+//                db_list_done(pclt, db_vars_list, 0, db_trig_list, num_trig_variables);
 		printf("get_status_err %d\n", get_status_err);
                 exit(EXIT_SUCCESS);
         } else
@@ -124,7 +126,8 @@ int main(int argc, char *argv[]) {
 		// the loop.
 
 		clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
-		if( DB_TRIG_VAR(&trig_info) == DB_URMS_STATUS_VAR ) {
+//TRIGGERING WAS NOT WORKING FOR SOME REASON, SO I COMMENTED THIS OUT!!!!
+//		if( DB_TRIG_VAR(&trig_info) == DB_URMS_STATUS_VAR ) {
 			db_clt_read(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
 			if(verbose) {
 			    printf("Got DB_URMS_STATUS_VAR trigger sizeof(db_urms_status_t) %d\n", sizeof(db_urms_status_t));
@@ -135,9 +138,9 @@ int main(int argc, char *argv[]) {
 			    printf("%#hhx %#hhx \n", db_urms_status.queue_stat[0].occ_msb, db_urms_status.queue_stat[0].occ_lsb);
 			}
 			write(urmsfd, &db_urms_status, sizeof(db_urms_status_t));
-		}
-		else {
-			printf("Got another trigger urmsfd %d\n", urmsfd);
+//		}
+//		else {
+//			printf("send_urms_data: Got another trigger urmsfd %d\n", urmsfd);
 			if(urmsfd > 0) {
 				FD_ZERO(&readfds);
 				FD_SET(urmsfd, &readfds);
@@ -182,7 +185,7 @@ int main(int argc, char *argv[]) {
 					fprintf(stderr, "2: Could not open connection to SOBU\n");
 				}
 			}
-		}
+//		}
 	}
 }
 
