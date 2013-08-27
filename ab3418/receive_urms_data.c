@@ -1,9 +1,16 @@
-/* urms.c - Controls URMS running on a 2070 via ethernet
+/* receive_urms_data.c - Listens for a connection from SOBU46, opens it and writes data
+** from the ramp meter computer to database
 **
+** receive_urms_data is a TCP listener.  If the connection is dropped from the other 
+** end of the socket pair, bind thinks the original address is still bound, and 
+** throws an error. You cannot "un-bind" the address, so what I've done is to exit
+** with an exit status of 1 (EXIT_FAILURE). An external while loop restarts 
+** receive_urms_data in that case.
 */
 
 #include "urms.h"
 #include "tos.h"
+#include "/home/art_coord_ramp_metering/src/wrfiles_ac_rm.h"
 
 #define BUF_SIZE	sizeof(gen_mess_t)
 
@@ -23,7 +30,7 @@ static void sig_hand(int code)
                 longjmp(exit_env, code);
 }
 
-const char *usage = "-v (verbose) -r <controller IP address (def. 192.168.1.126)> -p <port (def. 10011)> -s (standalone, no DB) -l (print log)\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t";
+const char *usage = "-v (verbose) -p <port (def. 10011)> -i <loop interval (ms)>";
 
 db_id_t db_vars_list[] =  {
         {DB_URMS_VAR, sizeof(db_urms_t)},
@@ -41,8 +48,7 @@ static int OpenSOBUListener(unsigned short serv_port);
 
 int main(int argc, char *argv[]) {
 	int urmsfd;
-	gen_mess_t gen_mess;
-	unsigned short port = 4466;
+	unsigned short port = 4444;
 
         int option;
 
@@ -54,6 +60,7 @@ int main(int argc, char *argv[]) {
         trig_info_typ trig_info;
 	db_urms_status_t db_urms_status;
 	db_urms_t db_urms;
+	urms_datafile_t urms_datafile;
 	int loop_interval = 500; 	// Loop interval, ms
 	int verbose = 0;
 	int i;
@@ -86,7 +93,7 @@ int main(int argc, char *argv[]) {
 	// Open connection to URMS controller
 	urmsfd = OpenSOBUListener(port);
 	if(urmsfd < 0) {
-		fprintf(stderr, "Could not open connection to SOBU\n");
+		fprintf(stderr, "Could not open listener to SOBU\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -125,8 +132,8 @@ int main(int argc, char *argv[]) {
 			write(urmsfd, &db_urms, sizeof(db_urms_t));
 		}
 		else {
-//                        printf("Got another trigger urmsfd %d\n", urmsfd);
-                        if(urmsfd > 0) {
+//                    printf("Got another trigger urmsfd %d\n", urmsfd);
+			if(urmsfd > 0) {
                                 FD_ZERO(&readfds);
                                 FD_SET(urmsfd, &readfds);
                                 timeout.tv_sec = 0;
@@ -141,34 +148,40 @@ int main(int argc, char *argv[]) {
                                 if(selectval > 0) {
                                         nread = read(urmsfd, &db_urms_status, sizeof(db_urms_status_t));
                                         if(nread > 0) {
+					    if(verbose) {
                                                 printf("receive_urms_data: nread %d\n", nread);
                                                 for(i = 0; i<nread; i++)
-                                                        printf("%#hhx ", readbuff[i]);
+                                                        printf("%d:%#hhx ", i, readbuff[i]);
 						printf("\n");
+					    }
 						db_clt_write(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
+						for(i=0; i<3; i++) {
+							urms_datafile.mainline_lead_occ[i] = 0.1 * ((db_urms_status.mainline_stat[i].lead_occ_msb << 8) 
+											         + (unsigned char)(db_urms_status.mainline_stat[i].lead_occ_lsb));
+							urms_datafile.mainline_trail_occ[i] = 0.1 * ((db_urms_status.mainline_stat[i].trail_occ_msb << 8) 
+												 + (unsigned char)(db_urms_status.mainline_stat[i].trail_occ_lsb));
+							urms_datafile.queue_occ[i] = 0.1 * ((db_urms_status.queue_stat[i].occ_msb << 8) 
+											 + (unsigned char)(db_urms_status.queue_stat[i].occ_lsb));
+							urms_datafile.metering_rate[i] = ((db_urms_status.metered_lane_stat[i].metered_lane_rate_msb << 8) 
+											 + (unsigned char)(db_urms_status.metered_lane_stat[i].metered_lane_rate_lsb));
+							if(verbose) {
+							    printf("2:ML%d occ %.1f\n", i+1, urms_datafile.mainline_lead_occ[i]);
+							    printf("2:MT%d occ %.1f\n", i+1, urms_datafile.mainline_trail_occ[i]);
+							    printf("2:Q%d-1 occ %.1f\n", i+1, urms_datafile.queue_occ[i]);
+							}
+						}
+						db_clt_write(pclt, DB_URMS_DATAFILE_VAR, sizeof(urms_datafile_t), &urms_datafile);
                                         }
                                         if(nread == 0) {
-                                                if(urmsfd > 0)
-                                                        close(urmsfd);
-
-                                                // Reopen connection to URMS controller (just the first time we lose connection;
-                                                // after that, the file descriptor is less than zero)
-                                		urmsfd = OpenSOBUListener(port);
-                                                printf("1: urmsfd %d\n", urmsfd);
-                                                if(urmsfd < 0) {
-                                                        fprintf(stderr, "1: Could not open connection to SOBU\n");
+                                                fprintf(stderr, "Lost connection to SOBU. Exiting....\n");
+						exit(EXIT_FAILURE);
                                                 }
                                         }
-                                }
-                        }
-                        else {
-                                // Reopen connection to URMS controller
-                                printf("2.1: urmsfd %d\n", urmsfd);
-                                urmsfd = OpenSOBUListener(port);
-                                printf("2.2: urmsfd %d\n", urmsfd);
-                                if(urmsfd < 0) {
-                                        fprintf(stderr, "2: Could not open connection to SOBU\n");
+				else {
+					fprintf(stderr, "Lost connection to SOBU\n");
+					exit(EXIT_FAILURE);
 				}
+		
 			}
 		}
 	}
@@ -183,21 +196,18 @@ static int OpenSOBUListener(unsigned short serv_port) {
 	int client_sd;
 	struct sockaddr_in serv_addr;
 	struct sockaddr_in client_addr;
-	char receive_buffer[1500];
-	int rcvd;               /// count received from a call to recv
-	int byte_count = 0;     /// count received in total from a client
-	int fd;                 /// file descriptor for ouput
-	char *file_name = "port.out";
-	int loop_count = 0;
-	int perm = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
-	int opt;
 	int verbose = 0;
+	int reuse = 1;
 
 	printf("Echoing port %d\n", serv_port);
 
 	if ((serv_sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 		perror("TCP socket create failed");
 		return -1;
+	}
+
+	if(setsockopt(serv_sd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) < 0) {
+		perror("setsockopt");
 	}
 
 	memset(&serv_addr, 0, sizeof(serv_addr));
