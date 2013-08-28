@@ -57,5 +57,5 @@ int main(int argc, char *argv[]) {
                 }
         }
 
-	return db_set_ramp_metering(pclt, &db_urms_msg);
+	db_clt_write(pclt, DB_URMS_VAR, sizeof(db_urms_t), &db_urms_msg);
 }
