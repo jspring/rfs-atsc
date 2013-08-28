@@ -100,14 +100,16 @@ int main(int argc, char *argv[]) {
 	// Connect to database
         get_local_name(hostname, MAXHOSTNAMELEN);
         if ( (pclt = db_list_init(argv[0], hostname, domain,
-            xport, db_vars_list, num_db_variables, db_trig_list,
+//            xport, db_vars_list, num_db_variables, db_trig_list,
+            xport, NULL, 0, db_trig_list,
             num_trig_variables)) == NULL) {
             exit(EXIT_FAILURE);
 	}
 
         if (setjmp(exit_env) != 0) {
                 close(urmsfd);
-                db_list_done(pclt, db_vars_list, num_db_variables , db_trig_list, num_trig_variables);
+//                db_list_done(pclt, db_vars_list, num_db_variables , db_trig_list, num_trig_variables);
+                db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
 		printf("get_status_err %d\n", get_status_err);
                 exit(EXIT_SUCCESS);
         } else
@@ -132,21 +134,35 @@ int main(int argc, char *argv[]) {
 			write(urmsfd, &db_urms, sizeof(db_urms_t));
 		}
 		else {
-//                    printf("Got another trigger urmsfd %d\n", urmsfd);
+ //                   printf("Got another trigger urmsfd %d\n", urmsfd);
 			if(urmsfd > 0) {
                                 FD_ZERO(&readfds);
                                 FD_SET(urmsfd, &readfds);
-                                timeout.tv_sec = 0;
+                                timeout.tv_sec = 10;
                                 timeout.tv_usec = 1000;
                                 if( (selectval = select(urmsfd+1, &readfds, NULL, NULL, &timeout)) < 0) {
                                         if(errno != EINTR) {
                                                 perror("select 1");
                                                 inportisset = (FD_ISSET(urmsfd, &readfds)) == 0 ? "no" : "yes";
                                                 printf("\n\nser_driver_read 1: urmsfd %d selectval %d inportisset %s\n\n", urmsfd, selectval, inportisset);
-                                        }
+						fprintf(stderr, "Error on connection to SOBU selectval %d Exiting....\n", selectval);
+//						db_list_done(pclt, db_vars_list, num_db_variables , db_trig_list, num_trig_variables);
+						db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
+						close(urmsfd);
+						exit(EXIT_FAILURE);
+					}
                                 }
+                                if(selectval == 0) {
+					fprintf(stderr, "Connection to SOBU timed out selectval %d Exiting....\n", selectval);
+//					db_list_done(pclt, db_vars_list, num_db_variables , db_trig_list, num_trig_variables);
+					db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
+					close(urmsfd);
+					exit(EXIT_FAILURE);
+				}
                                 if(selectval > 0) {
                                         nread = read(urmsfd, &db_urms_status, sizeof(db_urms_status_t));
+					fprintf(stderr, "Everything should be OK. selectval %d nread %d\n", selectval, nread);
+
                                         if(nread > 0) {
 					    if(verbose) {
                                                 printf("receive_urms_data: nread %d\n", nread);
@@ -177,13 +193,11 @@ int main(int argc, char *argv[]) {
 						exit(EXIT_FAILURE);
                                                 }
                                         }
-				else {
-					fprintf(stderr, "Lost connection to SOBU\n");
-					exit(EXIT_FAILURE);
-				}
-		
 			}
 		}
+//		fprintf(stderr, "End of loop selectval %d nread %d\n", selectval, nread);
+		nread = -500;
+		selectval = -500;
 	}
 }
 
