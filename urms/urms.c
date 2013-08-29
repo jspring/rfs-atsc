@@ -27,10 +27,10 @@ static void sig_hand(int code)
 
 const char *usage = "-v (verbose) -r <controller IP address (def. 10.0.1.126)>-s (standalone, no DB) -l (print log)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
 
-int db_trig_list[] =  {
+unsigned int db_trig_list[] =  {
         DB_URMS_VAR
 };
-int num_trig_variables = sizeof(db_trig_list)/sizeof(int);
+unsigned int num_trig_variables = sizeof(db_trig_list)/sizeof(int);
 
 static int OpenURMSConnection(char *controllerIP, char *port);
 int urms_set_meter(int fd, db_urms_t *db_urms, char verbose);
@@ -287,6 +287,7 @@ int main(int argc, char *argv[]) {
 			get_status_err++;
 		    }
 		    else {
+			db_urms_status.rm2rmc_ctr++;
 			db_urms_status.num_meter = gen_mess.urms_status_response.num_meter;
 			db_urms_status.num_main = gen_mess.urms_status_response.num_main;
 			db_urms_status.num_opp = gen_mess.urms_status_response.num_opp;
@@ -504,21 +505,21 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 
 	clock_gettime(CLOCK_REALTIME, &start_time);
 
-/*	Uncomment this block to use the URMSPOLL2 message instead of the URMS POLL
+//	Uncomment this block to use the URMSPOLL2 message instead of the URMS POLL
 //	message.  The former doesn't work. It was supposed to keep the 2070 interconnect
 //	channel from timing out, but is broken.
-//	gen_mess->urmspoll2[0] = 'U';
-//	gen_mess->urmspoll2[1] = 'R';
-//	gen_mess->urmspoll2[2] = 'M';
-//	gen_mess->urmspoll2[3] = 'S';
-//	gen_mess->urmspoll2[4] = 'P';
-//	gen_mess->urmspoll2[5] = 'O';
-//	gen_mess->urmspoll2[6] = 'L';
-//	gen_mess->urmspoll2[7] = 'L';
-//	gen_mess->urmspoll2[8] = '2';
-//	if (write(fd, &gen_mess->urmspoll2, 9) != 9) {
-*/
-	if (write(fd, &gen_mess->urms_status_poll, sizeof(urms_status_poll_t)) != sizeof(urms_status_poll_t)) {
+	gen_mess->urmspoll2[0] = 'U';
+	gen_mess->urmspoll2[1] = 'R';
+	gen_mess->urmspoll2[2] = 'M';
+	gen_mess->urmspoll2[3] = 'S';
+	gen_mess->urmspoll2[4] = 'P';
+	gen_mess->urmspoll2[5] = 'O';
+	gen_mess->urmspoll2[6] = 'L';
+	gen_mess->urmspoll2[7] = 'L';
+	gen_mess->urmspoll2[8] = '2';
+	if (write(fd, &gen_mess->urmspoll2, 9) != 9) {
+
+//	if (write(fd, &gen_mess->urms_status_poll, sizeof(urms_status_poll_t)) != sizeof(urms_status_poll_t)) {
 	  fprintf(stderr, "partial/failed write\n");
 	  exit(EXIT_FAILURE);
 	}

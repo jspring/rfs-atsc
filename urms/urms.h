@@ -223,8 +223,10 @@ typedef struct {
 	struct metered_lane_stat metered_lane_stat[3]; //35-58
 	char is_metering;	//59 Is Metering (1 = YES) 
 	struct queue_stat queue_stat[3]; //60-74
-	char	cmd_src[3];
-	char	action[3];
+	char	cmd_src[3]; //75-77
+	char	action[3]; //78-80
+	unsigned char	rm2rmc_ctr; //81 Ramp meter computer increments this when it receives a good message from ramp meter over LAN
+	unsigned char	rmc2ac_ctr; //82 Ramp meter computer increments this whenever it sends a message to the arterial computer over DSRC connection
 } IS_PACKED db_urms_status_t;
 
 /*

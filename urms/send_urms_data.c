@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
 	struct timeval timeout;
 	char *inportisset = "not yet initialized";
 	char *buf = &db_urms_status;
+	unsigned char rmc2ac_ctr = 0;
 
         while ((option = getopt(argc, argv, "r:vp:si:1:2:3:4:5:6:7:8:9:A:B:C:D:")) != EOF) {
                 switch(option) {
@@ -137,6 +138,7 @@ int main(int argc, char *argv[]) {
 			    printf("%#hhx %#hhx \n", db_urms_status.metered_lane_stat[0].metered_lane_rate_msb, db_urms_status.metered_lane_stat[0].metered_lane_rate_lsb);
 			    printf("%#hhx %#hhx \n", db_urms_status.queue_stat[0].occ_msb, db_urms_status.queue_stat[0].occ_lsb);
 			}
+			db_urms_status.rmc2ac_ctr = rmc2ac_ctr++;
 			write(urmsfd, &db_urms_status, sizeof(db_urms_status_t));
 //		}
 //		else {
