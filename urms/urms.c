@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
 	db_urms_status_t db_urms_status;
 	char *buf = (char *)&db_urms_status;
 	urms_datafile_t urms_datafile;
+	unsigned char rm2rmc_ctr = 0;
 
 	int standalone = 0;
 	int loop_interval = 5000; 	// Loop interval, ms
@@ -287,7 +288,7 @@ int main(int argc, char *argv[]) {
 			get_status_err++;
 		    }
 		    else {
-			db_urms_status.rm2rmc_ctr++;
+			db_urms_status.rm2rmc_ctr = rm2rmc_ctr++;
 			db_urms_status.num_meter = gen_mess.urms_status_response.num_meter;
 			db_urms_status.num_main = gen_mess.urms_status_response.num_main;
 			db_urms_status.num_opp = gen_mess.urms_status_response.num_opp;
