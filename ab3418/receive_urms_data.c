@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
                                         nread = read(urmsfd, &db_urms_status, sizeof(db_urms_status_t));
 					fprintf(stderr, "Everything should be OK. selectval %d nread %d\n", selectval, nread);
 
-                                        if(nread > 0) {
+                                        if(nread == sizeof(db_urms_status)) {
 					    if(verbose) {
                                                 printf("receive_urms_data: nread %d\n", nread);
                                                 for(i = 0; i<nread; i++)
