@@ -227,6 +227,8 @@ typedef struct {
 	char	action[3]; //78-80
 	unsigned char	rm2rmc_ctr; //81 Ramp meter computer increments this when it receives a good message from ramp meter over LAN
 	unsigned char	rmc2ac_ctr; //82 Ramp meter computer increments this whenever it sends a message to the arterial computer over DSRC connection
+	unsigned char	plan[3];
+
 } IS_PACKED db_urms_status_t;
 
 /*
