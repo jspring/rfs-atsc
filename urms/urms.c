@@ -27,7 +27,7 @@ static void sig_hand(int code)
 
 const char *usage = "-v (verbose) -r <controller IP address (def. 10.0.1.126)>-s (standalone, no DB) -l (print log)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
 
-unsigned int db_trig_list[] =  {
+int db_trig_list[] =  {
         DB_URMS_VAR
 };
 unsigned int num_trig_variables = sizeof(db_trig_list)/sizeof(int);
@@ -75,6 +75,11 @@ int main(int argc, char *argv[]) {
 	unsigned char station_type = 2; //mainline=1, ramp=2
 	unsigned char first_logical_lane = 1;
 	int get_status_err = 0;
+	double comp_finished_temp = 0;
+	double comp_finished_sav = 0;
+	double curr_time = 0;
+	double time_sav = 0;
+	struct timespec curr_timespec;
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
 
@@ -288,6 +293,9 @@ int main(int argc, char *argv[]) {
 			get_status_err++;
 		    }
 		    else {
+			if( clock_gettime(CLOCK_REALTIME, &curr_timespec) < 0)
+				perror("urms clock_gettime");
+			curr_time = curr_timespec.tv_sec + (curr_timespec.tv_nsec / 1000000000.0);
 			db_urms_status.rm2rmc_ctr = rm2rmc_ctr++;
 			db_urms_status.num_meter = gen_mess.urms_status_response.num_meter;
 			db_urms_status.num_main = gen_mess.urms_status_response.num_main;
@@ -296,6 +304,9 @@ int main(int argc, char *argv[]) {
 			db_urms_status.num_addl_det = gen_mess.urms_status_response.num_addl_det;
 			db_urms_status.mainline_dir = gen_mess.urms_status_response.mainline_dir;
 			db_urms_status.is_metering = gen_mess.urms_status_response.is_metering;
+
+			comp_finished_temp = 0;
+
 			for(i = 0; i < 3; i++) {
 			    db_urms_status.metered_lane_stat[i].demand_vol = gen_mess.urms_status_response.metered_lane_stat[i].demand_vol;
 			    db_urms_status.metered_lane_stat[i].demand_stat = gen_mess.urms_status_response.metered_lane_stat[i].demand_stat;
@@ -336,12 +347,33 @@ int main(int argc, char *argv[]) {
 			    urms_datafile.mainline_lead_occ[i] = 0.1 * ((db_urms_status.mainline_stat[i].lead_occ_msb << 8) + (unsigned char)(db_urms_status.mainline_stat[i].lead_occ_lsb));
 			    urms_datafile.mainline_trail_occ[i] = 0.1 * ((db_urms_status.mainline_stat[i].trail_occ_msb << 8) + (unsigned char)(db_urms_status.mainline_stat[i].trail_occ_lsb));
 			    urms_datafile.queue_occ[i] = 0.1 * ((db_urms_status.queue_stat[i].occ_msb << 8) + (unsigned char)(db_urms_status.queue_stat[i].occ_lsb));
+			    comp_finished_temp += db_urms_status.metered_lane_stat[i].demand_vol + 
+						 db_urms_status.metered_lane_stat[i].passage_vol + 
+						 db_urms_status.mainline_stat[i].lead_vol + 
+						 db_urms_status.mainline_stat[i].trail_vol + 
+						 db_urms_status.queue_stat[i].vol; 
 			    if(verbose) {
 				printf("2:ML%d occ %.1f\n", i+1, urms_datafile.mainline_lead_occ[i]);
 			 	printf("2:MT%d occ %.1f\n", i+1, urms_datafile.mainline_trail_occ[i]);
 				printf("2:Q%d-1 occ %.1f\n", i+1, urms_datafile.queue_occ[i]);
 			    }
 			}
+			if( (comp_finished_temp != comp_finished_sav) ||
+			    ((curr_time + 0.025 - time_sav) >= 30.0) ) { //The 0.025 is one-half the loop interval of wrfiles_ac_rm. This was done only so
+									 // that the printed times are synchronized.  However, Dongyan's code will be using
+									 // the printed string as input, so this has a real use.
+				db_urms_status.computation_finished = 1;
+				time_sav = curr_time;
+				if( comp_finished_temp != comp_finished_sav ) {
+					comp_finished_sav = comp_finished_temp;
+				}
+				if(verbose)
+					printf("timediff %lf comp_finished_diff %lf\n", curr_time - time_sav, comp_finished_temp - comp_finished_temp);
+			
+			}
+			else
+				db_urms_status.computation_finished = 0;
+
 			if(verbose) {
 				for(i=0; i < sizeof(db_urms_status_t); i++)
 					printf("%d:%#hhx ", i, buf[i]);
