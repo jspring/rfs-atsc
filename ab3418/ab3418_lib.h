@@ -27,6 +27,7 @@ typedef struct {
         unsigned char yellows;
         unsigned char reds;
         unsigned char phase_status_colors[8];
+        unsigned char barrier_flag;
 } IS_PACKED phase_status_t;
 
 extern bool_typ ser_driver_read( gen_mess_typ *pMessagebuff, int fpin, char verbose);
