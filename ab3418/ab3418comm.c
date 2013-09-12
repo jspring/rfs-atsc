@@ -338,8 +338,11 @@ int process_phase_status( get_long_status8_resp_mess_typ *pstatus, int verbose, 
 
         struct timeb timeptr_raw;
         struct tm time_converted;
+        static struct timespec start_time;
+        struct timespec end_time;
         int i;
         unsigned char interval_temp = 0;
+	static unsigned char greens_sav = 0;
 
         memset(pphase_status, 0, sizeof(phase_status_t));
         pphase_status->greens = greens;
@@ -359,6 +362,24 @@ int process_phase_status( get_long_status8_resp_mess_typ *pstatus, int verbose, 
                 }
         }
         pphase_status->reds = ~(pphase_status->greens | pphase_status->yellows);
+
+	if( (greens_sav == 0x0) && ((greens  == 0x44 )) )
+		clock_gettime(CLOCK_REALTIME, &start_time);
+	if( (greens_sav == 0x44) && ((greens  == 0x40 )) ) {
+		clock_gettime(CLOCK_REALTIME, &end_time);
+		printf("process_phase_status: Green time for phase 3 %f sec\n\n", 
+			(end_time.tv_sec + (end_time.tv_nsec/1.0e9)) -
+			(start_time.tv_sec +(start_time.tv_nsec/1.0e9))
+		);
+	}
+	if( (greens_sav == 0x22) && ((greens & greens_sav) == 0 )) {
+		printf("\n\nPhases 2 and 6 should be yellow now\n");
+		pphase_status->barrier_flag = 1;
+	}
+	else
+		pphase_status->barrier_flag = 0;
+	greens_sav = greens;
+		
 
 //                Get time of day and save in the database.
         ftime ( &timeptr_raw );
