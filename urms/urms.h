@@ -229,6 +229,7 @@ typedef struct {
 	unsigned char	rmc2ac_ctr; //82 Ramp meter computer increments this whenever it sends a message to the arterial computer over DSRC connection
 	unsigned char	plan[3];   //83-85
 	unsigned char	computation_finished; //86
+	unsigned short  checksum; //87
 } IS_PACKED db_urms_status_t;
 
 /*

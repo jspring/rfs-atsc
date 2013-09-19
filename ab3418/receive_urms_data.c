@@ -38,7 +38,7 @@ db_id_t db_vars_list[] =  {
 };
 int num_db_variables = sizeof(db_vars_list)/sizeof(db_id_t);
 
-unsigned int db_trig_list[] =  {
+int db_trig_list[] =  {
         DB_URMS_VAR,
         DB_URMS_STATUS_VAR
 };
@@ -59,6 +59,8 @@ int main(int argc, char *argv[]) {
         posix_timer_typ *ptimer;
         trig_info_typ trig_info;
 	db_urms_status_t db_urms_status;
+	unsigned char *inmsg = (unsigned char *) &db_urms_status;
+	unsigned short checksum = 0;
 	db_urms_t db_urms;
 	urms_datafile_t urms_datafile;
 	int loop_interval = 500; 	// Loop interval, ms
@@ -170,6 +172,11 @@ int main(int argc, char *argv[]) {
                                                         printf("%d:%#hhx ", i, readbuff[i]);
 						printf("\n");
 					    }
+					    checksum = 0;
+					    for(i=0; i < (sizeof(db_urms_status_t) - 2); i++)
+					   	 checksum += inmsg[i];
+//					    if(checksum == db_urms_status.checksum) {
+						{
 						db_clt_write(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
 						for(i=0; i<3; i++) {
 							urms_datafile.mainline_lead_occ[i] = 0.1 * ((db_urms_status.mainline_stat[i].lead_occ_msb << 8) 
@@ -187,6 +194,7 @@ int main(int argc, char *argv[]) {
 							}
 						}
 						db_clt_write(pclt, DB_URMS_DATAFILE_VAR, sizeof(urms_datafile_t), &urms_datafile);
+					    }
                                         }
                                         if(nread == 0) {
                                                 fprintf(stderr, "Lost connection to SOBU. Exiting....\n");
