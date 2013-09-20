@@ -5,8 +5,6 @@
 #include "urms.h"
 #include "tos.h"
 
-#define BUF_SIZE	sizeof(gen_mess_t)
-
 static jmp_buf exit_env;
 static int sig_list[] = {
         SIGINT,
@@ -40,7 +38,6 @@ static int OpenSOBUConnection(char *SOBUIP, char *port);
 
 int main(int argc, char *argv[]) {
 	int urmsfd;
-	gen_mess_t gen_mess;
 	char *SOBUIP = "10.0.1.7";
 	char *port = "4444";
 
@@ -64,8 +61,9 @@ int main(int argc, char *argv[]) {
 	int selectval = 1000;
 	struct timeval timeout;
 	char *inportisset = "not yet initialized";
-	char *buf = &db_urms_status;
+	unsigned char *buf = (unsigned char *) &db_urms_status;
 	unsigned char rmc2ac_ctr = 0;
+	unsigned short checksum = 0;
 
         while ((option = getopt(argc, argv, "r:vp:si:1:2:3:4:5:6:7:8:9:A:B:C:D:")) != EOF) {
                 switch(option) {
@@ -91,23 +89,21 @@ int main(int argc, char *argv[]) {
 	// Open connection to URMS controller
 	urmsfd = OpenSOBUConnection(SOBUIP, port);
 	if(urmsfd < 0) {
-		fprintf(stderr, "Could not open connection to SOBU\n");
+		fprintf(stderr, "send_urms_data:init:Could not open connection to SOBU\n");
 		exit(EXIT_FAILURE);
 	}
 
 	// Connect to database
         get_local_name(hostname, MAXHOSTNAMELEN);
         if ( (pclt = db_list_init(argv[0], hostname, domain,
-            xport, NULL, 0, db_trig_list,
-//            xport, db_vars_list, num_db_variables, db_trig_list,
+          xport, db_vars_list, num_db_variables, db_trig_list,
             num_trig_variables)) == NULL) {
             exit(EXIT_FAILURE);
 	}
 
         if (setjmp(exit_env) != 0) {
                 close(urmsfd);
-                db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
-//                db_list_done(pclt, db_vars_list, 0, db_trig_list, num_trig_variables);
+                db_list_done(pclt, db_vars_list, 0, db_trig_list, num_trig_variables);
 		printf("get_status_err %d\n", get_status_err);
                 exit(EXIT_SUCCESS);
         } else
@@ -127,8 +123,7 @@ int main(int argc, char *argv[]) {
 		// the loop.
 
 		clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
-//TRIGGERING WAS NOT WORKING FOR SOME REASON, SO I COMMENTED THIS OUT!!!!
-//		if( DB_TRIG_VAR(&trig_info) == DB_URMS_STATUS_VAR ) {
+		if( DB_TRIG_VAR(&trig_info) == DB_URMS_STATUS_VAR ) {
 			db_clt_read(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
 			if(verbose) {
 			    printf("Got DB_URMS_STATUS_VAR trigger sizeof(db_urms_status_t) %d\n", sizeof(db_urms_status_t));
@@ -139,10 +134,15 @@ int main(int argc, char *argv[]) {
 			    printf("%#hhx %#hhx \n", db_urms_status.queue_stat[0].occ_msb, db_urms_status.queue_stat[0].occ_lsb);
 			}
 			db_urms_status.rmc2ac_ctr = rmc2ac_ctr++;
+
+			checksum = 0;
+			for(i=0; i < (sizeof(db_urms_status_t) - 2); i++)
+				checksum += buf[i];
+			db_urms_status.checksum = checksum;
 			write(urmsfd, &db_urms_status, sizeof(db_urms_status_t));
-//		}
-//		else {
-//			printf("send_urms_data: Got another trigger urmsfd %d\n", urmsfd);
+		}
+		else {
+			printf("send_urms_data: Got another trigger urmsfd %d\n", urmsfd);
 			if(urmsfd > 0) {
 				FD_ZERO(&readfds);
 				FD_SET(urmsfd, &readfds);
@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
 					fprintf(stderr, "2: Could not open connection to SOBU\n");
 				}
 			}
-//		}
+		}
 	}
 }
 
@@ -230,7 +230,7 @@ static int OpenSOBUConnection(char *SOBUIP, char *port) {
 		close(sfd);
 	}
 	if (rp == NULL) {		 /* No address succeeded */
-		fprintf(stderr, "Could not connect\n");
+		fprintf(stderr, "send_urms_data:OpenSOBUConnection: Could not connect\n");
 		return -1;
 	}
 	freeaddrinfo(result);	    /* No longer needed */
