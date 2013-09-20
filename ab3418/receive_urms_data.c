@@ -30,7 +30,7 @@ static void sig_hand(int code)
                 longjmp(exit_env, code);
 }
 
-const char *usage = "-v (verbose) -p <port (def. 10011)> -i <loop interval (ms)>";
+const char *usage = "-v (verbose) -p <port (def. 4444)> -i <loop interval (ms)>";
 
 db_id_t db_vars_list[] =  {
         {DB_URMS_VAR, sizeof(db_urms_t)},
@@ -102,16 +102,14 @@ int main(int argc, char *argv[]) {
 	// Connect to database
         get_local_name(hostname, MAXHOSTNAMELEN);
         if ( (pclt = db_list_init(argv[0], hostname, domain,
-//            xport, db_vars_list, num_db_variables, db_trig_list,
-            xport, NULL, 0, db_trig_list,
+            xport, db_vars_list, num_db_variables, db_trig_list,
             num_trig_variables)) == NULL) {
             exit(EXIT_FAILURE);
 	}
 
         if (setjmp(exit_env) != 0) {
                 close(urmsfd);
-//                db_list_done(pclt, db_vars_list, num_db_variables , db_trig_list, num_trig_variables);
-                db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
+                db_list_done(pclt, db_vars_list, num_db_variables , db_trig_list, num_trig_variables);
 		printf("get_status_err %d\n", get_status_err);
                 exit(EXIT_SUCCESS);
         } else
@@ -148,22 +146,21 @@ int main(int argc, char *argv[]) {
                                                 inportisset = (FD_ISSET(urmsfd, &readfds)) == 0 ? "no" : "yes";
                                                 printf("\n\nser_driver_read 1: urmsfd %d selectval %d inportisset %s\n\n", urmsfd, selectval, inportisset);
 						fprintf(stderr, "Error on connection to SOBU selectval %d Exiting....\n", selectval);
-//						db_list_done(pclt, db_vars_list, num_db_variables , db_trig_list, num_trig_variables);
-						db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
+						db_list_done(pclt, db_vars_list, num_db_variables , db_trig_list, num_trig_variables);
+//						db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
 						close(urmsfd);
 						exit(EXIT_FAILURE);
 					}
                                 }
                                 if(selectval == 0) {
 					fprintf(stderr, "Connection to SOBU timed out selectval %d Exiting....\n", selectval);
-//					db_list_done(pclt, db_vars_list, num_db_variables , db_trig_list, num_trig_variables);
-					db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
+					db_list_done(pclt, db_vars_list, num_db_variables , db_trig_list, num_trig_variables);
 					close(urmsfd);
 					exit(EXIT_FAILURE);
 				}
                                 if(selectval > 0) {
                                         nread = read(urmsfd, &db_urms_status, sizeof(db_urms_status_t));
-					fprintf(stderr, "Everything should be OK. selectval %d nread %d\n", selectval, nread);
+//					fprintf(stderr, "Everything should be OK. selectval %d nread %d\n", selectval, nread);
 
                                         if(nread == sizeof(db_urms_status)) {
 					    if(verbose) {
@@ -175,8 +172,7 @@ int main(int argc, char *argv[]) {
 					    checksum = 0;
 					    for(i=0; i < (sizeof(db_urms_status_t) - 2); i++)
 					   	 checksum += inmsg[i];
-//					    if(checksum == db_urms_status.checksum) {
-						{
+					    if(checksum == db_urms_status.checksum) {
 						db_clt_write(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
 						for(i=0; i<3; i++) {
 							urms_datafile.mainline_lead_occ[i] = 0.1 * ((db_urms_status.mainline_stat[i].lead_occ_msb << 8) 
