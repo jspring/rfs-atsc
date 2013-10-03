@@ -85,3 +85,17 @@ void get_modframe_string( unsigned char *frame, int *framebytes )
 	*framebytes = temp;                             /* get new frame length */
 //	printf("get_modframe_string: newfcs %#x *framebytes %d\n", newfcs, *framebytes);
 }
+
+/* checks fcs at end of frame against calculated fcs */
+int check_modframe_string( unsigned char *frame, int *framebytes )
+{
+	int temp;
+	u16 oldfcs = PPPINITFCS, newfcs;
+	unsigned char fcsmsb = 0;
+	unsigned char fcslsb = 0;
+
+	temp = *framebytes;
+	newfcs = pppfcs( oldfcs, frame, *framebytes );       /* get the FCS */
+//	printf("check_modframe_string: newfcs %#x *framebytes %d ", newfcs, *framebytes);
+//	printf("old fcsmsb %#hhx, old fcslsb %#hhx\n", *(frame + 416) , *(frame + 417) );
+}

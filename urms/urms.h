@@ -1,6 +1,9 @@
 /* urms.h - Header file for urms.c
 */
 
+#ifndef URMS_H
+#define URMS_H
+
 #include <db_include.h>
 #include "tos.h"
 
@@ -278,3 +281,5 @@ typedef union {
 	char data[1000];
 	char urmspoll2[9];
 } IS_PACKED gen_mess_t;
+
+#endif

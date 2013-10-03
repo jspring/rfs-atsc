@@ -516,6 +516,7 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	timestamp_t ts;
 	struct timespec start_time;
 	struct timespec end_time;
+	int msg_len = 0;
 
 	memset(gen_mess, 0, sizeof(gen_mess_t));
 	gen_mess->urms_status_poll.msg_type = 0x51;
@@ -563,6 +564,11 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	if (nread == -1) {
 	 perror("read");
 	}
+
+        // Now append the FCS.
+	msg_len = 417 - 4;
+	check_modframe_string( (unsigned char *)(&gen_mess+1), &msg_len); 
+
 	if(verbose) {
 	    get_current_timestamp(&ts);
 	    print_timestamp(stdout, &ts);
