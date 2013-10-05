@@ -33,7 +33,7 @@ int db_trig_list[] =  {
 unsigned int num_trig_variables = sizeof(db_trig_list)/sizeof(int);
 
 static int OpenURMSConnection(char *controllerIP, char *port);
-int urms_set_meter(int fd, db_urms_t *db_urms, char verbose);
+int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verbose);
 int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose);
 int tos_set_action(int fd, gen_mess_t *gen_mess, char verbose, 
 	unsigned char *rm_action_code_tos2, unsigned char num_lanes);
@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
         posix_timer_typ *ptimer;
         trig_info_typ trig_info;
 	db_urms_t db_urms;
+	db_urms_t db_urms_sav;
 	db_urms_status_t db_urms_status;
 	char *buf = (char *)&db_urms_status;
 	urms_datafile_t urms_datafile;
@@ -80,6 +81,18 @@ int main(int argc, char *argv[]) {
 	double curr_time = 0;
 	double time_sav = 0;
 	struct timespec curr_timespec;
+	int lane_1_release_rate = 0;
+	unsigned char lane_1_action = 0;
+	unsigned char lane_1_plan = 0;
+	int lane_2_release_rate = 0;
+	unsigned char lane_2_action = 0;
+	unsigned char lane_2_plan = 0;
+	int lane_3_release_rate = 0;
+	unsigned char lane_3_action = 0;
+	unsigned char lane_3_plan = 0;
+	int lane_4_release_rate = 0;
+	unsigned char lane_4_action = 0;
+	unsigned char lane_4_plan = 0;
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
 
@@ -102,62 +115,62 @@ int main(int argc, char *argv[]) {
                         loop_interval = atoi(optarg);
                         break;
                 case '1':
-			db_urms.lane_1_release_rate = atoi(optarg);
+			lane_1_release_rate = atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
                 case '2':
-			db_urms.lane_1_action = (unsigned char)atoi(optarg);
+			lane_1_action = (unsigned char)atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
                 case '3':
-			db_urms.lane_1_plan = (unsigned char)atoi(optarg);
+			lane_1_plan = (unsigned char)atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
                 case '4':
-			db_urms.lane_2_release_rate = atoi(optarg);
+			lane_2_release_rate = atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
                 case '5':
-			db_urms.lane_2_action = (unsigned char)atoi(optarg);
+			lane_2_action = (unsigned char)atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
                 case '6':
-			db_urms.lane_2_plan = (unsigned char)atoi(optarg);
+			lane_2_plan = (unsigned char)atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
                 case 'E':
-			db_urms.lane_3_release_rate = atoi(optarg);
+			lane_3_release_rate = atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
                 case 'F':
-			db_urms.lane_3_action = (unsigned char)atoi(optarg);
+			lane_3_action = (unsigned char)atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
                 case 'G':
-			db_urms.lane_3_plan = (unsigned char)atoi(optarg);
+			lane_3_plan = (unsigned char)atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
                 case 'H':
-			db_urms.lane_4_release_rate = atoi(optarg);
+			lane_4_release_rate = atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
                 case 'I':
-			db_urms.lane_4_action = (unsigned char)atoi(optarg);
+			lane_4_action = (unsigned char)atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
                 case 'J':
-			db_urms.lane_4_plan = (unsigned char)atoi(optarg);
+			lane_4_plan = (unsigned char)atoi(optarg);
 			port = "10011";
 			set_urms = 1;
                         break;
@@ -218,7 +231,55 @@ int main(int argc, char *argv[]) {
 	// If just testing in standalone, write message to controller and exit
 	if(standalone) {
 		if(set_urms) {
-			if( urms_set_meter(urmsfd, &db_urms, verbose) < 0) {
+			if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
+				fprintf(stderr, "Bad status command\n");
+				exit(EXIT_FAILURE);
+			}
+			if(lane_1_release_rate != 0) {
+				db_urms.lane_1_release_rate = lane_1_release_rate;
+				db_urms.lane_1_action = lane_1_action;
+				db_urms.lane_1_plan = lane_1_plan;
+			}
+			else {
+				db_urms.lane_1_release_rate = (gen_mess.urms_status_response.metered_lane_stat[0].metered_lane_rate_msb << 8) 
+					+ (unsigned char) (gen_mess.urms_status_response.metered_lane_stat[0].metered_lane_rate_lsb);
+				db_urms.lane_1_action = gen_mess.urms_status_response.metered_lane_ctl[0].action;
+				db_urms.lane_1_plan = gen_mess.urms_status_response.metered_lane_ctl[0].plan;
+			}
+			if(lane_2_release_rate != 0) {
+				db_urms.lane_2_release_rate = lane_2_release_rate;
+				db_urms.lane_2_action = lane_2_action;
+				db_urms.lane_2_plan = lane_2_plan;
+			}
+			else {
+				db_urms.lane_2_release_rate = (gen_mess.urms_status_response.metered_lane_stat[1].metered_lane_rate_msb << 8) 
+					+ (unsigned char) (gen_mess.urms_status_response.metered_lane_stat[1].metered_lane_rate_lsb);
+				db_urms.lane_2_action = gen_mess.urms_status_response.metered_lane_ctl[1].action;
+				db_urms.lane_2_plan = gen_mess.urms_status_response.metered_lane_ctl[1].plan;
+			}
+			if(lane_3_release_rate != 0) {
+				db_urms.lane_3_release_rate = lane_3_release_rate;
+				db_urms.lane_3_action = lane_3_action;
+				db_urms.lane_3_plan = lane_3_plan;
+			}
+			else {
+				db_urms.lane_3_release_rate = (gen_mess.urms_status_response.metered_lane_stat[0].metered_lane_rate_msb << 8) 
+					+ (unsigned char) (gen_mess.urms_status_response.metered_lane_stat[2].metered_lane_rate_lsb);
+				db_urms.lane_3_action = gen_mess.urms_status_response.metered_lane_ctl[2].action;
+				db_urms.lane_3_plan = gen_mess.urms_status_response.metered_lane_ctl[2].plan;
+			}
+			if(lane_4_release_rate != 0) {
+				db_urms.lane_4_release_rate = lane_4_release_rate;
+				db_urms.lane_4_action = lane_4_action;
+				db_urms.lane_4_plan = lane_4_plan;
+			}
+			else {
+				db_urms.lane_4_release_rate = (gen_mess.urms_status_response.metered_lane_stat[0].metered_lane_rate_msb << 8) 
+					+ (unsigned char) (gen_mess.urms_status_response.metered_lane_stat[3].metered_lane_rate_lsb);
+				db_urms.lane_4_action = gen_mess.urms_status_response.metered_lane_ctl[3].action;
+				db_urms.lane_4_plan = gen_mess.urms_status_response.metered_lane_ctl[3].plan;
+			}
+			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
 				fprintf(stderr, "Bad meter setting command\n");
 				exit(EXIT_FAILURE);
 			}
@@ -260,6 +321,13 @@ int main(int argc, char *argv[]) {
 	}
 
         if (setjmp(exit_env) != 0) {
+		// If we can exit gracefully, tell the controller to 
+		// SKIP the interconnect channel
+		db_urms.lane_1_action = 6;
+		db_urms.lane_2_action = 6;
+		db_urms.lane_3_action = 6;
+		db_urms.lane_4_action = 6;
+		urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose);
                 close(urmsfd);
                 db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
 		printf("get_status_err %d\n", get_status_err);
@@ -272,6 +340,57 @@ int main(int argc, char *argv[]) {
                 exit(EXIT_FAILURE);
         }
 	
+	//Initialize the saved copy of db_urms_sav with the current values in the controller
+	// ALL of the parameters MUST be set!
+	if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
+		fprintf(stderr, "Bad status command\n");
+		exit(EXIT_FAILURE);
+	}
+	if(lane_1_release_rate != 0) {
+		db_urms_sav.lane_1_release_rate = lane_1_release_rate;
+		db_urms_sav.lane_1_action = lane_1_action;
+		db_urms_sav.lane_1_plan = lane_1_plan;
+	}
+	else {
+		db_urms_sav.lane_1_release_rate = (gen_mess.urms_status_response.metered_lane_stat[0].metered_lane_rate_msb << 8) 
+			+ (unsigned char) (gen_mess.urms_status_response.metered_lane_stat[0].metered_lane_rate_lsb);
+		db_urms_sav.lane_1_action = gen_mess.urms_status_response.metered_lane_ctl[0].action;
+		db_urms_sav.lane_1_plan = gen_mess.urms_status_response.metered_lane_ctl[0].plan;
+	}
+	if(lane_2_release_rate != 0) {
+		db_urms_sav.lane_2_release_rate = lane_2_release_rate;
+		db_urms_sav.lane_2_action = lane_2_action;
+		db_urms_sav.lane_2_plan = lane_2_plan;
+	}
+	else {
+		db_urms_sav.lane_2_release_rate = (gen_mess.urms_status_response.metered_lane_stat[1].metered_lane_rate_msb << 8) 
+			+ (unsigned char) (gen_mess.urms_status_response.metered_lane_stat[1].metered_lane_rate_lsb);
+		db_urms_sav.lane_2_action = gen_mess.urms_status_response.metered_lane_ctl[1].action;
+		db_urms_sav.lane_2_plan = gen_mess.urms_status_response.metered_lane_ctl[1].plan;
+	}
+	if(lane_3_release_rate != 0) {
+		db_urms_sav.lane_3_release_rate = lane_3_release_rate;
+		db_urms_sav.lane_3_action = lane_3_action;
+		db_urms_sav.lane_3_plan = lane_3_plan;
+	}
+	else {
+		db_urms_sav.lane_3_release_rate = (gen_mess.urms_status_response.metered_lane_stat[0].metered_lane_rate_msb << 8) 
+			+ (unsigned char) (gen_mess.urms_status_response.metered_lane_stat[2].metered_lane_rate_lsb);
+		db_urms_sav.lane_3_action = gen_mess.urms_status_response.metered_lane_ctl[2].action;
+		db_urms_sav.lane_3_plan = gen_mess.urms_status_response.metered_lane_ctl[2].plan;
+	}
+	if(lane_4_release_rate != 0) {
+		db_urms_sav.lane_4_release_rate = lane_4_release_rate;
+		db_urms_sav.lane_4_action = lane_4_action;
+		db_urms_sav.lane_4_plan = lane_4_plan;
+	}
+	else {
+		db_urms_sav.lane_4_release_rate = (gen_mess.urms_status_response.metered_lane_stat[0].metered_lane_rate_msb << 8) 
+			+ (unsigned char) (gen_mess.urms_status_response.metered_lane_stat[3].metered_lane_rate_lsb);
+		db_urms_sav.lane_4_action = gen_mess.urms_status_response.metered_lane_ctl[3].action;
+		db_urms_sav.lane_4_plan = gen_mess.urms_status_response.metered_lane_ctl[3].plan;
+	}
+
 	while(1) {
                 // Now wait for a trigger. 
                 // Data or timer, it doesn't matter - we read and write on both
@@ -283,7 +402,7 @@ int main(int argc, char *argv[]) {
 		db_clt_read(pclt, DB_URMS_VAR, sizeof(db_urms_t), &db_urms);
 		if( DB_TRIG_VAR(&trig_info) == DB_URMS_VAR ) {
 			printf("Got DB_URMS_VAR trigger\n");
-			if( urms_set_meter(urmsfd, &db_urms, verbose) < 0) {
+			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
 				fprintf(stderr, "Bad meter setting command\n");
 			}
 		}
@@ -431,7 +550,7 @@ static int OpenURMSConnection(char *controllerIP, char *port) {
 }
 
 
-int urms_set_meter(int fd, db_urms_t *db_urms, char verbose) {
+int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verbose) {
 	gen_mess_t gen_mess;
 	char *msgbuf = (char *)&gen_mess;
 	int csum;
@@ -453,6 +572,29 @@ int urms_set_meter(int fd, db_urms_t *db_urms, char verbose) {
 	gen_mess.urmsctl.tail0 = 0x00;
 	gen_mess.urmsctl.tail1 = 0xaa;
 	gen_mess.urmsctl.tail2 = 0x55;
+
+	// If requested metering rate is 0, assume no change
+	// ALL of the parameters MUST be set!
+	if(db_urms->lane_1_release_rate == 0) {
+		db_urms->lane_1_release_rate = db_urms_sav->lane_1_release_rate;
+		db_urms->lane_1_action = db_urms_sav->lane_1_action;
+		db_urms->lane_1_plan = db_urms_sav->lane_1_plan;
+	}
+	if(db_urms->lane_2_release_rate == 0) {
+		db_urms->lane_2_release_rate = db_urms_sav->lane_2_release_rate;
+		db_urms->lane_2_action = db_urms_sav->lane_2_action;
+		db_urms->lane_2_plan = db_urms_sav->lane_2_plan;
+	}
+	if(db_urms->lane_3_release_rate == 0) {
+		db_urms->lane_3_release_rate = db_urms_sav->lane_3_release_rate;
+		db_urms->lane_3_action = db_urms_sav->lane_3_action;
+		db_urms->lane_3_plan = db_urms_sav->lane_3_plan;
+	}
+	if(db_urms->lane_4_release_rate == 0) {
+		db_urms->lane_4_release_rate = db_urms_sav->lane_4_release_rate;
+		db_urms->lane_4_action = db_urms_sav->lane_4_action;
+		db_urms->lane_4_plan = db_urms_sav->lane_4_plan;
+	}
 	gen_mess.urmsctl.lane_1_action = db_urms->lane_1_action;
 	gen_mess.urmsctl.lane_1_plan = db_urms->lane_1_plan;
 	gen_mess.urmsctl.lane_1_release_rate_MSB = 
