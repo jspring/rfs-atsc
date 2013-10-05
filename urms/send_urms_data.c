@@ -64,8 +64,9 @@ int main(int argc, char *argv[]) {
 	unsigned char *buf = (unsigned char *) &db_urms_status;
 	unsigned char rmc2ac_ctr = 0;
 	unsigned short checksum = 0;
+	int comp_finished_ctr = 5;
 
-        while ((option = getopt(argc, argv, "r:vp:si:1:2:3:4:5:6:7:8:9:A:B:C:D:")) != EOF) {
+        while ((option = getopt(argc, argv, "r:vp:i:")) != EOF) {
                 switch(option) {
                 case 'r':
 			SOBUIP = strdup(optarg);
@@ -134,6 +135,17 @@ int main(int argc, char *argv[]) {
 			    printf("%#hhx %#hhx \n", db_urms_status.queue_stat[0].occ_msb, db_urms_status.queue_stat[0].occ_lsb);
 			}
 			db_urms_status.rmc2ac_ctr = rmc2ac_ctr++;
+
+			//This bit of code keeps the computation_finished flag TRUE
+			// for 5 intervals after it transitions from 1->0
+			// This was necessary for ac_rm_algo to reliably poll the database
+			if( db_urms_status.computation_finished != 0) {
+				comp_finished_ctr = 5;
+			}
+			else {
+				if(comp_finished_ctr-- > 0)
+					db_urms_status.computation_finished = 1;
+			}
 
 			checksum = 0;
 			for(i=0; i < (sizeof(db_urms_status_t) - 2); i++)
