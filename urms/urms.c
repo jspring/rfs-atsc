@@ -279,10 +279,10 @@ int main(int argc, char *argv[]) {
 				db_urms.lane_4_action = gen_mess.urms_status_response.metered_lane_ctl[3].action;
 				db_urms.lane_4_plan = gen_mess.urms_status_response.metered_lane_ctl[3].plan;
 			}
-			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
-				fprintf(stderr, "Bad meter setting command\n");
-				exit(EXIT_FAILURE);
-			}
+//			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
+//				fprintf(stderr, "Bad meter setting command\n");
+//				exit(EXIT_FAILURE);
+//			}
 		}
 		if(get_urms) {
 			if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
@@ -327,7 +327,7 @@ int main(int argc, char *argv[]) {
 		db_urms.lane_2_action = 6;
 		db_urms.lane_3_action = 6;
 		db_urms.lane_4_action = 6;
-		urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose);
+//		urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose);
                 close(urmsfd);
                 db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
 		printf("get_status_err %d\n", get_status_err);
@@ -402,9 +402,9 @@ int main(int argc, char *argv[]) {
 		db_clt_read(pclt, DB_URMS_VAR, sizeof(db_urms_t), &db_urms);
 		if( DB_TRIG_VAR(&trig_info) == DB_URMS_VAR ) {
 			printf("Got DB_URMS_VAR trigger\n");
-			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
-				fprintf(stderr, "Bad meter setting command\n");
-			}
+//			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
+//				fprintf(stderr, "Bad meter setting command\n");
+//			}
 		}
 		else {
 		    if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
