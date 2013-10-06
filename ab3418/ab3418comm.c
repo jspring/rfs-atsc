@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
 			retval = clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
 		if( DB_TRIG_VAR(&trig_info) == DB_2070_TIMING_SET_VAR ) {
 			db_clt_read(pclt, DB_2070_TIMING_SET_VAR, sizeof(db_timing_set_2070_t), &db_timing_set_2070);
-			retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
+//			retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
 		}
 		else {	
 			retval = get_status(wait_for_data, &readBuff, fpin, fpout, verbose);
