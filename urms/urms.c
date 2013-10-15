@@ -279,10 +279,10 @@ int main(int argc, char *argv[]) {
 				db_urms.lane_4_action = gen_mess.urms_status_response.metered_lane_ctl[3].action;
 				db_urms.lane_4_plan = gen_mess.urms_status_response.metered_lane_ctl[3].plan;
 			}
-//			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
-//				fprintf(stderr, "Bad meter setting command\n");
-//				exit(EXIT_FAILURE);
-//			}
+			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
+				fprintf(stderr, "Bad meter setting command\n");
+				exit(EXIT_FAILURE);
+			}
 		}
 		if(get_urms) {
 			if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
@@ -454,6 +454,7 @@ int main(int argc, char *argv[]) {
 			    urms_datafile.mainline_lead_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].lead_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].lead_occ_lsb));
 			    urms_datafile.mainline_trail_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].trail_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].trail_occ_lsb));
 			    urms_datafile.queue_occ[i] = 0.1 * ((gen_mess.urms_status_response.queue_stat[0][i].occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.queue_stat[0][i].occ_lsb));
+			    urms_datafile.metering_rate[i] = ((gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_msb << 8) + (unsigned char)(gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_lsb));
 			    if(verbose) {
 				printf("1:ML%d occ %.1f\n", i+1, urms_datafile.mainline_lead_occ[i]);
 			 	printf("1:MT%d occ %.1f\n", i+1, urms_datafile.mainline_trail_occ[i]);
@@ -461,11 +462,6 @@ int main(int argc, char *argv[]) {
 				printf("1:lane %d cmd_src %hhu\n", i+1, db_urms_status.cmd_src[i]);
 				printf("1:lane %d action %hhu\n", i+1, db_urms_status.action[i]);
 			    }
-			    // Writing to the datafile variable is only necessary if there's
-			    // going to be a datafile on the ramp meter computer
-			    urms_datafile.mainline_lead_occ[i] = 0.1 * ((db_urms_status.mainline_stat[i].lead_occ_msb << 8) + (unsigned char)(db_urms_status.mainline_stat[i].lead_occ_lsb));
-			    urms_datafile.mainline_trail_occ[i] = 0.1 * ((db_urms_status.mainline_stat[i].trail_occ_msb << 8) + (unsigned char)(db_urms_status.mainline_stat[i].trail_occ_lsb));
-			    urms_datafile.queue_occ[i] = 0.1 * ((db_urms_status.queue_stat[i].occ_msb << 8) + (unsigned char)(db_urms_status.queue_stat[i].occ_lsb));
 			    comp_finished_temp += db_urms_status.metered_lane_stat[i].demand_vol + 
 						 db_urms_status.metered_lane_stat[i].passage_vol + 
 						 db_urms_status.mainline_stat[i].lead_vol + 
