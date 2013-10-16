@@ -93,10 +93,11 @@ int main(int argc, char *argv[]) {
 	int lane_4_release_rate = 0;
 	unsigned char lane_4_action = 0;
 	unsigned char lane_4_plan = 0;
+	unsigned char no_control = 0;
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
 
-        while ((option = getopt(argc, argv, "r:vgsi:1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:")) != EOF) {
+        while ((option = getopt(argc, argv, "r:vgsi:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:")) != EOF) {
                 switch(option) {
                 case 'r':
 			controllerIP = strdup(optarg);
@@ -113,6 +114,9 @@ int main(int argc, char *argv[]) {
                         break;
                 case 'i':
                         loop_interval = atoi(optarg);
+                        break;
+                case 'n':
+                        no_control = 1;
                         break;
                 case '1':
 			lane_1_release_rate = atoi(optarg);
@@ -327,7 +331,8 @@ int main(int argc, char *argv[]) {
 		db_urms.lane_2_action = 6;
 		db_urms.lane_3_action = 6;
 		db_urms.lane_4_action = 6;
-//		urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose);
+		if(no_control == 0)
+			urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose);
                 close(urmsfd);
                 db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
 		printf("get_status_err %d\n", get_status_err);
@@ -402,9 +407,11 @@ int main(int argc, char *argv[]) {
 		db_clt_read(pclt, DB_URMS_VAR, sizeof(db_urms_t), &db_urms);
 		if( DB_TRIG_VAR(&trig_info) == DB_URMS_VAR ) {
 			printf("Got DB_URMS_VAR trigger\n");
-//			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
-//				fprintf(stderr, "Bad meter setting command\n");
-//			}
+			if(no_control == 0) {
+				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
+					fprintf(stderr, "Bad meter setting command\n");
+				}
+			}
 		}
 		else {
 		    if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
