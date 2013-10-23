@@ -112,7 +112,17 @@ struct mainline_stat {
 	char lead_vol;	//26 1A Mainline 1 Leading Volume 
 	char lead_occ_msb;	//27 1B Mainline 1 Leading Occupancy (MSB) 
 	char lead_occ_lsb;	//28 1C Mainline 1 Leading Occupancy (LSB) 
-	char lead_stat;	//29 1D Mainline 1 Leading Status 
+	char lead_stat;	/*29 1D Mainline 1 Leading Status 
+			 for Mainline, Queue and Ramp Detectors
+			DETECTOR_DISABLED = 1,
+			DETECTOR_WORKING = 2,
+			DETECTOR_OTHER_ERROR = 3,
+			DETECTOR_ERRATIC_COUNT = 4,
+			DETECTOR_MAX_PRESENCE = 5,
+			DETECTOR_NO_ACTIVITY = 6,
+			DETECTOR_ERROR_AT_SENSOR = 7,
+			DETECTOR_DEPENDENT_NO_ACTIVITY = 8,
+			DETECTOR_DEPENDENT_MAX_PRESENCE = 9 */
 	char trail_vol;	//30 1E Mainline 1 Trailing Volume 
 	char trail_occ_msb;	//31 1F Mainline 1 Trailing Occupancy (MSB) 
 	char trail_occ_lsb;	//32 20 Mainline 1 Trailing Occupancy (LSB) 
@@ -161,7 +171,16 @@ struct queue_stat{
 	char vol;	// Queue Volume
 	char occ_msb;	// Queue Occupancy (MSB)
 	char occ_lsb;	// Queue Occupancy (LSB)
-	char stat;	// Queue Status
+	char stat;	/* Queue Status 
+			 for Mainline, Queue and Ramp Detectors
+			DETECTOR_DISABLED = 1,
+			DETECTOR_WORKING = 2,
+			DETECTOR_OTHER_ERROR = 3,
+			DETECTOR_ERRATIC_COUNT = 4,
+			DETECTOR_MAX_PRESENCE = 5,
+			DETECTOR_NO_ACTIVITY = 6,
+			DETECTOR_ERROR_AT_SENSOR = 7,
+			DETECTOR_DEPENDENT_NO_ACTIVITY = 8 */
 	char flag;	// Queue Flag
 };
 
