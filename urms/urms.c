@@ -96,6 +96,7 @@ int main(int argc, char *argv[]) {
 	unsigned char lane_4_action = 0;
 	unsigned char lane_4_plan = 0;
 	unsigned char no_control = 0;
+	unsigned char no_control_sav = 0;
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
 
@@ -474,7 +475,8 @@ int main(int argc, char *argv[]) {
 		clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
 		db_clt_read(pclt, DB_URMS_VAR, sizeof(db_urms_t), &db_urms);
 		if( DB_TRIG_VAR(&trig_info) == DB_URMS_VAR ) {
-			printf("Got DB_URMS_VAR trigger\n");
+			if(verbose)
+				printf("Got DB_URMS_VAR trigger\n");
 			if(no_control == 0) {
 				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
 					fprintf(stderr, "Bad meter setting command\n");
@@ -503,6 +505,22 @@ int main(int argc, char *argv[]) {
 				no_control = 1;
 */
 			comp_finished_temp = 0;
+
+			if( (gen_mess.urms_status_response.hour < 15) || (gen_mess.urms_status_response.hour > 19) ) {
+				no_control = 1;
+				if( no_control_sav == 0) {
+					printf("Disabling control of ramp meter");
+					no_control_sav = 1;
+				}
+			}
+			else {
+				no_control = 0;
+				if( no_control_sav == 1) {
+					printf("Enabling control of ramp meter");
+					no_control_sav = 1;
+				}
+			}
+
 
 			for(i = 0; i < 3; i++) {
 			    db_urms_status.metered_lane_stat[i].demand_vol = gen_mess.urms_status_response.metered_lane_stat[i].demand_vol;
