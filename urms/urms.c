@@ -529,6 +529,7 @@ int main(int argc, char *argv[]) {
 			    db_urms_status.cmd_src[i] = gen_mess.urms_status_response.metered_lane_ctl[i].cmd_src;
 			    db_urms_status.action[i] = gen_mess.urms_status_response.metered_lane_ctl[i].action;
 			    db_urms_status.plan[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan;
+			    db_urms_status.plan_base_lvl[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan_base_lvl;
 			    urms_datafile.mainline_lead_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].lead_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].lead_occ_lsb));
 			    urms_datafile.mainline_trail_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].trail_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].trail_occ_lsb));
 			    urms_datafile.queue_occ[i] = 0.1 * ((gen_mess.urms_status_response.queue_stat[0][i].occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.queue_stat[0][i].occ_lsb));

@@ -85,8 +85,9 @@ int main(int argc, char *argv[]) {
 	int verbose = 0;
 	unsigned char greens = 0;
 	unsigned char create_db_vars = 0;
+	unsigned char no_control = 0;
 
-        while ((opt = getopt(argc, argv, "p:uvi:c")) != -1)
+        while ((opt = getopt(argc, argv, "p:uvi:cn")) != -1)
         {
                 switch (opt)
                 {
@@ -105,6 +106,9 @@ int main(int argc, char *argv[]) {
                         break;
                   case 'c':
                         create_db_vars = 1;
+                        break;
+                  case 'n':
+                        no_control = 1;
                         break;
 		  default:
 			fprintf(stderr, "Usage: %s -p <port, (def. /dev/ttyS0)> -u (use db) -v (verbose) -i <loop interval>\n", argv[0]);
@@ -179,7 +183,9 @@ int main(int argc, char *argv[]) {
 			retval = clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
 		if( DB_TRIG_VAR(&trig_info) == DB_2070_TIMING_SET_VAR ) {
 			db_clt_read(pclt, DB_2070_TIMING_SET_VAR, sizeof(db_timing_set_2070_t), &db_timing_set_2070);
-//			retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
+			if(no_control == 0) {
+				retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
+			}
 		}
 		else {	
 			retval = get_status(wait_for_data, &readBuff, fpin, fpout, verbose);
