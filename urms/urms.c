@@ -25,7 +25,7 @@ static void sig_hand(int code)
                 longjmp(exit_env, code);
 }
 
-const char *usage = "-v (verbose) -r <controller IP address (def. 10.0.1.126)>-s (standalone, no DB) -l (print log)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
+const char *usage = "-v (verbose) -r <controller IP address (def. 10.0.1.126)> -s (standalone, no DB) -u (use standalone, with DB)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
 
 int db_trig_list[] =  {
         DB_URMS_VAR
@@ -63,6 +63,8 @@ int main(int argc, char *argv[]) {
 	unsigned char rm2rmc_ctr = 0;
 
 	int standalone = 0;
+	int use_db_with_standalone = 0; // Added later to use standalone block to write to an
+					// already-running urms.c
 	int loop_interval = 5000; 	// Loop interval, ms
 	int verbose = 0;
 	int set_urms = 0;
@@ -97,7 +99,7 @@ int main(int argc, char *argv[]) {
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
 
-        while ((option = getopt(argc, argv, "r:vgsi:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:")) != EOF) {
+        while ((option = getopt(argc, argv, "r:vgsui:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:")) != EOF) {
                 switch(option) {
                 case 'r':
 			controllerIP = strdup(optarg);
@@ -111,6 +113,10 @@ int main(int argc, char *argv[]) {
                         break;
                 case 's':
                         standalone = 1;
+                        break;
+                case 'u':
+                        use_db_with_standalone = 1;
+			set_urms = 1;
                         break;
                 case 'i':
                         loop_interval = atoi(optarg);
@@ -226,19 +232,81 @@ int main(int argc, char *argv[]) {
 	for(i=0 ; i<num_lanes; i++)
 		printf("top: rm_action_code_tos2[%d] %#hhx\n", i, rm_action_code_tos2[i]);
 
-	// Open connection to URMS controller
-	urmsfd = OpenURMSConnection(controllerIP, port);
-	if(urmsfd < 0) {
-		fprintf(stderr, "Could not open connection to URMS controller\n");
-		exit(EXIT_FAILURE);
+	if(!use_db_with_standalone) {
+		// Open connection to URMS controller
+		urmsfd = OpenURMSConnection(controllerIP, port);
+		if(urmsfd < 0) {
+			fprintf(stderr, "Could not open connection to URMS controller\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 	// If just testing in standalone, write message to controller and exit
 	if(standalone) {
 		if(set_urms) {
+		    if(!use_db_with_standalone) {
 			if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
 				fprintf(stderr, "Bad status command\n");
 				exit(EXIT_FAILURE);
 			}
+		    }
+		    else {
+			// Connect to database
+		        get_local_name(hostname, MAXHOSTNAMELEN);
+		        if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, NULL, 0)) == NULL) {
+		            exit(EXIT_FAILURE);
+			}
+			db_clt_read(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
+			if(lane_1_release_rate != 0)
+				db_urms.lane_1_release_rate = lane_1_release_rate;
+			else
+				db_urms.lane_1_release_rate = (db_urms_status.metered_lane_stat[0].metered_lane_rate_msb << 8) + (unsigned char)db_urms_status.metered_lane_stat[0].metered_lane_rate_lsb;
+			if(lane_2_release_rate != 0)
+				db_urms.lane_2_release_rate = lane_2_release_rate;
+			else
+				db_urms.lane_2_release_rate = (db_urms_status.metered_lane_stat[1].metered_lane_rate_msb << 8) + (unsigned char)db_urms_status.metered_lane_stat[1].metered_lane_rate_lsb;
+			if(lane_3_release_rate != 0)
+				db_urms.lane_3_release_rate = lane_3_release_rate;
+			else
+				db_urms.lane_3_release_rate = (db_urms_status.metered_lane_stat[2].metered_lane_rate_msb << 8) + (unsigned char)db_urms_status.metered_lane_stat[2].metered_lane_rate_lsb;
+			if(lane_1_plan != 0)
+				db_urms.lane_1_plan = lane_1_plan;
+			else
+				db_urms.lane_1_plan = db_urms_status.plan[0];
+			if(lane_2_plan != 0)
+				db_urms.lane_2_plan = lane_2_plan;
+			else
+				db_urms.lane_2_plan = db_urms_status.plan[1];
+			if(lane_3_plan != 0)
+				db_urms.lane_3_plan = lane_3_plan;
+			else
+				db_urms.lane_3_plan = db_urms_status.plan[2];
+			if(lane_1_action != 0)
+				db_urms.lane_1_action = lane_1_action;
+			else
+				db_urms.lane_1_action = db_urms_status.action[0];
+			if(lane_2_action != 0)
+				db_urms.lane_2_action = lane_2_action;
+			else
+				db_urms.lane_2_action = db_urms_status.action[1];
+			if(lane_3_action != 0)
+				db_urms.lane_3_action = lane_3_action;
+			else
+				db_urms.lane_3_action = db_urms_status.action[2];
+			printf("lane 1 rate=%d lane 2 rate=%d lane 3 rate=%d\nlane 1 plan=%d lane 2 plan=%d lane 3 plan=%d\nlane 1 action=%d lane 2 action=%d lane 3 action=%d\n", 
+				db_urms.lane_1_release_rate, 
+				db_urms.lane_2_release_rate, 
+				db_urms.lane_3_release_rate, 
+				db_urms.lane_1_plan, 
+				db_urms.lane_2_plan, 
+				db_urms.lane_3_plan, 
+				db_urms.lane_1_action, 
+				db_urms.lane_2_action, 
+				db_urms.lane_3_action
+			);
+			db_clt_write(pclt, DB_URMS_VAR, sizeof(db_urms_t), &db_urms);
+                	db_list_done(pclt, NULL, 0, NULL, 0);
+			exit(EXIT_SUCCESS);
+		    }
 			if(lane_1_release_rate != 0) {
 				db_urms.lane_1_release_rate = lane_1_release_rate;
 				db_urms.lane_1_action = lane_1_action;
@@ -430,7 +498,10 @@ int main(int argc, char *argv[]) {
 			db_urms_status.num_addl_det = gen_mess.urms_status_response.num_addl_det;
 			db_urms_status.mainline_dir = gen_mess.urms_status_response.mainline_dir;
 			db_urms_status.is_metering = gen_mess.urms_status_response.is_metering;
-
+/*
+			if( (gen_mess.urms_status_response.hour < 15) || (gen_mess.urms_status_response.hour > 19) )
+				no_control = 1;
+*/
 			comp_finished_temp = 0;
 
 			for(i = 0; i < 3; i++) {
