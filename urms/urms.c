@@ -477,7 +477,8 @@ int main(int argc, char *argv[]) {
 		if( DB_TRIG_VAR(&trig_info) == DB_URMS_VAR ) {
 			if(verbose)
 				printf("Got DB_URMS_VAR trigger\n");
-			if(no_control == 0) {
+			if(no_control == 0) 
+				{
 				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
 					fprintf(stderr, "Bad meter setting command\n");
 				}
@@ -500,24 +501,28 @@ int main(int argc, char *argv[]) {
 			db_urms_status.num_addl_det = gen_mess.urms_status_response.num_addl_det;
 			db_urms_status.mainline_dir = gen_mess.urms_status_response.mainline_dir;
 			db_urms_status.is_metering = gen_mess.urms_status_response.is_metering;
-/*
-			if( (gen_mess.urms_status_response.hour < 15) || (gen_mess.urms_status_response.hour > 19) )
-				no_control = 1;
-*/
+			db_urms_status.hour = gen_mess.urms_status_response.hour;
+
 			comp_finished_temp = 0;
 
-			if( (gen_mess.urms_status_response.hour < 15) || (gen_mess.urms_status_response.hour > 19) ) {
+			if( (gen_mess.urms_status_response.hour < 15) || (gen_mess.urms_status_response.hour >= 19) ) {
 				no_control = 1;
 				if( no_control_sav == 0) {
 					printf("Disabling control of ramp meter");
 					no_control_sav = 1;
+					db_urms.lane_1_action = 6;
+					db_urms.lane_2_action = 6;
+					db_urms.lane_3_action = 6;
+				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
+					fprintf(stderr, "Bad meter setting command\n");
+				}
 				}
 			}
 			else {
 				no_control = 0;
 				if( no_control_sav == 1) {
 					printf("Enabling control of ramp meter");
-					no_control_sav = 1;
+					no_control_sav = 0;
 				}
 			}
 
@@ -531,6 +536,7 @@ int main(int argc, char *argv[]) {
 			    db_urms_status.metered_lane_stat[i].metered_lane_interval_zone = gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_interval_zone;
 			    db_urms_status.metered_lane_stat[i].metered_lane_rate_msb = gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_msb;
 			    db_urms_status.metered_lane_stat[i].metered_lane_rate_lsb = gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_lsb;
+//printf("urms.c: interval_zone %d %d rate %hu\n", i,db_urms_status.metered_lane_stat[i].metered_lane_interval_zone, (db_urms_status.metered_lane_stat[i].metered_lane_rate_msb << 8) + (unsigned char)db_urms_status.metered_lane_stat[i].metered_lane_rate_lsb);
 			    db_urms_status.mainline_stat[i].speed = gen_mess.urms_status_response.mainline_stat[i].speed;
 			    db_urms_status.mainline_stat[i].lead_vol = gen_mess.urms_status_response.mainline_stat[i].lead_vol;
 			    db_urms_status.mainline_stat[i].lead_occ_msb = gen_mess.urms_status_response.mainline_stat[i].lead_occ_msb;
@@ -553,10 +559,10 @@ int main(int argc, char *argv[]) {
 			    urms_datafile.queue_occ[i] = 0.1 * ((gen_mess.urms_status_response.queue_stat[0][i].occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.queue_stat[0][i].occ_lsb));
 			    urms_datafile.metering_rate[i] = ((gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_msb << 8) + (unsigned char)(gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_lsb));
 			    if(verbose) {
-				printf("1:ML%d occ %.1f\n", i+1, urms_datafile.mainline_lead_occ[i]);
-			 	printf("1:MT%d occ %.1f\n", i+1, urms_datafile.mainline_trail_occ[i]);
-				printf("1:Q%d-1 occ %.1f\n", i+1, urms_datafile.queue_occ[i]);
-				printf("1:lane %d cmd_src %hhu\n", i+1, db_urms_status.cmd_src[i]);
+				printf("1:ML%d occ %.1f ", i+1, urms_datafile.mainline_lead_occ[i]);
+			 	printf("1:MT%d occ %.1f ", i+1, urms_datafile.mainline_trail_occ[i]);
+				printf("1:Q%d-1 occ %.1f ", i+1, urms_datafile.queue_occ[i]);
+				printf("1:lane %d cmd_src %hhu ", i+1, db_urms_status.cmd_src[i]);
 				printf("1:lane %d action %hhu\n", i+1, db_urms_status.action[i]);
 			    }
 			    comp_finished_temp += db_urms_status.metered_lane_stat[i].demand_vol + 
@@ -565,8 +571,8 @@ int main(int argc, char *argv[]) {
 						 db_urms_status.mainline_stat[i].trail_vol + 
 						 db_urms_status.queue_stat[i].vol; 
 			    if(verbose) {
-				printf("2:ML%d occ %.1f\n", i+1, urms_datafile.mainline_lead_occ[i]);
-			 	printf("2:MT%d occ %.1f\n", i+1, urms_datafile.mainline_trail_occ[i]);
+				printf("2:ML%d occ %.1f ", i+1, urms_datafile.mainline_lead_occ[i]);
+			 	printf("2:MT%d occ %.1f ", i+1, urms_datafile.mainline_trail_occ[i]);
 				printf("2:Q%d-1 occ %.1f\n", i+1, urms_datafile.queue_occ[i]);
 			    }
 			}
@@ -668,6 +674,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 
 	// If requested metering rate is 0, assume no change
 	// ALL of the parameters MUST be set!
+/*
 	if(db_urms->lane_1_release_rate == 0) {
 		db_urms->lane_1_release_rate = db_urms_sav->lane_1_release_rate;
 		db_urms->lane_1_action = db_urms_sav->lane_1_action;
@@ -688,6 +695,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 		db_urms->lane_4_action = db_urms_sav->lane_4_action;
 		db_urms->lane_4_plan = db_urms_sav->lane_4_plan;
 	}
+*/
 	gen_mess.urmsctl.lane_1_action = db_urms->lane_1_action;
 	gen_mess.urmsctl.lane_1_plan = db_urms->lane_1_plan;
 	gen_mess.urmsctl.lane_1_release_rate_MSB = 
@@ -716,6 +724,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	for(i=0; i<=20; i++)
 		csum += msgbuf[i];
 	msgbuf[22] = csum;
+printf("lane 1 action %d lane 2 action %d lne 3 action %d\n", gen_mess.urmsctl.lane_1_action, gen_mess.urmsctl.lane_2_action, gen_mess.urmsctl.lane_3_action);
 	if (write(fd, msgbuf, sizeof(urmsctl_t)) != sizeof(urmsctl_t)) {
 	  fprintf(stderr, "partial/failed write\n");
 	  return -2;
@@ -816,10 +825,10 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	    	printf("\n");
 	    }
     	printf("urms_get_status: Time for function call %f sec\n", (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) - (start_time.tv_sec + (start_time.tv_nsec/1.0e9)));
-	printf("ML2 vol %hhu occ %.1f\n", gen_mess->urms_status_response.mainline_stat[1].lead_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[1].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[1].lead_occ_lsb));
-	printf("MT2 vol %hhu occ %.1f\n", gen_mess->urms_status_response.mainline_stat[1].trail_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[1].trail_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[1].trail_occ_lsb));
-	printf("ML3 vol %hhu occ %.1f\n", gen_mess->urms_status_response.mainline_stat[2].lead_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[2].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[2].lead_occ_lsb));
-	printf("MT3 vol %hhu occ %.1f\n", gen_mess->urms_status_response.mainline_stat[2].trail_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[2].trail_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[2].trail_occ_lsb));
+	printf("ML2 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[1].lead_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[1].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[1].lead_occ_lsb));
+	printf("MT2 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[1].trail_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[1].trail_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[1].trail_occ_lsb));
+	printf("ML3 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[2].lead_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[2].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[2].lead_occ_lsb));
+	printf("MT3 vol %hhu occ %.1f \n", gen_mess->urms_status_response.mainline_stat[2].trail_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[2].trail_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[2].trail_occ_lsb));
 	}
 	return 0;
 }
