@@ -11,11 +11,29 @@
 #define DB_URMS_VAR		DB_URMS_TYPE
 #define DB_URMS_STATUS_TYPE	4322
 #define DB_URMS_STATUS_VAR	DB_URMS_STATUS_TYPE
-
 #define URMS_ACTION_REST_IN_DARK	1
 #define URMS_ACTION_REST_IN_GREEN	2
 #define URMS_ACTION_FIXED_RATE		3
 #define URMS_ACTION_SKIP		6
+
+//Active interval status (interval zone)
+#define INITIALIZATION		1
+#define PRE_METERING_NONGREEN	2
+#define PRE_METERING_GREEN	3 
+#define STARTUP_ALERT		4
+#define STARTUP_WARNING		5
+#define STARTUP_GREEN		6
+#define STARTUP_YELLOW		7
+#define STARTUP_RED		8
+#define METERING_RED		9
+#define METERING_GREEN		10
+#define METERING_YELLOW		11
+#define SHUTDOWN_GREEN		12
+#define SHUTDOWN_YELLOW		13
+#define SHUTDOWN_RED		14
+#define SHUTDOWN_WARNING	15
+#define POST_METERING_GREEN	16
+
 typedef struct {
 
 	unsigned addr : 4; //Controller drop address
@@ -146,9 +164,9 @@ struct metered_lane_stat{
 				//	3=Metering Shutdown Active
 				//	4=Metering Shutdown
 	char passage_vol;	//253 FD Passage 1 Volume 
-	char passage_viol;	//254 FE Passage 1 Violations 
-	char passage_stat;	//255 FF Passage 1 Status 
-	char metered_lane_interval_zone;	//256 100 Metered Lane 1 Interval Zone 
+	char passage_stat;	//254 FF Passage 1 Status 
+	char metered_lane_interval_zone;	//255 100 Metered Lane 1 Interval Zone 
+	char passage_viol;	//256 FE Passage 1 Violations 
 	char metered_lane_rate_msb;	//257 101 Metered Lane 1 Release Rate (MSB) 
 	char metered_lane_rate_lsb;	//258 102 Metered Lane 1 Release Rate (LSB) 
 };
@@ -252,7 +270,9 @@ typedef struct {
 	unsigned char	plan[3];   //83-85
 	unsigned char	computation_finished; //86
 	char	plan_base_lvl[3]; //87
-	unsigned short  checksum; //88
+	char	hour; //88
+	char	no_control; //89
+	unsigned short  checksum; //90
 } IS_PACKED db_urms_status_t;
 
 /*
