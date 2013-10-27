@@ -505,7 +505,7 @@ int main(int argc, char *argv[]) {
 
 			comp_finished_temp = 0;
 
-			if( (gen_mess.urms_status_response.hour < 15) || (gen_mess.urms_status_response.hour >= 19) ) {
+			if( (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) ) {
 				no_control = 1;
 				if( no_control_sav == 0) {
 					printf("Disabling control of ramp meter");
@@ -811,7 +811,7 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 
         // Now append the FCS.
 	msg_len = 417 - 4;
-	check_modframe_string( (unsigned char *)(&gen_mess+1), &msg_len); 
+//	check_modframe_string( (unsigned char *)(&gen_mess+1), &msg_len); 
 
 	if(verbose) {
 	    get_current_timestamp(&ts);
