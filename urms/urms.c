@@ -505,7 +505,7 @@ int main(int argc, char *argv[]) {
 
 			comp_finished_temp = 0;
 
-			if( (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) ) {
+			if( (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) || (db_urms.no_control != 0)) {
 				no_control = 1;
 				if( no_control_sav == 0) {
 					printf("Disabling control of ramp meter");

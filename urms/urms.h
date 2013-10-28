@@ -92,6 +92,7 @@ typedef struct {
 	int lane_4_action; //Metered lane 4 action
 	int lane_4_release_rate;//Metered lane 4 release rate(VPH)
 	int lane_4_plan;//Metered lane 4 plan number
+	char	no_control; //Request by arterial computer to stop controlling
 } IS_PACKED db_urms_t;
 
 typedef struct {
