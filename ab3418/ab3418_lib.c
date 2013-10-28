@@ -794,10 +794,6 @@ printf("\n");
 	poverlap_set_request->overlap_hdr.mess_type = 0x96;
 	poverlap_set_request->overlap_hdr.page_id = 0x02;
 	poverlap_set_request->overlap_hdr.block_id = 0x04;
-
-	poverlap_set_request->overlapB_parent = 2;
-	poverlap_set_request->overlapC_parent = 2;
-
 	poverlap_set_request->overlap_tail.FCSmsb = 0x00;
 	poverlap_set_request->overlap_tail.FCSlsb = 0x00;
 
