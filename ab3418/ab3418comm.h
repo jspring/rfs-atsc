@@ -97,7 +97,7 @@ typedef struct {
 	int min_green;
 	int yellow;
 	int all_red;
-	cell_addr_data_t cell_addr_data[4];	// Determines parameters to change
+	cell_addr_data_t cell_addr_data;	// Determines parameter to change
 } IS_PACKED db_2070_timing_set_t;
 
 
@@ -107,7 +107,7 @@ typedef struct {
 	unsigned short page;	// timing settings=0x100, local plan settings=0x300
 } IS_PACKED db_2070_timing_get_t;
 
-int db_set_min_max_green(db_clt_typ *pclt, unsigned char phase, int min_green, int max_green, int yellow, int all_red, int verbose);
+int db_set_phase3_max_green1(db_clt_typ *pclt, int max_green, int verbose);
 int db_get_timing_request(db_clt_typ *pclt, unsigned char phase, unsigned short page);
 
 #endif
