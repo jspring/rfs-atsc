@@ -479,6 +479,7 @@ int main(int argc, char *argv[]) {
 				printf("Got DB_URMS_VAR trigger\n");
 			if(no_control == 0) 
 				{
+				db_urms.lane_1_action = 6;
 				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
 					fprintf(stderr, "Bad meter setting command\n");
 				}
@@ -508,7 +509,7 @@ int main(int argc, char *argv[]) {
 			if( (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) || (db_urms.no_control != 0)) {
 				no_control = 1;
 				if( no_control_sav == 0) {
-					printf("Disabling control of ramp meter");
+					printf("Disabling control of ramp meter hour %d no_control %d\n", db_urms_status.hour, db_urms.no_control);
 					no_control_sav = 1;
 					db_urms.lane_1_action = 6;
 					db_urms.lane_2_action = 6;
@@ -724,7 +725,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	for(i=0; i<=20; i++)
 		csum += msgbuf[i];
 	msgbuf[22] = csum;
-printf("lane 1 action %d lane 2 action %d lne 3 action %d\n", gen_mess.urmsctl.lane_1_action, gen_mess.urmsctl.lane_2_action, gen_mess.urmsctl.lane_3_action);
+	printf("urms_set_meter: lane 1 action %d lane 2 action %d lne 3 action %d\n", gen_mess.urmsctl.lane_1_action, gen_mess.urmsctl.lane_2_action, gen_mess.urmsctl.lane_3_action);
 	if (write(fd, msgbuf, sizeof(urmsctl_t)) != sizeof(urmsctl_t)) {
 	  fprintf(stderr, "partial/failed write\n");
 	  return -2;
