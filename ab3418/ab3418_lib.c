@@ -81,7 +81,6 @@ bool_typ ser_driver_read( gen_mess_typ *pMessagebuff, int fpin, char verbose)
 	atsc_typ atsc;
 	struct timeb timeptr_raw;
 	struct tm time_converted;
-	static unsigned char last_greens = 0;
         fd_set readfds;
         int selectval = 1000;
         struct timeval timeout;
@@ -453,7 +452,6 @@ unsigned short calc_cell_addr(unsigned short phase_1_cell_addr, unsigned char ph
 
 int set_timing(db_timing_set_2070_t *db_timing_set_2070, int *msg_len, int fpin, int fpout, char verbose) {
 
-	int i;
         fd_set readfds;
         fd_set writefds;
         int selectval = 1000;
@@ -475,35 +473,33 @@ int set_timing(db_timing_set_2070_t *db_timing_set_2070, int *msg_len, int fpin,
 	set_controller_timing_data_mess.control = 0x13;
 	set_controller_timing_data_mess.ipi = 0xc0;
 	set_controller_timing_data_mess.mess_type = 0x99;
-	set_controller_timing_data_mess.num_cells = 5;
+	set_controller_timing_data_mess.num_cells = 2;
 	set_controller_timing_data_mess.magic_num.cell_addr = 0x9201;
 	set_controller_timing_data_mess.magic_num.data = 2;
 	set_controller_timing_data_mess.magic_num.cell_addr = 0x0000;
 	set_controller_timing_data_mess.magic_num.data = 0;
-	for(i=0; i < 4; i++) { 
-		set_controller_timing_data_mess.cell_addr_data[i].cell_addr = 
-			((db_timing_set_2070->cell_addr_data[i].cell_addr << 8) & 0xFF00) + ((db_timing_set_2070->cell_addr_data[i].cell_addr >> 8) & 0x00FF);
-		if(db_timing_set_2070->phase > 0)
-			set_controller_timing_data_mess.cell_addr_data[i].cell_addr = 
-				calc_cell_addr(db_timing_set_2070->cell_addr_data[i].cell_addr, db_timing_set_2070->phase);
-		set_controller_timing_data_mess.cell_addr_data[i].data = 
-			db_timing_set_2070->cell_addr_data[i].data;
-		// Get time of day and save in the database. 
-                ftime ( &timeptr_raw );
-                localtime_r ( &timeptr_raw.time, &time_converted );
-                atsc.ts.hour = time_converted.tm_hour;
-                atsc.ts.min = time_converted.tm_min;
-                atsc.ts.sec = time_converted.tm_sec;
-                atsc.ts.millisec = timeptr_raw.millitm;
+	set_controller_timing_data_mess.cell_addr_data.cell_addr = 
+		((db_timing_set_2070->cell_addr_data.cell_addr << 8) & 0xFF00) + ((db_timing_set_2070->cell_addr_data.cell_addr >> 8) & 0x00FF);
+	if(db_timing_set_2070->phase > 0)
+		set_controller_timing_data_mess.cell_addr_data.cell_addr = 
+			calc_cell_addr(db_timing_set_2070->cell_addr_data.cell_addr, db_timing_set_2070->phase);
+	set_controller_timing_data_mess.cell_addr_data.data = 
+		db_timing_set_2070->cell_addr_data.data;
+	// Get time of day and save in the database. 
+	ftime ( &timeptr_raw );
+	localtime_r ( &timeptr_raw.time, &time_converted );
+	atsc.ts.hour = time_converted.tm_hour;
+	atsc.ts.min = time_converted.tm_min;
+	atsc.ts.sec = time_converted.tm_sec;
+	atsc.ts.millisec = timeptr_raw.millitm;
 
-		if(verbose != 0) 
-			printf("set_timing: %02d:%02d:%02d:%03d ",atsc.ts.hour,atsc.ts.min,
-				atsc.ts.sec,atsc.ts.millisec );
-		printf("cell_addr %#hhx data %hhu phase %hhu\n",
-			set_controller_timing_data_mess.cell_addr_data[i].cell_addr, 
-			set_controller_timing_data_mess.cell_addr_data[i].data, 
-			db_timing_set_2070->phase);
-	}
+	if(verbose != 0) 
+		printf("set_timing: %02d:%02d:%02d:%03d ",atsc.ts.hour,atsc.ts.min,
+			atsc.ts.sec,atsc.ts.millisec );
+	printf("cell_addr %#hhx data %hhu phase %hhu\n",
+		set_controller_timing_data_mess.cell_addr_data.cell_addr, 
+		set_controller_timing_data_mess.cell_addr_data.data, 
+		db_timing_set_2070->phase);
 	set_controller_timing_data_mess.FCSmsb = 0x00;
 	set_controller_timing_data_mess.FCSlsb = 0x00;
 	/* Now append the FCS. */

@@ -11,7 +11,7 @@ typedef struct {
         int min_green;
         int yellow;
         int all_red;
-        cell_addr_data_t cell_addr_data[4];     // Determines parameters to change
+        cell_addr_data_t cell_addr_data;     // Determines parameters to change
 } IS_PACKED db_timing_set_2070_t;
 
 
