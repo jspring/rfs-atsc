@@ -38,7 +38,7 @@ db_id_t db_vars_list[] =  {
 };
 int num_db_variables = sizeof(db_vars_list)/sizeof(db_id_t);
 
-int db_trig_list[] =  {
+unsigned int db_trig_list[] =  {
         DB_URMS_VAR,
         DB_URMS_STATUS_VAR
 };
