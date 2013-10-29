@@ -156,7 +156,7 @@ typedef struct
                                         // Lau gave me. I still don't know what
                                         // it means, but it's necessary to get 
                                         // the parameters to change.
-	cell_addr_data_t cell_addr_data[4]; // Allow 4 parameter changes at a time 
+	cell_addr_data_t cell_addr_data; // Allow 1 parameter change at a time 
 	char	FCSmsb;       /* FCS (Frame Checking Sequence) MSB */
 	char	FCSlsb;       /* FCS least significant byte */
 	char	end_flag;     /* 0x7e */
