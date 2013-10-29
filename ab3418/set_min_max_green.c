@@ -216,8 +216,8 @@ printf("portcfg %s\n", portcfg);
 			retval = set_timing(&writeBuff, &db_2070_timing_set, &msg_len, fpin, fpout);
 		}
 		else {
-			db_2070_timing_set.cell_addr_data[0].cell_addr = MINIMUM_GREEN;
-			db_2070_timing_set.cell_addr_data[0].data = (unsigned char)min_green;
+//			db_2070_timing_set.cell_addr_data[0].cell_addr = MINIMUM_GREEN;
+//			db_2070_timing_set.cell_addr_data[0].data = (unsigned char)min_green;
 			db_2070_timing_set.cell_addr_data[1].cell_addr = MAXIMUM_GREEN_1;
 			db_2070_timing_set.cell_addr_data[1].data = (unsigned char)max_green;
 			db_2070_timing_set.phase = phase;
