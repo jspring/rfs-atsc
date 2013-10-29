@@ -5,7 +5,7 @@
 */
 
 #include <db_include.h>
-#include "set_min_max_green.h"
+#include "ab3418comm.h"
 
 const char *usage = " -p <phase> -g <minimum green> -G <maximum green> -y <yellow> -R <all_red>\n";
 
@@ -70,7 +70,7 @@ printf("page %hx\n", page);
 	if(page != 0) 
 		db_get_timing_request(pclt, phase, page);
 	else 
-		db_set_min_max_green(pclt, phase, min_green, max_green, yellow, all_red, verbose);
+		db_set_phase3_max_green1(pclt, min_green, verbose);
 	printf("\n");
 	clt_logout(pclt);
 }
