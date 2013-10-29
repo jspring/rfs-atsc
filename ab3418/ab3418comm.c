@@ -50,7 +50,7 @@ static db_id_t db_vars_ab3418comm[] = {
 };
 
 #define NUM_DB_VARS sizeof(db_vars_ab3418comm)/sizeof(db_id_t)
-int db_trig_list[] =  {
+unsigned int db_trig_list[] =  {
        DB_2070_TIMING_SET_VAR
 };
 
@@ -153,8 +153,8 @@ int main(int argc, char *argv[]) {
 	detector = 26;
 	blocknum = (detector / NUM_DET_PER_BLOCK) + 1;
 	rem = detector - 1 - ((blocknum-1) * NUM_DET_PER_BLOCK);
-	retval = get_detector(wait_for_data, &detector_block, fpin, fpout, detector, verbose);
-	memcpy(&detector_block_sav, &detector_block, sizeof(detector_msg_t));
+//	retval = get_detector(wait_for_data, &detector_block, fpin, fpout, detector, verbose);
+//	memcpy(&detector_block_sav, &detector_block, sizeof(detector_msg_t));
 
 //	printf("detector_block_sav after first GET\n");
 //	printf("Detector %d blocknum %d rem %d type %d phase_assignment %#hhx lock %d delay %hhu extend %.1f recall %d input port %.1f\n",
@@ -185,9 +185,9 @@ int main(int argc, char *argv[]) {
 //		);
 
 	// Set detector 26 assignment to phase 3
-	detector_block.detector_attr[rem].phase_assignment = 0x04;
-	set_detector(&detector_block, fpin, fpout, detector, verbose);
-	retval = get_detector(wait_for_data, &detector_block, fpin, fpout, detector, verbose);
+//	detector_block.detector_attr[rem].phase_assignment = 0x04;
+//	set_detector(&detector_block, fpin, fpout, detector, verbose);
+//	retval = get_detector(wait_for_data, &detector_block, fpin, fpout, detector, verbose);
 
 //	printf("detector_block_sav after SET and second GET\n");
 //	printf("Detector %d blocknum %d rem %d type %d phase_assignment %#hhx lock %d delay %hhu extend %.1f recall %d input port %.1f\n",
@@ -219,10 +219,10 @@ int main(int argc, char *argv[]) {
 
 	// Change overlap B parent from 6 & 7 to 3 & 7. Save original parent 
 	// assignment.
-	retval = get_overlap(wait_for_data, &overlap, fpin, fpout, verbose);
-	if(retval < 0) 
-		check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
-	memcpy(&overlap_sav, &overlap, sizeof(overlap_msg_t));
+//	retval = get_overlap(wait_for_data, &overlap, fpin, fpout, verbose);
+//	if(retval < 0) 
+//		check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
+//	memcpy(&overlap_sav, &overlap, sizeof(overlap_msg_t));
 
 	//Now set the parent of overlap B to phases 3 & 7
 #define	OV_PHASE_1	0x01
@@ -233,10 +233,10 @@ int main(int argc, char *argv[]) {
 #define	OV_PHASE_6	0x20
 #define	OV_PHASE_7	0x40
 #define	OV_PHASE_8	0x80
-	overlap.overlapB_parent = OV_PHASE_3 | OV_PHASE_7;
-	retval = set_overlap( (overlap_msg_t *)&overlap, fpin, fpout, verbose);
-	if(retval < 0) 
-		check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
+//	overlap.overlapB_parent = OV_PHASE_3 | OV_PHASE_7;
+//	retval = set_overlap( (overlap_msg_t *)&overlap, fpin, fpout, verbose);
+//	if(retval < 0) 
+//		check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
 
 	if(use_db) {
 		get_local_name(hostname, MAXHOSTNAMELEN);
@@ -256,11 +256,11 @@ int main(int argc, char *argv[]) {
 
 		if (setjmp(exit_env) != 0) {
 
-			// Revert overlap B to phase 6 as parent
-			retval = set_overlap( (overlap_msg_t *)&overlap_sav, fpin, fpout, verbose);
+//			// Revert overlap B to phase 6 as parent
+//			retval = set_overlap( (overlap_msg_t *)&overlap_sav, fpin, fpout, verbose);
 
-			// Revert detector 26 assignment to phase 6
-			set_detector(&detector_block_sav, fpin, fpout, detector, verbose);
+//			// Revert detector 26 assignment to phase 6
+//			set_detector(&detector_block_sav, fpin, fpout, detector, verbose);
 
 			// Tell ramp meter computer to stop controlling
 			db_clt_read(pclt, DB_URMS_VAR, sizeof(db_urms_t), &db_urms);
@@ -350,6 +350,7 @@ int main(int argc, char *argv[]) {
 				);
 			clock_gettime(CLOCK_REALTIME, &start_time);
 		}
+
 		db_clt_read(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
 		if( (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) ) {
 			no_control = 1;
