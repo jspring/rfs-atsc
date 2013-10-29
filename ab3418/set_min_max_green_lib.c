@@ -3,76 +3,48 @@
 */
 
 #include <db_include.h>
-#include "set_min_max_green.h"
+#include "ab3418comm.h"
 
-int db_set_min_max_green(db_clt_typ *pclt, int phase, int min_green, int max_green, int yellow, int all_red, int verbose) {
+int db_set_phase3_max_green1(db_clt_typ *pclt, int max_green, int verbose) {
 
         db_2070_timing_set_t db_2070_timing_set;
 	int retval = -1;
 
-	if(phase <=0 ) {
-		fprintf(stderr, "phase argument to db_set_min_max_green must be > 0\n");
-		return retval;
-	}
-        db_2070_timing_set.phase = phase;
-	memset(&db_2070_timing_set.cell_addr_data[0], 0, sizeof(db_2070_timing_set.cell_addr_data));
-        if(min_green >= 0) {
-		db_2070_timing_set.cell_addr_data[0].cell_addr = (unsigned short) MINIMUM_GREEN;
-	        db_2070_timing_set.cell_addr_data[0].data = min_green;
-	}
-        if(max_green >= 0) {
-	        db_2070_timing_set.cell_addr_data[1].cell_addr = (unsigned short) MAXIMUM_GREEN_1;
-        	db_2070_timing_set.cell_addr_data[1].data = max_green;
-	}
-        if(yellow >= 0) {
-        	db_2070_timing_set.cell_addr_data[2].cell_addr = (unsigned short) YELLOW;
-        	db_2070_timing_set.cell_addr_data[2].data = yellow;
-	}
-        if(all_red >= 0) {
-        	db_2070_timing_set.cell_addr_data[3].cell_addr = (unsigned short) ALL_RED;
-        	db_2070_timing_set.cell_addr_data[3].data = all_red;
+        db_2070_timing_set.phase = 3;
+	memset(&db_2070_timing_set.cell_addr_data, 0, sizeof(db_2070_timing_set.cell_addr_data));
+        if(max_green > 0) {
+	        db_2070_timing_set.cell_addr_data.cell_addr = (unsigned short) MAXIMUM_GREEN_1;
+        	db_2070_timing_set.cell_addr_data.data = max_green;
 	}
 	if(verbose) {
-		printf("Writing: phase %d min_green %d max_green %d yellow %d all_red %d\n",
+		printf("Writing: phase %d min_green %d\n",
 			db_2070_timing_set.phase,
-			db_2070_timing_set.cell_addr_data[0].data,
-			db_2070_timing_set.cell_addr_data[1].data,
-			db_2070_timing_set.cell_addr_data[2].data,
-			db_2070_timing_set.cell_addr_data[3].data
+			db_2070_timing_set.cell_addr_data.data
 		);
-		printf("Writing: cell0 addr %#x cell1 addr %#x cell2 addr %#x cell3 addr %#x \n",
-			db_2070_timing_set.cell_addr_data[0].cell_addr,
-			db_2070_timing_set.cell_addr_data[1].cell_addr,
-			db_2070_timing_set.cell_addr_data[2].cell_addr,
-			db_2070_timing_set.cell_addr_data[3].cell_addr
+		printf("Writing: cell0 addr %#x\n",
+			db_2070_timing_set.cell_addr_data.cell_addr
 		);
 	}
         db_clt_write(pclt, DB_2070_TIMING_SET_VAR, sizeof(db_2070_timing_set_t), &db_2070_timing_set);
 	if(retval == FALSE) {
-		printf(stderr, "db_set_min_max_green: db_clt_write failed\n");
+		fprintf(stderr, "db_set_min_max_green: db_clt_write failed\n");
 		return -1;
 	}
 	memset(&db_2070_timing_set, 0, sizeof(db_2070_timing_set_t));
         db_clt_read(pclt, DB_2070_TIMING_SET_VAR, sizeof(db_2070_timing_set_t), &db_2070_timing_set);
 	if(verbose) {
-		printf("Reading: phase %d min_green %d max_green %d yellow %d all_red %d\n",
+		printf("Reading: phase %d max_green %d\n",
 			db_2070_timing_set.phase,
-			db_2070_timing_set.cell_addr_data[0].data,
-			db_2070_timing_set.cell_addr_data[1].data,
-			db_2070_timing_set.cell_addr_data[2].data,
-			db_2070_timing_set.cell_addr_data[3].data
+			db_2070_timing_set.cell_addr_data.data
 		);
-		printf("Reading: cell0 addr %#x cell1 addr %#x cell2 addr %#x cell3 addr %#x \n",
-			db_2070_timing_set.cell_addr_data[0].cell_addr,
-			db_2070_timing_set.cell_addr_data[1].cell_addr,
-			db_2070_timing_set.cell_addr_data[2].cell_addr,
-			db_2070_timing_set.cell_addr_data[3].cell_addr
+		printf("Reading: cell addr %#x\n",
+			db_2070_timing_set.cell_addr_data.cell_addr
 		);
 	}
 	return 0;
 }
 
-int db_get_timing_request(db_clt_typ *pclt, int phase, unsigned short page) {
+int db_get_timing_request(db_clt_typ *pclt, unsigned char phase, unsigned short page) {
 
         db_2070_timing_get_t db_2070_timing_get;
 	int retval = -1;
