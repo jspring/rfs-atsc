@@ -131,17 +131,17 @@ int main(int argc, char *argv[]) {
 					if(readBuff.data[j+8] == match_val) {
 						printf("%#x\n", i);
 						memset(&db_timing_set_2070, 0, sizeof(db_timing_set_2070_t));
-						db_timing_set_2070.cell_addr_data[0].cell_addr = (i & 0xff0f) + 0x10;
-						db_timing_set_2070.cell_addr_data[0].data = subst_val;
+						db_timing_set_2070.cell_addr_data.cell_addr = (i & 0xff0f) + 0x10;
+						db_timing_set_2070.cell_addr_data.data = subst_val;
 						db_timing_set_2070.phase = (unsigned char)((i & 0xf0) >> 4);
 						retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
 					}
 				}
 				if( (do_match == 0) && (do_subst != 0) ){
 					memset(&db_timing_set_2070, 0, sizeof(db_timing_set_2070_t));
-					db_timing_set_2070.cell_addr_data[0].cell_addr = (i & 0xff0f) + 0x10;
-					db_timing_set_2070.cell_addr_data[0].cell_addr = i;
-					db_timing_set_2070.cell_addr_data[0].data = subst_val;
+					db_timing_set_2070.cell_addr_data.cell_addr = (i & 0xff0f) + 0x10;
+					db_timing_set_2070.cell_addr_data.cell_addr = i;
+					db_timing_set_2070.cell_addr_data.data = subst_val;
 					db_timing_set_2070.phase = (unsigned char)((i & 0xf0) >> 4);
 					db_timing_set_2070.phase = 0;
 					retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
