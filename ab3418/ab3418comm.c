@@ -50,7 +50,7 @@ static db_id_t db_vars_ab3418comm[] = {
 };
 
 #define NUM_DB_VARS sizeof(db_vars_ab3418comm)/sizeof(db_id_t)
-unsigned int db_trig_list[] =  {
+int db_trig_list[] =  {
        DB_2070_TIMING_SET_VAR
 };
 
@@ -86,8 +86,13 @@ int main(int argc, char *argv[]) {
 	int retval;
 	int check_retval;
 	char port[14] = "/dev/ttyS0";
+
 	struct timespec start_time;
 	struct timespec end_time;
+	struct timespec tp;
+	struct tm *ltime;
+	int dow;
+
 	int opt;
 	int use_db = 0;
 	int interval = 100;
@@ -97,9 +102,9 @@ int main(int argc, char *argv[]) {
 	unsigned char no_control = 0;
 	unsigned char no_control_sav = 0;
 	char detector = 0;
-	int blocknum;
-	int rem;
-	unsigned char new_phase_assignment;	
+//	int blocknum;
+//	int rem;
+//	unsigned char new_phase_assignment;	
 
         while ((opt = getopt(argc, argv, "p:uvi:cnd:a:")) != -1)
         {
@@ -128,7 +133,7 @@ int main(int argc, char *argv[]) {
                         detector = atoi(optarg);
                         break;
                   case 'a':
-                        new_phase_assignment = (unsigned char)atoi(optarg);
+//                        new_phase_assignment = (unsigned char)atoi(optarg);
                         break;
 		  default:
 			fprintf(stderr, "Usage: %s -p <port, (def. /dev/ttyS0)> -u (use db) -v (verbose) -i <loop interval>\n", argv[0]);
@@ -151,8 +156,8 @@ int main(int argc, char *argv[]) {
 #define NUM_DET_PER_BLOCK 4
 #define NUM_DET_BLOCKS	11
 	detector = 26;
-	blocknum = (detector / NUM_DET_PER_BLOCK) + 1;
-	rem = detector - 1 - ((blocknum-1) * NUM_DET_PER_BLOCK);
+//	blocknum = (detector / NUM_DET_PER_BLOCK) + 1;
+//	rem = detector - 1 - ((blocknum-1) * NUM_DET_PER_BLOCK);
 //	retval = get_detector(wait_for_data, &detector_block, fpin, fpout, detector, verbose);
 //	memcpy(&detector_block_sav, &detector_block, sizeof(detector_msg_t));
 
@@ -352,11 +357,16 @@ int main(int argc, char *argv[]) {
 		}
 
 		db_clt_read(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
-		if( (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) ) {
+		clock_gettime(CLOCK_REALTIME, &tp);
+		ltime = localtime(&tp.tv_sec);
+		dow = ltime->tm_wday;
+//		printf("dow=%d dow%%6=%d hour %d\n", dow, dow % 6, db_urms_status.hour);
+
+		if( ((dow % 6) == 0) || (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) ) {
 			no_control = 1;
 			db_urms.no_control = 1;
 			if( no_control_sav == 0) {
-				printf("Disabling control of arterial controller: hour is %d\n", db_urms_status.hour);
+				printf("Disabling control of arterial controller: hour=%d DOW=%d\n", db_urms_status.hour, dow);
 				no_control_sav = 1;
 				set_detector(&detector_block_sav, fpin, fpout, detector, verbose);
 			}
@@ -365,7 +375,7 @@ int main(int argc, char *argv[]) {
 			no_control = 0;
 			db_urms.no_control = 0;
 			if( no_control_sav == 1) {
-				printf("Enabling control of arterial controller");
+				printf("Enabling control of arterial controller: hour=%d DOW=%d\n", db_urms_status.hour, dow);
 				set_detector(&detector_block, fpin, fpout, detector, verbose);
 				no_control_sav = 0;
 			}
