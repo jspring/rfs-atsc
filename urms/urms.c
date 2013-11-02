@@ -80,9 +80,13 @@ int main(int argc, char *argv[]) {
 	int get_status_err = 0;
 	double comp_finished_temp = 0;
 	double comp_finished_sav = 0;
+
 	double curr_time = 0;
 	double time_sav = 0;
 	struct timespec curr_timespec;
+	struct tm *ltime;
+	int dow;
+
 	int lane_1_release_rate = 0;
 	unsigned char lane_1_action = 0;
 	unsigned char lane_1_plan = 0;
@@ -506,10 +510,14 @@ int main(int argc, char *argv[]) {
 
 			comp_finished_temp = 0;
 
-			if( (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) || (db_urms.no_control != 0)) {
+			ltime = localtime(&curr_timespec.tv_sec);
+			dow = ltime->tm_wday;
+//			printf("dow=%d dow%%6=%d hour %d\n", dow, dow % 6, db_urms_status.hour);
+
+			if( ((dow % 6) == 0) || (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) || (db_urms.no_control != 0)) {
 				no_control = 1;
 				if( no_control_sav == 0) {
-					printf("Disabling control of ramp meter hour %d no_control %d\n", db_urms_status.hour, db_urms.no_control);
+					printf("Disabling control of ramp meter hour %d no_control %d DOW %d\n", db_urms_status.hour, db_urms.no_control, dow);
 					no_control_sav = 1;
 					db_urms.lane_1_action = 6;
 					db_urms.lane_2_action = 6;
@@ -522,7 +530,7 @@ int main(int argc, char *argv[]) {
 			else {
 				no_control = 0;
 				if( no_control_sav == 1) {
-					printf("Enabling control of ramp meter");
+					printf("Enaabling control of ramp meter hour %d no_control %d DOW %d\n", db_urms_status.hour, db_urms.no_control, dow);
 					no_control_sav = 0;
 				}
 			}
