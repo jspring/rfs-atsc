@@ -530,7 +530,7 @@ int main(int argc, char *argv[]) {
 			else {
 				no_control = 0;
 				if( no_control_sav == 1) {
-					printf("Enaabling control of ramp meter hour %d no_control %d DOW %d\n", db_urms_status.hour, db_urms.no_control, dow);
+					printf("Enabling control of ramp meter hour %d no_control %d DOW %d\n", db_urms_status.hour, db_urms.no_control, dow);
 					no_control_sav = 0;
 				}
 			}
