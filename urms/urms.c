@@ -540,17 +540,17 @@ int main(int argc, char *argv[]) {
 			else {
 				no_control = 0;
 				if( no_control_sav == 1) {
-				printf("%02d/%02d/%04d %02d:%02d:%02d Enabling control of ramp meter controller: hour=%d no_control %d DOW=%d\n",
-					ltime->tm_mon+1,
-					ltime->tm_mday,
-					ltime->tm_year+1900,
-					ltime->tm_hour,
-					ltime->tm_min,
-					ltime->tm_sec,
-					db_urms_status.hour,
-					db_urms_status.no_control,
-					dow
-				);
+					printf("%02d/%02d/%04d %02d:%02d:%02d Enabling control of ramp meter controller: hour=%d no_control %d DOW=%d\n",
+						ltime->tm_mon+1,
+						ltime->tm_mday,
+						ltime->tm_year+1900,
+						ltime->tm_hour,
+						ltime->tm_min,
+						ltime->tm_sec,
+						db_urms_status.hour,
+						db_urms_status.no_control,
+						dow
+					);
 					no_control_sav = 0;
 				}
 			}
