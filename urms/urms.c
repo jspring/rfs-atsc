@@ -517,7 +517,17 @@ int main(int argc, char *argv[]) {
 			if( ((dow % 6) == 0) || (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) || (db_urms.no_control != 0)) {
 				no_control = 1;
 				if( no_control_sav == 0) {
-					printf("Disabling control of ramp meter hour %d no_control %d DOW %d\n", db_urms_status.hour, db_urms.no_control, dow);
+                                printf("%02d/%02d/%04d %02d:%02d:%02d Disabling control of ramp meter controller: hour=%d no_control %d DOW=%d\n",
+                                        ltime->tm_mon+1,
+                                        ltime->tm_mday,
+                                        ltime->tm_year+1900,
+                                        ltime->tm_hour,
+                                        ltime->tm_min,
+                                        ltime->tm_sec,
+                                        db_urms_status.hour,
+                                        db_urms_status.no_control,
+                                        dow
+                                );
 					no_control_sav = 1;
 					db_urms.lane_1_action = 6;
 					db_urms.lane_2_action = 6;
@@ -530,7 +540,17 @@ int main(int argc, char *argv[]) {
 			else {
 				no_control = 0;
 				if( no_control_sav == 1) {
-					printf("Enaabling control of ramp meter hour %d no_control %d DOW %d\n", db_urms_status.hour, db_urms.no_control, dow);
+				printf("%02d/%02d/%04d %02d:%02d:%02d Enabling control of ramp meter controller: hour=%d no_control %d DOW=%d\n",
+					ltime->tm_mon+1,
+					ltime->tm_mday,
+					ltime->tm_year+1900,
+					ltime->tm_hour,
+					ltime->tm_min,
+					ltime->tm_sec,
+					db_urms_status.hour,
+					db_urms_status.no_control,
+					dow
+				);
 					no_control_sav = 0;
 				}
 			}
