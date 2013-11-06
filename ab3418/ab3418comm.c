@@ -101,6 +101,7 @@ int main(int argc, char *argv[]) {
 	unsigned char create_db_vars = 0;
 	unsigned char no_control = 0;
 	unsigned char no_control_sav = 0;
+	char db_urms_struct_null = 0;
 	char detector = 0;
 //	int blocknum;
 //	int rem;
@@ -365,7 +366,23 @@ int main(int argc, char *argv[]) {
 		if( ((dow % 6) == 0) || (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) ) {
 			no_control = 1;
 			db_urms.no_control = 1;
-			if( no_control_sav == 0) {
+	
+			//When the software is first started, the db_urms_status struct is cleared
+			// to all zeroes, including the hour.  So we check a few of the other 
+			// struct members whose values should not be zero.
+			db_urms_struct_null = db_urms_status.num_meter + 
+						db_urms_status.num_main + 
+						db_urms_status.num_opp + 
+						db_urms_status.mainline_stat[0].trail_stat + 
+						db_urms_status.mainline_stat[1].trail_stat + 
+						db_urms_status.mainline_stat[2].trail_stat;
+
+			if(( no_control_sav == 0) && (db_urms_struct_null != 0)){
+				// Set phase 3 max green 1 to 30 seconds (default) when we are outside of the TOD period
+				db_timing_set_2070.cell_addr_data.cell_addr = 0x118;
+				db_timing_set_2070.phase = 3;
+				db_timing_set_2070.cell_addr_data.data = 30;
+				retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
 				printf("%02d/%02d/%04d %02d:%02d:%02d Disabling control of arterial controller: hour=%d DOW=%d\n", 
 					ltime->tm_mon+1, 
 					ltime->tm_mday, 
