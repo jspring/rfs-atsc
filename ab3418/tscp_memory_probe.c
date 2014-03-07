@@ -10,7 +10,7 @@
 
 #define MAX_PHASES	7
 
-const char *usage = "-P <port> -u (use db) -v (verbose)\n\nDisplay addresses and contents of memory range\n\t-l <low memory address> -h <high memory address>\n\nDisplay addresses within memory range whose contents match value\n\t-l <low memory address> -h <high memory address> -m <match value>\n\nDisplay addresses within memory range whose contents match value, and substitute new value for old value\n\t-l low memory address> -h <high memory address> -m <match value> -s <substitution value>\n\n";
+const char *usage = "-P <port,default /dev/ttyUSB0> -u (use db) -v (verbose)\n\nDisplay addresses and contents of memory range\n\t-l <low memory address> -h <high memory address>\n\nDisplay addresses within memory range whose contents match value\n\t-l <low memory address> -h <high memory address> -m <match value>\n\nDisplay addresses within memory range whose contents match value, and substitute new value for old value\n\t-l low memory address> -h <high memory address> -m <match value> -s <substitution value>\n\n";
 
 int main(int argc, char *argv[]) {
 
@@ -84,32 +84,11 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "Unable to initialize delay timer\n");
 		exit(EXIT_FAILURE);
 	}
-
         /* Initialize serial port. */
-        fpin = open( port,  O_RDONLY );
-	while(fpin <= 0) {
-		sprintf(port, "/dev/ttyUSB%d", (j++ % 8));
-		fprintf(stderr,"main 0: Trying to open %s\n", port);
-       			fpin = open( port,  O_RDONLY );
-		if ( fpin <= 0 ) {
-			perror("main 00: serial inport open");
-			fprintf(stderr, "main 000:Error opening device %s for input\n", port );
-		}
-		sleep(1);
-	}
-
-	/* Set up USB ports */
-	char *portcfg = "for x in /dev/ttyUSB*; do /bin/stty -F $x raw 38400;done";
-	system(portcfg);
-
-        /* Initialize serial port. */
-       fpout = open( port,  O_WRONLY );
-        if ( fpout <= 0 ) {
-		perror("serial outport open");
-                printf( "Error opening device %s for output\n", port );
-        }
+        retval = check_and_reconnect_serial(0, &fpin, &fpout, port);
 
 	num_left = himem - lomem + 1;
+
 #define MAX_BYTES	16	
 		while(num_left > 0) {
 			memset(&readBuff, 0, sizeof(readBuff));
@@ -117,7 +96,7 @@ int main(int argc, char *argv[]) {
 				num_bytes = MAX_BYTES;
 			else
 				num_bytes = num_left % MAX_BYTES;
-//printf("lomem %#x num_bytes %d\n", lomem, num_bytes);
+printf("lomem %#x num_bytes %d\n", lomem, num_bytes);
 			retval = get_mem(lomem, num_bytes, wait_for_data, &readBuff, fpin, fpout, verbose);
 			for(i = lomem, j = 0; j < num_bytes; j++, i++) {
 				if( (do_match == 0) && (do_subst == 0) ){
