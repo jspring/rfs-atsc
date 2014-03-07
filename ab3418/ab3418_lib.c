@@ -45,6 +45,7 @@ int get_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, c
 int get_overlap(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
 int set_overlap(overlap_msg_t *overlap_set_request, int fpin, int fpout, char verbose);
 int get_special_flags(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
+int get_spat(int wait_for_data, raw_signal_status_msg_t *praw_signal_status_msg, int fpin, int fpout, char verbose, char print_packed_binary);
 int set_special_flags(get_set_special_flags_t *special_flags, int fpin, int fpout, char verbose);
 void fcs_hdlc(int msg_len, void *msgbuf, char verbose);
 int get_short_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
