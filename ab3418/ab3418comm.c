@@ -79,10 +79,12 @@ int main(int argc, char *argv[]) {
 	phase_timing_t phase_timing[MAX_PHASES];
 	overlap_msg_t overlap_sav;
 	overlap_msg_t overlap;
+	get_set_special_flags_t get_set_special_flags;
 	detector_msg_t detector_block_sav;
 	detector_msg_t detector_block;
 	db_urms_status_t db_urms_status;
 	db_urms_t db_urms;
+	raw_signal_status_msg_t raw_signal_status_msg;
 	int retval;
 	int check_retval;
 	char port[14] = "/dev/ttyS0";
@@ -93,6 +95,8 @@ int main(int argc, char *argv[]) {
 	struct tm *ltime;
 	int dow;
 
+        struct timeb timeptr_raw;
+        struct tm time_converted;
 	int opt;
 	int use_db = 0;
 	int interval = 100;
@@ -106,8 +110,9 @@ int main(int argc, char *argv[]) {
 //	int blocknum;
 //	int rem;
 //	unsigned char new_phase_assignment;	
+	unsigned char output_spat_binary;
 
-        while ((opt = getopt(argc, argv, "p:uvi:cnd:a:")) != -1)
+        while ((opt = getopt(argc, argv, "p:uvi:cnd:a:b")) != -1)
         {
                 switch (opt)
                 {
@@ -136,6 +141,9 @@ int main(int argc, char *argv[]) {
                   case 'a':
 //                        new_phase_assignment = (unsigned char)atoi(optarg);
                         break;
+                  case 'b':
+                        output_spat_binary = 1;
+                        break;
 		  default:
 			fprintf(stderr, "Usage: %s -p <port, (def. /dev/ttyS0)> -u (use db) -v (verbose) -i <loop interval>\n", argv[0]);
 			exit(EXIT_FAILURE);
@@ -145,13 +153,43 @@ int main(int argc, char *argv[]) {
 	// Clear message structs
 	memset(&detector_block, 0, sizeof(detector_msg_t));
 	memset(&detector_block_sav, 0, sizeof(detector_msg_t));
+	memset(&get_set_special_flags, 0, sizeof(get_set_special_flags_t));
 	memset(&overlap, 0, sizeof(overlap_msg_t));
 	memset(&overlap_sav, 0, sizeof(overlap_msg_t));
 	memset(&db_timing_set_2070, 0, sizeof(db_timing_set_2070));
 
+	if ((ptmr = timer_init( interval, ChannelCreate(0))) == NULL) {
+		fprintf(stderr, "Unable to initialize delay timer\n");
+		exit(EXIT_FAILURE);
+	}
         /* Initialize serial port. */
 	check_retval = check_and_reconnect_serial(0, &fpin, &fpout, port);
+while(1) {
+	retval = get_spat(wait_for_data, &raw_signal_status_msg, fpin, fpout, verbose, output_spat_binary);
+//        ftime ( &timeptr_raw );
+//        localtime_r ( &timeptr_raw.time, &time_converted );
+//	printf("Time %02d:%02d:%02d.%03d\n",
+//		time_converted.tm_hour,
+//		time_converted.tm_min,
+//		time_converted.tm_sec,
+//		timeptr_raw.millitm);
+	TIMER_WAIT(ptmr);
+}
+	exit(EXIT_SUCCESS);
 
+/*
+while(1) {
+	get_special_flags(wait_for_data, &get_set_special_flags, fpin, fpout, verbose);
+	get_set_special_flags.call_to_phase_3 = detector;
+	retval = set_special_flags( (get_set_special_flags_t *)&get_set_special_flags, fpin, fpout, verbose);
+	TIMER_WAIT(ptmr);
+	get_set_special_flags.call_to_phase_1 = 0;
+	retval = set_special_flags( (get_set_special_flags_t *)&get_set_special_flags, fpin, fpout, verbose);
+	TIMER_WAIT(ptmr);
+}
+	retval = get_overlap(wait_for_data, &overlap, fpin, fpout, verbose);
+exit(EXIT_SUCCESS);
+*/
 	// Change detector 26 assignment from phase 6 to phase 3. Save original
 	// assignment.
 #define NUM_DET_PER_BLOCK 4
@@ -312,7 +350,7 @@ int main(int argc, char *argv[]) {
 		if( DB_TRIG_VAR(&trig_info) == DB_2070_TIMING_SET_VAR ) {
 			db_clt_read(pclt, DB_2070_TIMING_SET_VAR, sizeof(db_timing_set_2070_t), &db_timing_set_2070);
 			if(no_control == 0) {
-				retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
+//				retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
 			}
 		}
 		else {	
@@ -382,7 +420,7 @@ int main(int argc, char *argv[]) {
 				db_timing_set_2070.cell_addr_data.cell_addr = 0x118;
 				db_timing_set_2070.phase = 3;
 				db_timing_set_2070.cell_addr_data.data = 30;
-				retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
+//				retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
 				printf("%02d/%02d/%04d %02d:%02d:%02d Disabling control of arterial controller: hour=%d DOW=%d\n", 
 					ltime->tm_mon+1, 
 					ltime->tm_mday, 
