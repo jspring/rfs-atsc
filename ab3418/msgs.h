@@ -427,6 +427,7 @@ typedef struct {
   unsigned char force_off_A;   // force-off point for ringA phase
   unsigned char force_off_B;   // force-off point for ringB phase	
   unsigned char ped_permissive[8]; // ped permissive period for phase 1 to 8
+  unsigned char dummy;
   unsigned char FCSmsb;       // FCS (Frame Checking Sequence) MSB 
   unsigned char FCSlsb;       // FCS least significant byte
   unsigned char end_flag;     // 0x7e
