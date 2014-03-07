@@ -36,6 +36,7 @@ extern int get_mem(unsigned short lomem, unsigned short num_bytes, int wait_for_
 extern int get_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
 extern int get_short_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
 extern int get_overlap(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
+int get_special_flags(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
 int check_and_reconnect_serial(int retval, int *fpin, int *fpout, char *port);
 extern int set_timing(db_timing_set_2070_t *db_timing_set_2070, int *msg_len, int fpin, int fpout, char verbose);
 extern int print_status(get_long_status8_resp_mess_typ *status);
