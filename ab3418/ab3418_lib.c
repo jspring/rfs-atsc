@@ -26,6 +26,17 @@
 
 #undef DEBUG_TRIG
 
+#define GET_REQUEST	0X80
+#define SET_REQUEST	0X90
+#define GET_RESPONSE	0XC0
+#define SET_RESPONSE	0XD0
+#define GET_ERROR_RESPONSE	0XE0
+#define SET_ERROR_RESPONSE	0XF0
+
+
+#define FLAGS		0X06
+#define TIMING_DATA	0X07
+#define LONG_STATUS8	0X0D
 
 int print_status(get_long_status8_resp_mess_typ *status);
 int set_timing(db_timing_set_2070_t *db_timing_set_2070, int *msg_len, int fpin, int fpout, char verbose);
@@ -33,8 +44,11 @@ int get_timing(db_timing_get_2070_t *db_timing_get_2070, int wait_for_data, phas
 int get_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
 int get_overlap(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
 int set_overlap(overlap_msg_t *overlap_set_request, int fpin, int fpout, char verbose);
+int get_special_flags(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
+int set_special_flags(get_set_special_flags_t *special_flags, int fpin, int fpout, char verbose);
 void fcs_hdlc(int msg_len, void *msgbuf, char verbose);
 int get_short_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
+int get_request(unsigned char msg_type, unsigned char page, unsigned char block, int fpout, char verbose);
 
 char *timing_strings[] = {
         "Walk_1",
@@ -272,6 +286,8 @@ bool_typ ser_driver_read( gen_mess_typ *pMessagebuff, int fpin, char verbose)
 	    case 0xc9:
 		if(verbose)
 			printf("ser_driver_read: GetControllerTimingData returned OK\n");
+		break;
+	    case 0xce:
 		break;
 	    case 0xd6:
 		if( (pMessagebuff->data[5] == 2) && (pMessagebuff->data[6] == 4) )
@@ -543,6 +559,47 @@ int set_timing(db_timing_set_2070_t *db_timing_set_2070, int *msg_len, int fpin,
 	return 0;
 }
 
+int get_request(unsigned char msg_type, unsigned char page, unsigned char block, int fpout, char verbose) {
+
+	int msg_len;
+        fd_set writefds;
+        int selectval = 1000;
+        struct timeval timeout;
+        char *outportisset = "not yet initialized";
+	get_block_request_t get_block_request;
+
+        // Send the message to request GetLongStatus8 from 2070. 
+        get_block_request.start_flag = 0x7e;
+        get_block_request.address = 0x05;
+        get_block_request.control = 0x13;
+        get_block_request.ipi = 0xc0;
+        get_block_request.mess_type = GET_REQUEST | msg_type;
+        get_block_request.page = page;
+        get_block_request.block = block;
+        get_block_request.FCSmsb = 0x00;
+        get_block_request.FCSlsb = 0x00;
+
+        // Now append the FCS. 
+        msg_len = sizeof(get_block_request_t) - 4;
+	fcs_hdlc(msg_len, &get_block_request, verbose);
+	FD_ZERO(&writefds);
+	FD_SET(fpout, &writefds);
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+	if( (selectval = select(fpout+1, NULL, &writefds, NULL, &timeout)) <=0) {
+		perror("select 8");
+		outportisset = (FD_ISSET(fpout, &writefds)) == 0 ? "no" : "yes";
+		printf("get_timing 3: fpout %d selectval %d outportisset %s\n", fpout, selectval, outportisset);
+		return -3;
+	}
+	write ( fpout, &get_block_request, sizeof(get_block_request_t));
+	fflush(NULL);
+
+	if(verbose != 0)
+		printf("get_block_request: fpout %d selectval %d outportisset %s page %hhx block %hhx\n", fpout, selectval, outportisset, get_block_request.page, get_block_request.block);
+	return 0;
+}
+
 int get_timing(db_timing_get_2070_t *db_timing_get_2070, int wait_for_data, phase_timing_t *phase_timing, int *fpin, int *fpout, char verbose) {
 
 	int msg_len;
@@ -697,6 +754,85 @@ int get_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, c
 	return 0;
 }
 
+int get_spat(int wait_for_data, raw_signal_status_msg_t *praw_signal_status_msg, int fpin, int fpout, char verbose, char print_packed_binary) {
+        fd_set readfds;
+        int selectval = 1000;
+        struct timeval timeout;
+        char *inportisset = "not yet initialized";
+        char *outportisset = "not yet initialized";
+	int ser_driver_retval;
+	gen_mess_typ *readBuff = (gen_mess_typ *)praw_signal_status_msg;
+
+	// As of TSCP 2.20, build 117, the user may select SPAT messages on a
+	// serial/network port. The 2070 controller will start transmitting SPAT
+	// messages at a 200 ms period.  If this is selected, no AB3418 request
+	// is needed; one just reads the port. But the SPAT message may also be
+	// requested via an AB3418 request. Thus the "make_ab3418_request" flag.
+
+	ser_driver_retval = 100;
+
+	if(wait_for_data && praw_signal_status_msg) {
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+		    if(errno != EINTR) {
+			perror("select 11");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("get_status 4: fpin %d selectval %d inportisset %s\n", fpin, selectval, inportisset);
+			return -2;
+		    }
+		}
+		ser_driver_retval = ser_driver_read((gen_mess_typ *)praw_signal_status_msg, fpin, verbose);
+		if(ser_driver_retval == 0) {
+			printf("get_status 5: Lost USB connection\n");
+			return -1;
+		}
+	}
+	if(print_packed_binary != 0)
+		write(STDOUT_FILENO, &readBuff->data[5], sizeof(raw_signal_status_msg_t) - 4);
+	else
+	if(verbose != 0) {
+		printf("get_spat 6-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
+		printf("%#hhx %#hhx  %#hhx %hhu %hhu %#hhx %#hhx %#hhx %hhu %hhu %hhu %#hhx %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu\n", 
+			praw_signal_status_msg->active_phase,
+			praw_signal_status_msg->interval_A,
+			praw_signal_status_msg->interval_B,
+			praw_signal_status_msg->intvA_timer,
+			praw_signal_status_msg->intvB_timer,
+			praw_signal_status_msg->next_phase,
+			praw_signal_status_msg->ped_call,
+			praw_signal_status_msg->veh_call,
+			praw_signal_status_msg->plan_num,
+			praw_signal_status_msg->local_cycle_clock,
+			praw_signal_status_msg->master_cycle_clock,
+			praw_signal_status_msg->preempt,
+			praw_signal_status_msg->permissive[0],
+			praw_signal_status_msg->permissive[1],
+			praw_signal_status_msg->permissive[2],
+			praw_signal_status_msg->permissive[3],
+			praw_signal_status_msg->permissive[4],
+			praw_signal_status_msg->permissive[5],
+			praw_signal_status_msg->permissive[6],
+			praw_signal_status_msg->permissive[7],
+			praw_signal_status_msg->force_off_A,
+			praw_signal_status_msg->force_off_B,
+			praw_signal_status_msg->ped_permissive[0],
+			praw_signal_status_msg->ped_permissive[1],
+			praw_signal_status_msg->ped_permissive[2],
+			praw_signal_status_msg->ped_permissive[3],
+			praw_signal_status_msg->ped_permissive[4],
+			praw_signal_status_msg->ped_permissive[5],
+			praw_signal_status_msg->ped_permissive[6],
+			praw_signal_status_msg->ped_permissive[7]
+		);
+	}
+
+
+	return 0;
+}
+
 int get_overlap(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose) {
 	int msg_len;
         fd_set readfds;
@@ -837,6 +973,149 @@ printf("\n");
 	}
 	if(verbose != 0)
 		printf("set_overlap 5-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
+	return 0;
+}
+
+int get_special_flags(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose) {
+	int msg_len;
+        fd_set readfds;
+        fd_set writefds;
+        int selectval = 1000;
+        struct timeval timeout;
+        char *inportisset = "not yet initialized";
+        char *outportisset = "not yet initialized";
+	int ser_driver_retval;
+	tsmss_get_msg_request_t special_flags_get_request;
+	
+	if(verbose != 0)
+		printf("get_special_flags 1: Starting get_special_flags request\n");
+	special_flags_get_request.get_hdr.start_flag = 0x7e;
+	special_flags_get_request.get_hdr.address = 0x05;
+	special_flags_get_request.get_hdr.control = 0x13;
+	special_flags_get_request.get_hdr.ipi = 0xc0;
+	special_flags_get_request.get_hdr.mess_type = 0x87;
+	special_flags_get_request.get_hdr.page_id = 0x02;
+	special_flags_get_request.get_hdr.block_id = 0x02;
+	special_flags_get_request.get_tail.FCSmsb = 0x00;
+	special_flags_get_request.get_tail.FCSlsb = 0x00;
+
+	/* Now append the FCS. */
+	msg_len = sizeof(tsmss_get_msg_request_t) - 4;
+	fcs_hdlc(msg_len, &special_flags_get_request, verbose);
+
+	FD_ZERO(&writefds);
+	FD_SET(fpout, &writefds);
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+	if( (selectval = select(fpout+1, NULL, &writefds, NULL, &timeout)) <=0) {
+		perror("select 12");
+		outportisset = (FD_ISSET(fpout, &writefds)) == 0 ? "no" : "yes";
+		printf("get_special_flags 2: fpout %d selectval %d outportisset %s\n", fpout, selectval, outportisset);
+		return -3;
+	}
+	write ( fpout, &special_flags_get_request, msg_len+4 );
+	fflush(NULL);
+	sleep(2);
+
+	ser_driver_retval = 100;
+
+	if(wait_for_data && readBuff) {
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+			perror("select 13");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("get_special_flags 3: fpin %d selectval %d inportisset %s\n", fpin, selectval, inportisset);
+			return -2;
+		}
+		ser_driver_retval = ser_driver_read(readBuff, fpin, verbose);
+		if(ser_driver_retval == 0) {
+			printf("get_special_flags 4: Lost USB connection\n");
+			return -1;
+		}
+	}
+	if(verbose != 0)
+		printf("get_special_flags 5-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
+	return 0;
+}
+
+int set_special_flags(get_set_special_flags_t *pspecial_flags_set_request, int fpin, int fpout, char verbose) {
+	int msg_len;
+        fd_set readfds;
+        fd_set writefds;
+        int selectval = 1000;
+        struct timeval timeout;
+        char *inportisset = "not yet initialized";
+        char *outportisset = "not yet initialized";
+	int ser_driver_retval;
+	int wait_for_data = 1;
+	gen_mess_typ readBuff;
+	char *tempbuf = (char *)pspecial_flags_set_request;
+	int i;
+
+printf("set_special_flags input message: ");
+for(i=0; i<sizeof(get_set_special_flags_t); i++) 
+	printf("%#hhx ", tempbuf[i]);
+printf("\n");
+
+	if(verbose != 0)
+		printf("set_special_flags 1: Starting set_special_flags request\n");
+	pspecial_flags_set_request->special_flags_hdr.start_flag = 0x7e;
+	pspecial_flags_set_request->special_flags_hdr.address = 0x05;
+	pspecial_flags_set_request->special_flags_hdr.control = 0x13;
+	pspecial_flags_set_request->special_flags_hdr.ipi = 0xc0;
+	pspecial_flags_set_request->special_flags_hdr.mess_type = 0x96;
+	pspecial_flags_set_request->special_flags_hdr.page_id = 0x02;
+	pspecial_flags_set_request->special_flags_hdr.block_id = 0x02;
+	pspecial_flags_set_request->special_flags_tail.FCSmsb = 0x00;
+	pspecial_flags_set_request->special_flags_tail.FCSlsb = 0x00;
+
+	/* Now append the FCS. */
+	msg_len = sizeof(get_set_special_flags_t) - 4;
+	fcs_hdlc(msg_len, pspecial_flags_set_request, verbose);
+
+printf("set_special_flags output message: ");
+for(i=0; i<sizeof(get_set_special_flags_t); i++) 
+	printf("%#hhx ", tempbuf[i]);
+printf("\n");
+
+	FD_ZERO(&writefds);
+	FD_SET(fpout, &writefds);
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+	if( (selectval = select(fpout+1, NULL, &writefds, NULL, &timeout)) <=0) {
+		perror("select 14");
+		outportisset = (FD_ISSET(fpout, &writefds)) == 0 ? "no" : "yes";
+		printf("set_special_flags 2: fpout %d selectval %d outportisset %s\n", fpout, selectval, outportisset);
+		return -3;
+	}
+	write ( fpout, pspecial_flags_set_request, sizeof(get_set_special_flags_t));
+	fflush(NULL);
+	sleep(2);
+
+	ser_driver_retval = 100;
+
+	if(wait_for_data) {
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+			perror("select 15");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("set_special_flags 3: fpin %d selectval %d inportisset %s\n", fpin, selectval, inportisset);
+			return -2;
+		}
+		ser_driver_retval = ser_driver_read(&readBuff, fpin, verbose);
+		if(ser_driver_retval == 0) {
+			printf("set_special_flags 4: Lost USB connection\n");
+			return -1;
+		}
+	}
+	if(verbose != 0)
+		printf("set_special_flags 5-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
 	return 0;
 }
 
