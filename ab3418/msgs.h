@@ -178,6 +178,20 @@ typedef struct
 	char	end_flag;     /* 0x7e */
 } IS_PACKED get_controller_timing_data_request_t;
 
+typedef struct
+{
+	char	start_flag;   /* 0x7e */
+	char	address;      /* 0x05 2070 controller */
+	char	control;      /* 0x13 - unnumbered information, individual address */
+	char	ipi;          /* 0xc0 - NTCIP Class B Protocol */
+	char	mess_type;    /* 0x89 - get controller timing data*/
+	char	page;         /* Page number */
+	char	block;        /* Block number */
+	char	FCSmsb;       /* FCS (Frame Checking Sequence) MSB */
+	char	FCSlsb;       /* FCS least significant byte */
+	char	end_flag;     /* 0x7e */
+} IS_PACKED get_block_request_t;
+
 /* Message sent from 2070 to RSU
  * has the following format. */
 typedef struct
@@ -252,6 +266,44 @@ typedef struct {
 	tsmss_get_set_hdr_t get_hdr; //get_hdr.mess_type = 0x87, page & block ID - see manual
 	tsmss_get_set_tail_t get_tail;
 } IS_PACKED tsmss_get_msg_request_t;
+
+typedef struct {
+	tsmss_get_set_hdr_t special_flags_hdr ; // special_flags_hdr.mess_type=0xC7 GET response
+					 // special_flags_hdr.mess_type=0x96 SET request
+					 // special_flags_hdr.page_id=0x02
+					 // special_flags_hdr.block_id=0x02
+
+	unsigned char call_to_phase_1;	// Bits 0-7 <-> phases 1-8
+	unsigned char call_to_phase_2;	// Bits 0-7 <-> phases 1-8
+	unsigned char call_to_phase_3;	// Bits 0-7 <-> phases 1-8
+	unsigned char call_to_phase_4;	// Bits 0-7 <-> phases 1-8
+	unsigned char call_to_phase_5;	// Bits 0-7 <-> phases 1-8
+	unsigned char call_to_phase_6;	// Bits 0-7 <-> phases 1-8
+	unsigned char call_to_phase_7;	// Bits 0-7 <-> phases 1-8
+	unsigned char call_to_phase_8;	// Bits 0-7 <-> phases 1-8
+	unsigned char omit_on_green_1;	// Bits 0-7 <-> phases 1-8
+	unsigned char omit_on_green_2;	// Bits 0-7 <-> phases 1-8
+	unsigned char omit_on_green_3;	// Bits 0-7 <-> phases 1-8
+	unsigned char omit_on_green_4;	// Bits 0-7 <-> phases 1-8
+	unsigned char omit_on_green_5;	// Bits 0-7 <-> phases 1-8
+	unsigned char omit_on_green_6;	// Bits 0-7 <-> phases 1-8
+	unsigned char omit_on_green_7;	// Bits 0-7 <-> phases 1-8
+	unsigned char omit_on_green_8;	// Bits 0-7 <-> phases 1-8
+	unsigned char yellow_flash_phases; // Bits 0-7 <-> phases 1-8
+	unsigned char yellow_flash_overlaps; // Bits 0-7 <-> overlaps A-F
+	unsigned char flash_in_red_phases; // Bits 0-7 <-> phases 1-8
+	unsigned char flash_in_red_overlaps; // Bits 0-7 <-> overlapss A-F
+	unsigned char single_exit_phases;	// Bits 0-7 <-> phases 1-8
+	unsigned char driveway_signal_phases;	// Bits 0-7 <-> phases 1-8
+	unsigned char driveway_signal_overlaps;	// Bits 0-7 <-> overlaps A-F
+	unsigned char leading_ped_phases;	// Bits 0-7 <-> phases 1-8
+	unsigned char protected_permissive;	//
+	unsigned char cabinet_type;		//
+	unsigned char cabinet_config;		//
+
+	tsmss_get_set_tail_t special_flags_tail;
+
+} IS_PACKED get_set_special_flags_t;
 
 typedef struct {
 	tsmss_get_set_hdr_t overlap_hdr; // overlap_hdr.mess_type=0xC7 GET response
@@ -352,6 +404,34 @@ typedef struct {
     tsmss_get_set_tail_t detector_tail;
 
 } IS_PACKED detector_msg_t;
+
+typedef struct {
+  unsigned char start_flag;    // 0x7e
+  unsigned char address;       // 0x01 
+  unsigned char control;       // 0x13 - unnumbered information, individual address
+  unsigned char ipi;           // 0xc0 - NTCIP Class B Protocol 
+  unsigned char mess_type;     // 0xCE - raw spat message	
+  unsigned char active_phase;  // Bits 1-8 <=> phase 1-8
+  unsigned char interval_A;    // interval on ringA phase
+  unsigned char interval_B;   // interval on ringB phase
+  unsigned char intvA_timer;   // countdown timer for active ringA interval, in 10th sec
+  unsigned char intvB_timer;   // countdown timer for active ringB interval, in 10th sec
+  unsigned char next_phase;    // Bits 1-8 <==> phase 1 - 8 (same format as active phase)
+  unsigned char ped_call;      // Bits 1-8 <=> Pedestrian call on phase 1-8
+  unsigned char veh_call;      // Bits 1-8 <=> vehicle call on phase 1-8
+  unsigned char plan_num;      // control plan
+  unsigned char local_cycle_clock;	
+  unsigned char master_cycle_clock;	
+  unsigned char preempt;       // preemption
+  unsigned char permissive[8]; // permissive period for phase 1 to 8
+  unsigned char force_off_A;   // force-off point for ringA phase
+  unsigned char force_off_B;   // force-off point for ringB phase	
+  unsigned char ped_permissive[8]; // ped permissive period for phase 1 to 8
+  unsigned char FCSmsb;       // FCS (Frame Checking Sequence) MSB 
+  unsigned char FCSlsb;       // FCS least significant byte
+  unsigned char end_flag;     // 0x7e
+
+} raw_signal_status_msg_t;
 
 typedef union
 {
