@@ -791,17 +791,30 @@ int get_spat(int wait_for_data, raw_signal_status_msg_t *praw_signal_status_msg,
 			return -1;
 		}
 	}
+
+        if( (readBuff->data[6] != 0xc) &&
+                (readBuff->data[6] != 0x7) &&
+                (readBuff->data[6] != 0xd) &&
+                (readBuff->data[6] != 0xf))
+                readBuff->data[8] *= 10;
+        if( (readBuff->data[7] != 0xc) &&
+                (readBuff->data[7] != 0x7) &&
+                (readBuff->data[7] != 0xd) &&
+                (readBuff->data[7] != 0xf))
+                readBuff->data[9] *= 10;
+
 	if(print_packed_binary != 0)
-		write(STDOUT_FILENO, &readBuff->data[5], sizeof(raw_signal_status_msg_t) - 4);
+		write(STDOUT_FILENO, &readBuff->data[5], sizeof(raw_signal_status_msg_t) - 9);
 	else
-	if(verbose != 0) {
-		printf("get_spat 6-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
-		printf("%#hhx %#hhx  %#hhx %hhu %hhu %#hhx %#hhx %#hhx %hhu %hhu %hhu %#hhx %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu\n", 
+//	if(verbose != 0) 
+	{
+//		printf("get_spat 6-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
+		printf("%#hhx %#hhx  %#hhx %.1f %.1f %#hhx %#hhx %#hhx %hhu %hhu %hhu %#hhx %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu\n", 
 			praw_signal_status_msg->active_phase,
 			praw_signal_status_msg->interval_A,
 			praw_signal_status_msg->interval_B,
-			praw_signal_status_msg->intvA_timer,
-			praw_signal_status_msg->intvB_timer,
+			praw_signal_status_msg->intvA_timer/10.0,
+			praw_signal_status_msg->intvB_timer/10.0,
 			praw_signal_status_msg->next_phase,
 			praw_signal_status_msg->ped_call,
 			praw_signal_status_msg->veh_call,
