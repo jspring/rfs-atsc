@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
 //	unsigned char new_phase_assignment;	
 	unsigned char output_spat_binary;
 
-        while ((opt = getopt(argc, argv, "p:uvi:cnd:a:b")) != -1)
+        while ((opt = getopt(argc, argv, "p:uvi:cnd:a:bh")) != -1)
         {
                 switch (opt)
                 {
@@ -144,8 +144,9 @@ int main(int argc, char *argv[]) {
                   case 'b':
                         output_spat_binary = 1;
                         break;
+		  case 'h':
 		  default:
-			fprintf(stderr, "Usage: %s -p <port, (def. /dev/ttyS0)> -u (use db) -v (verbose) -i <loop interval>\n", argv[0]);
+			fprintf(stderr, "Usage: %s -p <port, (def. /dev/ttyS0)> -u (use db) -v (verbose) -i <loop interval> -b (output binary SPaT message)\n", argv[0]);
 			exit(EXIT_FAILURE);
 		}
 	}
