@@ -6,6 +6,7 @@
 #include "ab3418_lib.h"
 #include "ab3418comm.h"
 #include "urms.h"
+#include <udp_utils.h>
 
 #define MAX_PHASES	7
 
@@ -66,6 +67,7 @@ int main(int argc, char *argv[]) {
 	trig_info_typ trig_info;
 	int ipc_message_error_ctr = 0;
 
+        struct sockaddr_in snd_addr;    /// used in sendto call
 	int i;
 	int fpin = 0;
 	int fpout = 0;
@@ -88,6 +90,7 @@ int main(int argc, char *argv[]) {
 	int retval;
 	int check_retval;
 	char port[14] = "/dev/ttyS0";
+	char strbuf[300];
 
 	struct timespec start_time;
 	struct timespec end_time;
@@ -107,12 +110,19 @@ int main(int argc, char *argv[]) {
 	unsigned char no_control_sav = 0;
 	char db_urms_struct_null = 0;
 	char detector = 0;
+	unsigned int temp_addr;
+	short temp_port;
 //	int blocknum;
 //	int rem;
 //	unsigned char new_phase_assignment;	
-	unsigned char output_spat_binary;
+	unsigned char output_spat_binary = 0;
 
-        while ((opt = getopt(argc, argv, "p:uvi:cnd:a:bh")) != -1)
+        int sd_out;             /// socket descriptor for UDP send
+        short udp_port = 0;    /// set from command line option
+        char *udp_name = NULL;  /// address of UDP destination
+        int bytes_sent;         /// returned from sendto
+ 
+        while ((opt = getopt(argc, argv, "p:uvi:cnd:a:bho:s:")) != -1)
         {
                 switch (opt)
                 {
@@ -139,14 +149,20 @@ int main(int argc, char *argv[]) {
                         detector = atoi(optarg);
                         break;
                   case 'a':
-//                        new_phase_assignment = (unsigned char)atoi(optarg);
+//                      new_phase_assignment = (unsigned char)atoi(optarg);
                         break;
                   case 'b':
                         output_spat_binary = 1;
                         break;
+                  case 'o':
+                        udp_port = (short)atoi(optarg);
+                        break;
+                  case 's':
+                        udp_name = strdup(optarg);
+                        break;
 		  case 'h':
 		  default:
-			fprintf(stderr, "Usage: %s -p <port, (def. /dev/ttyS0)> -u (use db) -v (verbose) -i <loop interval> -b (output binary SPaT message)\n", argv[0]);
+			fprintf(stderr, "Usage: %s -p <port, (def. /dev/ttyS0)> -u (use db) -v (verbose) -i <loop interval> -b (output binary SPaT message) -s <UDP unicast destination> -o <UDP unicast port>\n", argv[0]);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -158,15 +174,98 @@ int main(int argc, char *argv[]) {
 	memset(&overlap, 0, sizeof(overlap_msg_t));
 	memset(&overlap_sav, 0, sizeof(overlap_msg_t));
 	memset(&db_timing_set_2070, 0, sizeof(db_timing_set_2070));
+	memset(&raw_signal_status_msg, 0, sizeof(raw_signal_status_msg));
+	memset(&snd_addr, 0, sizeof(snd_addr));
 
 	if ((ptmr = timer_init( interval, ChannelCreate(0))) == NULL) {
 		fprintf(stderr, "Unable to initialize delay timer\n");
 		exit(EXIT_FAILURE);
 	}
+
+	if( (udp_port != 0) && (udp_name != NULL) ) {
+		fprintf(stderr, "Opening UDP unicast to destination %s port %hu\n",
+			udp_name, udp_port);
+                sd_out = udp_unicast_init(&snd_addr, udp_name, udp_port);
+
+		if (sd_out < 0) {
+			printf("failure opening socket on %s %d\n",
+				udp_name, udp_port);
+			exit(EXIT_FAILURE);
+		}
+		else {
+			printf("Success opening socket %hhu on %s %d\n",
+				sd_out, udp_name, udp_port);
+			printf("port %d addr 0x%08x\n", ntohs(snd_addr.sin_port),
+			ntohl(snd_addr.sin_addr.s_addr));
+			temp_addr = snd_addr.sin_addr.s_addr;
+			temp_port = snd_addr.sin_port;
+		}
+	}
+
         /* Initialize serial port. */
 	check_retval = check_and_reconnect_serial(0, &fpin, &fpout, port);
 while(1) {
 	retval = get_spat(wait_for_data, &raw_signal_status_msg, fpin, fpout, verbose, output_spat_binary);
+	snd_addr.sin_port = temp_port;
+	snd_addr.sin_addr.s_addr = temp_addr;
+	if(output_spat_binary) {
+	bytes_sent = sendto(sd_out, &raw_signal_status_msg.active_phase, sizeof(raw_signal_status_msg_t) - 9, 0,
+		(struct sockaddr *) &snd_addr, sizeof(snd_addr));
+	}
+	else {
+		memset(strbuf, 0, sizeof(strbuf));
+                sprintf(strbuf, "%#hhx %#hhx  %#hhx %.1f %.1f %#hhx %#hhx %#hhx %hhu %hhu %hhu %#hhx %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu\n",
+                        raw_signal_status_msg.active_phase,
+                        raw_signal_status_msg.interval_A,
+                        raw_signal_status_msg.interval_B,
+                        raw_signal_status_msg.intvA_timer/10.0,
+                        raw_signal_status_msg.intvB_timer/10.0,
+                        raw_signal_status_msg.next_phase,
+                        raw_signal_status_msg.ped_call,
+                        raw_signal_status_msg.veh_call,
+                        raw_signal_status_msg.plan_num,
+                        raw_signal_status_msg.local_cycle_clock,
+                        raw_signal_status_msg.master_cycle_clock,
+                        raw_signal_status_msg.preempt,
+                        raw_signal_status_msg.permissive[0],
+                        raw_signal_status_msg.permissive[1],
+                        raw_signal_status_msg.permissive[2],
+                        raw_signal_status_msg.permissive[3],
+                        raw_signal_status_msg.permissive[4],
+                        raw_signal_status_msg.permissive[5],
+                        raw_signal_status_msg.permissive[6],
+                        raw_signal_status_msg.permissive[7],
+                        raw_signal_status_msg.force_off_A,
+                        raw_signal_status_msg.force_off_B,
+                        raw_signal_status_msg.ped_permissive[0],
+                        raw_signal_status_msg.ped_permissive[1],
+                        raw_signal_status_msg.ped_permissive[2],
+                        raw_signal_status_msg.ped_permissive[3],
+                        raw_signal_status_msg.ped_permissive[4],
+                        raw_signal_status_msg.ped_permissive[5],
+                        raw_signal_status_msg.ped_permissive[6],
+                        raw_signal_status_msg.ped_permissive[7]
+                );
+		bytes_sent = sendto(sd_out, strbuf, sizeof(strbuf), 0,
+		     (struct sockaddr *) &snd_addr, sizeof(snd_addr));
+	}
+
+	fflush(NULL);
+
+	if (verbose) {
+		printf("%d bytes sent\n", bytes_sent);
+		printf("port %d addr 0x%08x\n", ntohs(snd_addr.sin_port),
+			ntohl(snd_addr.sin_addr.s_addr));
+		fflush(stdout);
+	}
+
+	if (bytes_sent < 0) {
+		perror("sendto error");
+		printf("port %d addr 0x%08x\n", ntohs(snd_addr.sin_port),
+			ntohl(snd_addr.sin_addr.s_addr));
+		fflush(stdout);
+	}
+
 //        ftime ( &timeptr_raw );
 //        localtime_r ( &timeptr_raw.time, &time_converted );
 //	printf("Time %02d:%02d:%02d.%03d\n",
