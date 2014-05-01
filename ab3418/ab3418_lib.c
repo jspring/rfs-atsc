@@ -1341,7 +1341,6 @@ int get_short_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fp
 			return -2;
 		    }
 		}
-readBuff->data[5] = 0xff;
 		ser_driver_retval = ser_driver_read(readBuff, fpin, verbose);
 		if(ser_driver_retval == 0) {
 			printf("get_short_status 4: Lost USB connection\n");
