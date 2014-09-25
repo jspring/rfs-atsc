@@ -16,6 +16,7 @@
  *
  */
 
+#include <termios.h>
 #include <db_include.h>
 #include "atsc_clt_vars.h"
 #include "atsc.h"
@@ -699,6 +700,8 @@ int get_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, c
         char *outportisset = "not yet initialized";
 	int ser_driver_retval;
 	get_long_status8_resp_mess_typ get_long_status8_request;
+        struct timespec start_time;
+        struct timespec end_time;
 	
 	if(verbose != 0)
 		printf("get_status 1: Starting get_status request\n");
@@ -726,6 +729,9 @@ int get_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, c
 		printf("get_status 3: fpout %d selectval %d outportisset %s\n", fpout, selectval, outportisset);
 		return -3;
 	}
+                if(verbose != 0) {
+                        clock_gettime(CLOCK_REALTIME, &start_time);
+                }
 	write ( fpout, &get_long_status8_request, msg_len+4 );
 	fflush(NULL);
 
@@ -751,6 +757,11 @@ int get_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, c
 		}
 	}
 	if(verbose != 0)
+                        clock_gettime(CLOCK_REALTIME, &end_time);
+                        printf("get_status: Time for function call %f sec\n",
+                                (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) -
+                                (start_time.tv_sec + (start_time.tv_nsec/1.0e9))
+                                );
 		printf("get_status 6-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
 	return 0;
 }
@@ -1152,7 +1163,7 @@ int check_and_reconnect_serial(int retval, int *fpin, int *fpout, char *port) {
 				fprintf(stderr,"check_and_reconnect_serial 2: Lost USB connection. Will try to reconnect...\n");
 			}
 			else
-				fprintf(stderr,"check_and_reconnect_serial 2: Opening initial serial connection\n");
+				fprintf(stderr,"check_and_reconnect_serial 3: Opening initial serial connection\n");
 			if(*fpin != 0)
 				close(*fpin);
 			if(*fpout != 0)
@@ -1161,11 +1172,11 @@ int check_and_reconnect_serial(int retval, int *fpin, int *fpout, char *port) {
 			*fpout = 0;
 			while(*fpin <= 0) {
 				sprintf(port, "/dev/ttyUSB%d", (j % 8));
-				fprintf(stderr,"check_and_reconnect 3: Trying to open %s\n", port);
+				fprintf(stderr,"check_and_reconnect_serial 4: Trying to open %s\n", port);
 				*fpin = open( port,  O_RDONLY );
 				if ( *fpin <= 0 ) {
-					perror("check_and_reconnect_serial 4: serial inport open");
-					fprintf(stderr, "check_and_reconnect_serial 5:Error opening device %s for input\n", port );
+					perror("check_and_reconnect_serial 5: serial inport open");
+					fprintf(stderr, "check_and_reconnect_serial 6:Error opening device %s for input\n", port );
 					j++;
 				}
 				sleep(1);
@@ -1173,8 +1184,8 @@ int check_and_reconnect_serial(int retval, int *fpin, int *fpout, char *port) {
 			system(portcfg);
 			*fpout = open( port,  O_WRONLY );
 			if ( *fpout <= 0 ) {
-				perror("check_and_reconnect_serial 6: serial outport open");
-				fprintf(stderr, "check_and_reconnect_serial 7:Error opening device %s for output\n", port );
+				perror("check_and_reconnect_serial 7: serial outport open");
+				fprintf(stderr, "check_and_reconnect_serial 8:Error opening device %s for output\n", port );
 				return -1;
 			}
 			break;
@@ -1182,26 +1193,28 @@ int check_and_reconnect_serial(int retval, int *fpin, int *fpout, char *port) {
 		    else {
 			portcfg = "for x in /dev/ttyS[01]; do /bin/stty -F $x raw 38400;done";
 			if(retval != 0 ) {
-				fprintf(stderr,"check_and_reconnect_serial 2: Lost RS232 connection. Will try to reconnect...\n");
+				fprintf(stderr,"check_and_reconnect_serial 9: Lost RS232 connection. Will try to reconnect...\n");
 				close(*fpin);
 				close(*fpout);
 			}
 			else
-				fprintf(stderr,"check_and_reconnect_serial 2: Initial RS232 connection. Will try to connect...\n");
-			*fpin = 0;
-			while(*fpin <= 0) {
-				sprintf(port, "/dev/ttyS%d", (j % 2));
-				fprintf(stderr,"check_and_reconnect 3: Trying to open %s\n", port);
+				fprintf(stderr,"check_and_reconnect_serial 10: Initial RS232 connection. Will try to connect...\n");
+			close(*fpin);
+			*fpin = -1;
+			while(*fpin < 0) {
+				fprintf(stderr,"check_and_reconnect_serial 11: Trying to open %s\n", port);
 				*fpin = open( port,  O_RDONLY );
-				j++;
-				if ( *fpin <= 0 ) {
-					perror("check_and_reconnect_serial 4: serial inport open");
-					fprintf(stderr, "check_and_reconnect_serial 5:Error opening device %s for input\n", port );
+				sleep(2); //required to make flush work, for some reason
+				tcflush(*fpin, TCIFLUSH);
+				if ( *fpin < 0 ) {
+					perror("check_and_reconnect_serial 12: serial inport open");
+					fprintf(stderr, "check_and_reconnect_serial 13:Error opening device %s for input *fpin %d\n", port, *fpin );
 				}
-				sleep(1);
 			}
 			system(portcfg);
 			*fpout = open( port,  O_WRONLY );
+			sleep(2); //required to make flush work, for some reason
+			tcflush(*fpin, TCOFLUSH);
 			if ( *fpout <= 0 ) {
 				perror("check_and_reconnect_serial 6: serial outport open");
 				fprintf(stderr, "check_and_reconnect_serial 7:Error opening device %s for output\n", port );
@@ -1229,6 +1242,11 @@ int get_mem(unsigned short lomem, unsigned short num_bytes, int wait_for_data, g
         char *outportisset = "not yet initialized";
 	int ser_driver_retval;
 	get_controller_timing_data_request_t get_controller_timing_data_request_mess;
+        struct timespec start_time;
+        struct timespec end_time;
+
+	memset(&start_time, 0, sizeof(struct timespec));
+	memset(&end_time, 0, sizeof(struct timespec));
 
 	temp = ((lomem << 8) & 0xFF00) + ((lomem >> 8) & 0x00FF);
 //printf("get_mem: lomem %#x temp %#x\n", lomem, temp);
@@ -1251,15 +1269,20 @@ int get_mem(unsigned short lomem, unsigned short num_bytes, int wait_for_data, g
 	FD_SET(fpout, &writefds);
 	timeout.tv_sec = 1;
 	timeout.tv_usec = 0;
-	if( (selectval = select(fpout+1, NULL, &writefds, NULL, &timeout)) <=0) {
-		perror("select 16");
-		outportisset = (FD_ISSET(fpout, &writefds)) == 0 ? "no" : "yes";
+		if( (selectval = select(fpout+1, NULL, &writefds, NULL, &timeout)) <=0) {
+			perror("select 16");
+			outportisset = (FD_ISSET(fpout, &writefds)) == 0 ? "no" : "yes";
 		printf("get_mem 1: fpout %d selectval %d outportisset %s\n", fpout, selectval, outportisset);
 		return -3;
 	}
+                if(verbose != 0) {
+printf("Got to 1\n");
+                        clock_gettime(CLOCK_REALTIME, &start_time);
+                }
+
 	write ( fpout, &get_controller_timing_data_request_mess, sizeof(get_controller_timing_data_request_t));
 	fflush(NULL);
-	sleep(2);
+//	sleep(2);
 //printf("get_mem: got to here get_controller_timing_data_request_mess.offset %hx \n", get_controller_timing_data_request_mess.offset);
 
 	ser_driver_retval = 100;
@@ -1276,12 +1299,23 @@ int get_mem(unsigned short lomem, unsigned short num_bytes, int wait_for_data, g
 			return -2;
 		}
 		ser_driver_retval = ser_driver_read(readBuff, fpin, verbose);
+printf("get_mem 2.5: fpin %d\n", fpin);
 		if(ser_driver_retval == 0) {
-			printf("get_mem 3: Lost USB connection\n");
+			printf("get_mem 3: Lost USB connection fpin %d\n", fpin);
 			return -1;
 		}
 	}
 	if(verbose != 0)
+                        clock_gettime(CLOCK_REALTIME, &end_time);
+                        printf("get_mem: Time for function call %f sec\n",
+                                (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) -
+                                (start_time.tv_sec + (start_time.tv_nsec/1.0e9))
+                                );
+printf("Got to 2 end_time.tv_sec %d end_time.tv_nsec/1.0e9 %f start_time.tv_sec %d start_time.tv_nsec/1.0e9\n",
+	end_time.tv_sec,
+	end_time.tv_nsec/1.0e9,
+	start_time.tv_sec,
+	start_time.tv_nsec/1.0e9);
 		printf("get_mem 4-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
 	return 0;
 }
