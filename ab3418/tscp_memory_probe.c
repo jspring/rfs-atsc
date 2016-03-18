@@ -18,8 +18,8 @@ int main(int argc, char *argv[]) {
 
 	unsigned short i;
 	int j = 0;
-	int fpin = 0;
-	int fpout = 0;
+	int fpin = -1;
+	int fpout = -1;
 	db_timing_set_2070_t db_timing_set_2070;
 	db_timing_get_2070_t db_timing_get_2070;
 	int msg_len;
