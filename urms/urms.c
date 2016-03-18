@@ -1,7 +1,7 @@
 /* urms.c - Controls URMS running on a 2070 via ethernet
 **
 */
-
+#undef ALLOW_SET_METER
 #include "urms.h"
 #include "tos.h"
 #include "ab3418_lib.h"
@@ -25,7 +25,16 @@ static void sig_hand(int code)
                 longjmp(exit_env, code);
 }
 
-const char *usage = "-v (verbose) -r <controller IP address (def. 10.0.1.126)> -s (standalone, no DB) -u (use standalone, with DB)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
+const char *usage = "-d <Database number (Modulo 4!)> -v (verbose) -r <controller IP address (def. 10.0.1.126)> -s (standalone, no DB) -u (use standalone, with DB)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
+
+
+db_id_t db_vars_list[] =  {
+        {0, sizeof(db_urms_status_t)},
+        {0, sizeof(urms_datafile_t)},
+        {0, sizeof(db_urms_t)},
+};
+int num_db_vars = sizeof(db_vars_list)/sizeof(db_id_t);
+
 
 int db_trig_list[] =  {
         DB_URMS_VAR
@@ -45,7 +54,7 @@ int main(int argc, char *argv[]) {
 	int urmsfd;
 	gen_mess_t gen_mess;
 	char *controllerIP = "10.0.1.126";
-	char *port = "10011";
+	char *port = "1000";
 
         int option;
 
@@ -55,6 +64,8 @@ int main(int argc, char *argv[]) {
         unsigned int xport = COMM_OS_XPORT;      /// value set correctly in sys_os.h
         posix_timer_typ *ptimer;
         trig_info_typ trig_info;
+	int db_urms_status_var = 0;
+	int db_urms_var = 0;
 	db_urms_t db_urms;
 	db_urms_t db_urms_sav;
 	db_urms_status_t db_urms_status;
@@ -104,8 +115,12 @@ int main(int argc, char *argv[]) {
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
 
-        while ((option = getopt(argc, argv, "r:vgsui:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:")) != EOF) {
+        while ((option = getopt(argc, argv, "d:r:vgsup:i:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:")) != EOF) {
                 switch(option) {
+                case 'd':
+                        db_urms_status_var = atoi(optarg);
+                        db_urms_var = db_urms_status_var + 2;
+                        break;
                 case 'r':
 			controllerIP = strdup(optarg);
                         break;
@@ -114,7 +129,6 @@ int main(int argc, char *argv[]) {
                         break;
                 case 'g':
                         get_urms = 1;
-			port = "10011";
                         break;
                 case 's':
                         standalone = 1;
@@ -122,6 +136,9 @@ int main(int argc, char *argv[]) {
                 case 'u':
                         use_db_with_standalone = 1;
 			set_urms = 1;
+                        break;
+                case 'p':
+                        port = strdup(optarg);
                         break;
                 case 'i':
                         loop_interval = atoi(optarg);
@@ -131,62 +148,50 @@ int main(int argc, char *argv[]) {
                         break;
                 case '1':
 			lane_1_release_rate = atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case '2':
 			lane_1_action = (unsigned char)atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case '3':
 			lane_1_plan = (unsigned char)atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case '4':
 			lane_2_release_rate = atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case '5':
 			lane_2_action = (unsigned char)atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case '6':
 			lane_2_plan = (unsigned char)atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case 'E':
 			lane_3_release_rate = atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case 'F':
 			lane_3_action = (unsigned char)atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case 'G':
 			lane_3_plan = (unsigned char)atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case 'H':
 			lane_4_release_rate = atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case 'I':
 			lane_4_action = (unsigned char)atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case 'J':
 			lane_4_plan = (unsigned char)atoi(optarg);
-			port = "10011";
 			set_urms = 1;
                         break;
                 case '7':
@@ -233,6 +238,11 @@ int main(int argc, char *argv[]) {
                 }
         }
 
+	db_vars_list[0].id = db_urms_status_var;
+	db_vars_list[1].id = db_urms_status_var + 1;
+	db_vars_list[2].id = db_urms_status_var + 2;
+	db_trig_list[0] = db_urms_status_var + 2;
+
 	if(set_tos_action)
 	for(i=0 ; i<num_lanes; i++)
 		printf("top: rm_action_code_tos2[%d] %#hhx\n", i, rm_action_code_tos2[i]);
@@ -257,10 +267,10 @@ int main(int argc, char *argv[]) {
 		    else {
 			// Connect to database
 		        get_local_name(hostname, MAXHOSTNAMELEN);
-		        if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, NULL, 0)) == NULL) {
+		        if ( (pclt = db_list_init(argv[0], hostname, domain, xport, db_vars_list, num_db_vars, db_trig_list, num_trig_variables)) == NULL) {
 		            exit(EXIT_FAILURE);
 			}
-			db_clt_read(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
+			db_clt_read(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
 			if(lane_1_release_rate != 0)
 				db_urms.lane_1_release_rate = lane_1_release_rate;
 			else
@@ -308,7 +318,7 @@ int main(int argc, char *argv[]) {
 				db_urms.lane_2_action, 
 				db_urms.lane_3_action
 			);
-			db_clt_write(pclt, DB_URMS_VAR, sizeof(db_urms_t), &db_urms);
+			db_clt_write(pclt, db_urms_var, sizeof(db_urms_t), &db_urms);
                 	db_list_done(pclt, NULL, 0, NULL, 0);
 			exit(EXIT_SUCCESS);
 		    }
@@ -356,10 +366,12 @@ int main(int argc, char *argv[]) {
 				db_urms.lane_4_action = gen_mess.urms_status_response.metered_lane_ctl[3].action;
 				db_urms.lane_4_plan = gen_mess.urms_status_response.metered_lane_ctl[3].plan;
 			}
+#ifdef ALLOW_SET_METER
 			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
 				fprintf(stderr, "Bad meter setting command\n");
 				exit(EXIT_FAILURE);
 			}
+#endif
 		}
 		if(get_urms) {
 			if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
@@ -392,7 +404,7 @@ int main(int argc, char *argv[]) {
 	// Connect to database
         get_local_name(hostname, MAXHOSTNAMELEN);
         if ( (pclt = db_list_init(argv[0], hostname, domain,
-            xport, NULL, 0, db_trig_list,
+            xport, db_vars_list, num_db_vars, db_trig_list,
             num_trig_variables)) == NULL) {
             exit(EXIT_FAILURE);
 	}
@@ -404,10 +416,12 @@ int main(int argc, char *argv[]) {
 		db_urms.lane_2_action = 6;
 		db_urms.lane_3_action = 6;
 		db_urms.lane_4_action = 6;
+#ifdef ALLOW_SET_METER
 		if(no_control == 0)
 			urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose);
+#endif
                 close(urmsfd);
-                db_list_done(pclt, NULL, 0, db_trig_list, num_trig_variables);
+                db_list_done(pclt, db_vars_list, num_db_vars, db_trig_list, num_trig_variables);
 		printf("get_status_err %d\n", get_status_err);
                 exit(EXIT_SUCCESS);
         } else
@@ -477,16 +491,18 @@ int main(int argc, char *argv[]) {
 		// TIMER_WAIT; it'll add another timer interval to
 		// the loop.
 		clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
-		db_clt_read(pclt, DB_URMS_VAR, sizeof(db_urms_t), &db_urms);
-		if( DB_TRIG_VAR(&trig_info) == DB_URMS_VAR ) {
+		db_clt_read(pclt, db_urms_var, sizeof(db_urms_t), &db_urms);
+		if( DB_TRIG_VAR(&trig_info) == db_urms_var ) {
 			if(verbose)
-				printf("Got DB_URMS_VAR trigger\n");
+				printf("Got db_urms_var trigger\n");
 			if(no_control == 0) 
 				{
 				db_urms.lane_1_action = 6;
+#ifdef ALLOW_SET_METER
 				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
 					fprintf(stderr, "Bad meter setting command\n");
 				}
+#endif
 			}
 		}
 		else {
@@ -502,7 +518,6 @@ int main(int argc, char *argv[]) {
 			db_urms_status.num_meter = gen_mess.urms_status_response.num_meter;
 			db_urms_status.num_main = gen_mess.urms_status_response.num_main;
 			db_urms_status.num_opp = gen_mess.urms_status_response.num_opp;
-			db_urms_status.num_addl_det = gen_mess.urms_status_response.num_addl_det;
 			db_urms_status.num_addl_det = gen_mess.urms_status_response.num_addl_det;
 			db_urms_status.mainline_dir = gen_mess.urms_status_response.mainline_dir;
 			db_urms_status.is_metering = gen_mess.urms_status_response.is_metering;
@@ -532,9 +547,11 @@ int main(int argc, char *argv[]) {
 					db_urms.lane_1_action = 6;
 					db_urms.lane_2_action = 6;
 					db_urms.lane_3_action = 6;
+#ifdef ALLOW_SET_METER
 				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
 					fprintf(stderr, "Bad meter setting command\n");
 				}
+#endif
 				}
 			}
 			else {
@@ -554,9 +571,11 @@ int main(int argc, char *argv[]) {
 					no_control_sav = 0;
 				}
 			}
+#define	MAX_MAINLINES		6
+#define	MAX_METERED_LANES	3
+#define	MAX_OFFRAMPS		2
 
-
-			for(i = 0; i < 3; i++) {
+			for(i = 0; i < MAX_METERED_LANES; i++) {
 			    db_urms_status.metered_lane_stat[i].demand_vol = gen_mess.urms_status_response.metered_lane_stat[i].demand_vol;
 			    db_urms_status.metered_lane_stat[i].demand_stat = gen_mess.urms_status_response.metered_lane_stat[i].demand_stat;
 			    db_urms_status.metered_lane_stat[i].passage_vol = gen_mess.urms_status_response.metered_lane_stat[i].passage_vol;
@@ -566,6 +585,29 @@ int main(int argc, char *argv[]) {
 			    db_urms_status.metered_lane_stat[i].metered_lane_rate_msb = gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_msb;
 			    db_urms_status.metered_lane_stat[i].metered_lane_rate_lsb = gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_lsb;
 //printf("urms.c: interval_zone %d %d rate %hu\n", i,db_urms_status.metered_lane_stat[i].metered_lane_interval_zone, (db_urms_status.metered_lane_stat[i].metered_lane_rate_msb << 8) + (unsigned char)db_urms_status.metered_lane_stat[i].metered_lane_rate_lsb);
+			    comp_finished_temp += db_urms_status.metered_lane_stat[i].demand_vol + 
+						 db_urms_status.metered_lane_stat[i].passage_vol + 
+						 db_urms_status.mainline_stat[i].lead_vol + 
+						 db_urms_status.mainline_stat[i].trail_vol + 
+						 db_urms_status.queue_stat[i].vol; 
+			    if( (comp_finished_temp != comp_finished_sav) ||
+			    	((curr_time + 0.025 - time_sav) >= 30.0) ) { //The 0.025 is one-half the loop interval of wrfiles_ac_rm. This was done only so
+									 // that the printed times are synchronized.  However, Dongyan's code will be using
+									 // the printed string as input, so this has a real use.
+				db_urms_status.computation_finished = 1;
+				time_sav = curr_time;
+				if( comp_finished_temp != comp_finished_sav ) {
+					comp_finished_sav = comp_finished_temp;
+				}
+				if(verbose)
+					printf("timediff %lf comp_finished_diff %lf\n", curr_time - time_sav, comp_finished_temp - comp_finished_temp);
+			
+			    }
+			    else
+				db_urms_status.computation_finished = 0;
+			}
+
+			for(i = 0; i < MAX_MAINLINES; i++) {
 			    db_urms_status.mainline_stat[i].speed = gen_mess.urms_status_response.mainline_stat[i].speed;
 			    db_urms_status.mainline_stat[i].lead_vol = gen_mess.urms_status_response.mainline_stat[i].lead_vol;
 			    db_urms_status.mainline_stat[i].lead_occ_msb = gen_mess.urms_status_response.mainline_stat[i].lead_occ_msb;
@@ -594,32 +636,21 @@ int main(int argc, char *argv[]) {
 				printf("1:lane %d cmd_src %hhu ", i+1, db_urms_status.cmd_src[i]);
 				printf("1:lane %d action %hhu\n", i+1, db_urms_status.action[i]);
 			    }
-			    comp_finished_temp += db_urms_status.metered_lane_stat[i].demand_vol + 
-						 db_urms_status.metered_lane_stat[i].passage_vol + 
-						 db_urms_status.mainline_stat[i].lead_vol + 
-						 db_urms_status.mainline_stat[i].trail_vol + 
-						 db_urms_status.queue_stat[i].vol; 
 			    if(verbose) {
 				printf("2:ML%d occ %.1f ", i+1, urms_datafile.mainline_lead_occ[i]);
 			 	printf("2:MT%d occ %.1f ", i+1, urms_datafile.mainline_trail_occ[i]);
 				printf("2:Q%d-1 occ %.1f\n", i+1, urms_datafile.queue_occ[i]);
 			    }
 			}
-			if( (comp_finished_temp != comp_finished_sav) ||
-			    ((curr_time + 0.025 - time_sav) >= 30.0) ) { //The 0.025 is one-half the loop interval of wrfiles_ac_rm. This was done only so
-									 // that the printed times are synchronized.  However, Dongyan's code will be using
-									 // the printed string as input, so this has a real use.
-				db_urms_status.computation_finished = 1;
-				time_sav = curr_time;
-				if( comp_finished_temp != comp_finished_sav ) {
-					comp_finished_sav = comp_finished_temp;
-				}
-				if(verbose)
-					printf("timediff %lf comp_finished_diff %lf\n", curr_time - time_sav, comp_finished_temp - comp_finished_temp);
-			
+
+
+			for(i = 0; i < MAX_OFFRAMPS; i++) {
+			    db_urms_status.additional_det[i].occ_msb = gen_mess.urms_status_response.additional_det[i].occ_msb;
+			    db_urms_status.additional_det[i].occ_lsb = gen_mess.urms_status_response.additional_det[i].occ_lsb;
+			    db_urms_status.additional_det[i].volume = gen_mess.urms_status_response.additional_det[i].volume;
+			    db_urms_status.additional_det[i].stat = gen_mess.urms_status_response.additional_det[i].stat;
+
 			}
-			else
-				db_urms_status.computation_finished = 0;
 
 			if(verbose) {
 				for(i=0; i < sizeof(db_urms_status_t); i++)
@@ -627,8 +658,8 @@ int main(int argc, char *argv[]) {
 				printf("\n");
 			}
 
-			db_clt_write(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
-			db_clt_write(pclt, DB_URMS_DATAFILE_VAR, sizeof(urms_datafile_t), &urms_datafile);
+			db_clt_write(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
+			db_clt_write(pclt, db_urms_status_var + 1, sizeof(urms_datafile_t), &urms_datafile);
 		    }
 		}
 	}
@@ -854,6 +885,7 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	    	printf("\n");
 	    }
     	printf("urms_get_status: Time for function call %f sec\n", (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) - (start_time.tv_sec + (start_time.tv_nsec/1.0e9)));
+	printf("ML1 speed %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[0].speed, 0.1 * ((gen_mess->urms_status_response.mainline_stat[0].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[0].lead_occ_lsb));
 	printf("ML2 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[1].lead_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[1].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[1].lead_occ_lsb));
 	printf("MT2 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[1].trail_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[1].trail_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[1].trail_occ_lsb));
 	printf("ML3 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[2].lead_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[2].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[2].lead_occ_lsb));
