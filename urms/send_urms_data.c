@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
 			    printf("%#hhx %#hhx \n", db_urms_status.metered_lane_stat[0].metered_lane_rate_msb, db_urms_status.metered_lane_stat[0].metered_lane_rate_lsb);
 			    printf("%#hhx %#hhx \n", db_urms_status.queue_stat[0].occ_msb, db_urms_status.queue_stat[0].occ_lsb);
 			}
-			db_urms_status.rmc2ac_ctr = rmc2ac_ctr++;
+//			db_urms_status.rmc2ac_ctr = rmc2ac_ctr++;
 
 			//This bit of code keeps the computation_finished flag TRUE
 			// for 5 intervals after it transitions from 1->0
