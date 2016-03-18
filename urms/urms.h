@@ -255,25 +255,25 @@ typedef struct {
 typedef struct {
 		// URMS Poll Response   
 		// Dec Hex Parameter 
-	char num_meter;	//0 1 Number of Metered Lanes 
-	char num_main;	//1 2 Number of Mainline Lanes 
-	char num_opp;	//2 3 Number of Opposite Mainline Lanes 
-	char num_addl_det;	//3 4 Number of Additional Detectors 
-	struct mainline_stat mainline_stat[3]; //4-33
-	char mainline_dir;	//34 Mainline Direction Bits (Each Lane 0=Normal, 1=Reverse) 
-	struct metered_lane_stat metered_lane_stat[3]; //35-58
-	char is_metering;	//59 Is Metering (1 = YES) 
-	struct queue_stat queue_stat[3]; //60-74
-	char	cmd_src[3]; //75-77
-	char	action[3]; //78-80
-	unsigned char	rm2rmc_ctr; //81 Ramp meter computer increments this when it receives a good message from ramp meter over LAN
-	unsigned char	rmc2ac_ctr; //82 Ramp meter computer increments this whenever it sends a message to the arterial computer over DSRC connection
-	unsigned char	plan[3];   //83-85
-	unsigned char	computation_finished; //86
-	char	plan_base_lvl[3]; //87
-	char	hour; //88
-	char	no_control; //89
-	unsigned short  checksum; //90
+	char num_meter;	//0 Number of Metered Lanes 
+	char num_main;	//1 Number of Mainline Lanes 
+	char num_opp;	//2 Number of Opposite Mainline Lanes 
+	char num_addl_det;	//3 Number of Additional Detectors 
+	struct mainline_stat mainline_stat[3]; //4-63
+	char mainline_dir;	//64 Mainline Direction Bits (Each Lane 0=Normal, 1=Reverse) 
+	struct metered_lane_stat metered_lane_stat[3]; //65-88
+	char is_metering;	//89 Is Metering (1 = YES) 
+	struct queue_stat queue_stat[3]; //90-104
+	char	cmd_src[3]; //105-107
+	char	action[3]; //108-110
+	unsigned char	plan[3];   //111-113
+	unsigned char	computation_finished; //114
+	char	plan_base_lvl[3]; //115
+	char	hour; //116
+	char	no_control; //117
+        struct addl_det_stat additional_det[2]; //118-125
+	unsigned char	rm2rmc_ctr; //126
+	unsigned short  checksum; //127
 } IS_PACKED db_urms_status_t;
 
 /*
