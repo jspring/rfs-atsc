@@ -246,7 +246,7 @@ typedef struct {
 	char 	traffic_responsive_speed;	//288 120 Traffic Responsive Speed (VPH) 
 	char 	spare;	//289 121 Spare 
 	char	gen_purpose_out_stat;	//290 122 General Purpose Output Status 
-	struct metered_lane_ctl metered_lane_ctl[4]; //123-334
+	struct metered_lane_ctl metered_lane_ctl[4]; //291-334
 	struct queue_stat queue_stat[4][4]; //335-414
 	char checksum_msb;	//415 19F CRC-16 Checksum (MSB) 
 	char checksum_lsb;	//416 1A0 CRC-16 Checksum (LSB) 
@@ -259,21 +259,23 @@ typedef struct {
 	char num_main;	//1 Number of Mainline Lanes 
 	char num_opp;	//2 Number of Opposite Mainline Lanes 
 	char num_addl_det;	//3 Number of Additional Detectors 
-	struct mainline_stat mainline_stat[3]; //4-63
-	char mainline_dir;	//64 Mainline Direction Bits (Each Lane 0=Normal, 1=Reverse) 
-	struct metered_lane_stat metered_lane_stat[3]; //65-88
-	char is_metering;	//89 Is Metering (1 = YES) 
-	struct queue_stat queue_stat[3]; //90-104
-	char	cmd_src[3]; //105-107
-	char	action[3]; //108-110
-	unsigned char	plan[3];   //111-113
-	unsigned char	computation_finished; //114
-	char	plan_base_lvl[3]; //115
-	char	hour; //116
-	char	no_control; //117
-        struct addl_det_stat additional_det[2]; //118-125
-	unsigned char	rm2rmc_ctr; //126
-	unsigned short  checksum; //127
+	struct mainline_stat mainline_stat[3]; //4-33
+	char mainline_dir;	//34 Mainline Direction Bits (Each Lane 0=Normal, 1=Reverse) 
+	struct metered_lane_stat metered_lane_stat[3]; //35-58
+	char is_metering;	//59 Is Metering (1 = YES) 
+	struct queue_stat queue_stat[3]; //60-74
+	char	cmd_src[3]; //75-77
+	char	action[3]; //78-80
+	unsigned char	plan[3];   //81-83
+	unsigned char	computation_finished; //84
+	char	plan_base_lvl[3]; //85-87
+	char	no_control; //88
+        struct addl_det_stat additional_det[2]; //89-96
+	unsigned char	rm2rmc_ctr; //97
+	char	hour; //98
+	char	minute; //99
+	char	second; //100
+	unsigned short  checksum; //101-102
 } IS_PACKED db_urms_status_t;
 
 /*

@@ -53,7 +53,8 @@ int tos_enable_detectors(int fd, gen_mess_t *gen_mess, char verbose,
 int main(int argc, char *argv[]) {
 	int urmsfd;
 	gen_mess_t gen_mess;
-	char *controllerIP = "10.0.1.126";
+
+	char *controllerIP = "10.254.25.113";
 	char *port = "1000";
 
         int option;
@@ -115,6 +116,13 @@ int main(int argc, char *argv[]) {
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
 
+printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_stat %d addl_det_stat %d\n",
+	sizeof(db_urms_status_t),
+	sizeof(struct mainline_stat),
+	sizeof(struct metered_lane_stat),
+	sizeof(struct queue_stat),
+	sizeof(struct addl_det_stat)
+);
         while ((option = getopt(argc, argv, "d:r:vgsup:i:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:")) != EOF) {
                 switch(option) {
                 case 'd':
@@ -522,7 +530,8 @@ int main(int argc, char *argv[]) {
 			db_urms_status.mainline_dir = gen_mess.urms_status_response.mainline_dir;
 			db_urms_status.is_metering = gen_mess.urms_status_response.is_metering;
 			db_urms_status.hour = gen_mess.urms_status_response.hour;
-
+			db_urms_status.minute = gen_mess.urms_status_response.minute;
+			db_urms_status.second = gen_mess.urms_status_response.second;
 			comp_finished_temp = 0;
 
 			ltime = localtime(&curr_timespec.tv_sec);
@@ -786,7 +795,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	msgbuf[22] = csum;
 	printf("urms_set_meter: lane 1 action %d lane 2 action %d lne 3 action %d\n", gen_mess.urmsctl.lane_1_action, gen_mess.urmsctl.lane_2_action, gen_mess.urmsctl.lane_3_action);
 	if (write(fd, msgbuf, sizeof(urmsctl_t)) != sizeof(urmsctl_t)) {
-	  fprintf(stderr, "partial/failed write\n");
+	  fprintf(stderr, "urms_set_meter: partial/failed write\n");
 	  return -2;
 	}
 
@@ -859,8 +868,8 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	if (write(fd, &gen_mess->urmspoll2, 9) != 9) {
 
 //	if (write(fd, &gen_mess->urms_status_poll, sizeof(urms_status_poll_t)) != sizeof(urms_status_poll_t)) {
-	  fprintf(stderr, "partial/failed write\n");
-	  exit(EXIT_FAILURE);
+	  fprintf(stderr, "urms_get_status: partial/failed write\n");
+//	  exit(EXIT_FAILURE);
 	}
 
 	nread = read(fd, gen_mess, 417);
@@ -928,7 +937,7 @@ int tos_set_action(int fd, gen_mess_t *gen_mess, char verbose, unsigned char *rm
 
 	clock_gettime(CLOCK_REALTIME, &start_time);
 	if (write(fd, &gen_mess->tos_set_action, sizeof(tos_set_action_t)) != sizeof(tos_set_action_t)) {
-	  fprintf(stderr, "partial/failed write\n");
+	  fprintf(stderr, "tos_set_action: partial/failed write\n");
 	  exit(EXIT_FAILURE);
 	}
 	clock_gettime(CLOCK_REALTIME, &end_time);
@@ -979,7 +988,7 @@ int tos_enable_detectors(int fd, gen_mess_t *gen_mess, char verbose, unsigned ch
 	clock_gettime(CLOCK_REALTIME, &start_time);
 
 	if (write(fd, &gen_mess->tos_enable_detectors, sizeof(tos_enable_detectors_t)) != sizeof(tos_enable_detectors_t)) {
-	  fprintf(stderr, "partial/failed write\n");
+	  fprintf(stderr, "tos_enable_detectors: partial/failed write\n");
 	  exit(EXIT_FAILURE);
 	}
 
