@@ -253,30 +253,33 @@ typedef struct {
 } IS_PACKED urms_status_response_t;
 
 typedef struct {
-		// URMS Poll Response   
-		// Dec Hex Parameter 
 	char num_meter;	//0 Number of Metered Lanes 
 	char num_main;	//1 Number of Mainline Lanes 
-	char num_opp;	//2 Number of Opposite Mainline Lanes 
-	char num_addl_det;	//3 Number of Additional Detectors 
-	struct mainline_stat mainline_stat[3]; //4-33
+	char num_addl_det;	//2 Number of Additional Detectors 
+	struct mainline_stat mainline_stat[6]; //3-62
+	struct metered_lane_stat metered_lane_stat[3]; //63-86
+	struct queue_stat queue_stat[3]; //87-101
+        struct addl_det_stat additional_det[2]; //102-109
+	char	hour; //102
+	char	minute; //104
+	char	second; //105
+	char	no_control; //106
+} IS_PACKED db_urms_status_t;
+
+typedef struct {
+		// URMS Poll Response   
+		// Dec Hex Parameter 
 	char mainline_dir;	//34 Mainline Direction Bits (Each Lane 0=Normal, 1=Reverse) 
-	struct metered_lane_stat metered_lane_stat[3]; //35-58
+	char num_opp;	//2 Number of Opposite Mainline Lanes 
 	char is_metering;	//59 Is Metering (1 = YES) 
-	struct queue_stat queue_stat[3]; //60-74
 	char	cmd_src[3]; //75-77
 	char	action[3]; //78-80
 	unsigned char	plan[3];   //81-83
 	unsigned char	computation_finished; //84
 	char	plan_base_lvl[3]; //85-87
-	char	no_control; //88
-        struct addl_det_stat additional_det[2]; //89-96
 	unsigned char	rm2rmc_ctr; //97
-	char	hour; //98
-	char	minute; //99
-	char	second; //100
 	unsigned short  checksum; //101-102
-} IS_PACKED db_urms_status_t;
+} IS_PACKED db_urms_status2_t;
 
 /*
 				URMS	URMS

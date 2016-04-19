@@ -50,6 +50,7 @@ int main(int argc, char *argv[]) {
         posix_timer_typ *ptimer;
         trig_info_typ trig_info;
 	db_urms_status_t db_urms_status;
+	db_urms_status2_t db_urms_status2;
 	db_urms_t db_urms;
 	int loop_interval = 5000; 	// Loop interval, ms
 	int verbose = 0;
@@ -139,19 +140,19 @@ int main(int argc, char *argv[]) {
 			//This bit of code keeps the computation_finished flag TRUE
 			// for 5 intervals after it transitions from 1->0
 			// This was necessary for ac_rm_algo to reliably poll the database
-			if( db_urms_status.computation_finished != 0) {
+			if( db_urms_status2.computation_finished != 0) {
 				comp_finished_ctr = 5;
 			}
 			else {
 				if(comp_finished_ctr-- > 0)
-					db_urms_status.computation_finished = 1;
+					db_urms_status2.computation_finished = 1;
 			}
 
 			checksum = 0;
 			for(i=0; i < (sizeof(db_urms_status_t) - 2); i++)
 				checksum += buf[i];
-			db_urms_status.checksum = checksum;
-			write(urmsfd, &db_urms_status, sizeof(db_urms_status_t));
+			db_urms_status2.checksum = checksum;
+			write(urmsfd, &db_urms_status2, sizeof(db_urms_status2_t));
 		}
 		else {
 			printf("send_urms_data: Got another trigger urmsfd %d\n", urmsfd);

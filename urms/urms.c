@@ -30,6 +30,7 @@ const char *usage = "-d <Database number (Modulo 4!)> -v (verbose) -r <controlle
 
 db_id_t db_vars_list[] =  {
         {0, sizeof(db_urms_status_t)},
+        {0, sizeof(db_urms_status2_t)},
         {0, sizeof(urms_datafile_t)},
         {0, sizeof(db_urms_t)},
 };
@@ -71,6 +72,8 @@ int main(int argc, char *argv[]) {
 	db_urms_t db_urms_sav;
 	db_urms_status_t db_urms_status;
 	char *buf = (char *)&db_urms_status;
+	db_urms_status2_t db_urms_status2;
+	char *buf2 = (char *)&db_urms_status2;
 	urms_datafile_t urms_datafile;
 	unsigned char rm2rmc_ctr = 0;
 
@@ -294,27 +297,27 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 			if(lane_1_plan != 0)
 				db_urms.lane_1_plan = lane_1_plan;
 			else
-				db_urms.lane_1_plan = db_urms_status.plan[0];
+				db_urms.lane_1_plan = db_urms_status2.plan[0];
 			if(lane_2_plan != 0)
 				db_urms.lane_2_plan = lane_2_plan;
 			else
-				db_urms.lane_2_plan = db_urms_status.plan[1];
+				db_urms.lane_2_plan = db_urms_status2.plan[1];
 			if(lane_3_plan != 0)
 				db_urms.lane_3_plan = lane_3_plan;
 			else
-				db_urms.lane_3_plan = db_urms_status.plan[2];
+				db_urms.lane_3_plan = db_urms_status2.plan[2];
 			if(lane_1_action != 0)
 				db_urms.lane_1_action = lane_1_action;
 			else
-				db_urms.lane_1_action = db_urms_status.action[0];
+				db_urms.lane_1_action = db_urms_status2.action[0];
 			if(lane_2_action != 0)
 				db_urms.lane_2_action = lane_2_action;
 			else
-				db_urms.lane_2_action = db_urms_status.action[1];
+				db_urms.lane_2_action = db_urms_status2.action[1];
 			if(lane_3_action != 0)
 				db_urms.lane_3_action = lane_3_action;
 			else
-				db_urms.lane_3_action = db_urms_status.action[2];
+				db_urms.lane_3_action = db_urms_status2.action[2];
 			printf("lane 1 rate=%d lane 2 rate=%d lane 3 rate=%d\nlane 1 plan=%d lane 2 plan=%d lane 3 plan=%d\nlane 1 action=%d lane 2 action=%d lane 3 action=%d\n", 
 				db_urms.lane_1_release_rate, 
 				db_urms.lane_2_release_rate, 
@@ -522,13 +525,13 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 			if( clock_gettime(CLOCK_REALTIME, &curr_timespec) < 0)
 				perror("urms clock_gettime");
 			curr_time = curr_timespec.tv_sec + (curr_timespec.tv_nsec / 1000000000.0);
-			db_urms_status.rm2rmc_ctr = rm2rmc_ctr++;
+			db_urms_status2.rm2rmc_ctr = rm2rmc_ctr++;
 			db_urms_status.num_meter = gen_mess.urms_status_response.num_meter;
 			db_urms_status.num_main = gen_mess.urms_status_response.num_main;
-			db_urms_status.num_opp = gen_mess.urms_status_response.num_opp;
+			db_urms_status2.num_opp = gen_mess.urms_status_response.num_opp;
 			db_urms_status.num_addl_det = gen_mess.urms_status_response.num_addl_det;
-			db_urms_status.mainline_dir = gen_mess.urms_status_response.mainline_dir;
-			db_urms_status.is_metering = gen_mess.urms_status_response.is_metering;
+			db_urms_status2.mainline_dir = gen_mess.urms_status_response.mainline_dir;
+			db_urms_status2.is_metering = gen_mess.urms_status_response.is_metering;
 			db_urms_status.hour = gen_mess.urms_status_response.hour;
 			db_urms_status.minute = gen_mess.urms_status_response.minute;
 			db_urms_status.second = gen_mess.urms_status_response.second;
@@ -603,7 +606,7 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 			    	((curr_time + 0.025 - time_sav) >= 30.0) ) { //The 0.025 is one-half the loop interval of wrfiles_ac_rm. This was done only so
 									 // that the printed times are synchronized.  However, Dongyan's code will be using
 									 // the printed string as input, so this has a real use.
-				db_urms_status.computation_finished = 1;
+				db_urms_status2.computation_finished = 1;
 				time_sav = curr_time;
 				if( comp_finished_temp != comp_finished_sav ) {
 					comp_finished_sav = comp_finished_temp;
@@ -613,7 +616,7 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 			
 			    }
 			    else
-				db_urms_status.computation_finished = 0;
+				db_urms_status2.computation_finished = 0;
 			}
 
 			for(i = 0; i < MAX_MAINLINES; i++) {
@@ -630,10 +633,10 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 			    db_urms_status.queue_stat[i].occ_lsb = gen_mess.urms_status_response.queue_stat[0][i].occ_lsb;
 			    db_urms_status.queue_stat[i].vol = gen_mess.urms_status_response.queue_stat[0][i].vol;
 			    db_urms_status.queue_stat[i].stat = gen_mess.urms_status_response.queue_stat[0][i].stat;
-			    db_urms_status.cmd_src[i] = gen_mess.urms_status_response.metered_lane_ctl[i].cmd_src;
-			    db_urms_status.action[i] = gen_mess.urms_status_response.metered_lane_ctl[i].action;
-			    db_urms_status.plan[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan;
-			    db_urms_status.plan_base_lvl[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan_base_lvl;
+			    db_urms_status2.cmd_src[i] = gen_mess.urms_status_response.metered_lane_ctl[i].cmd_src;
+			    db_urms_status2.action[i] = gen_mess.urms_status_response.metered_lane_ctl[i].action;
+			    db_urms_status2.plan[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan;
+			    db_urms_status2.plan_base_lvl[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan_base_lvl;
 			    urms_datafile.mainline_lead_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].lead_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].lead_occ_lsb));
 			    urms_datafile.mainline_trail_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].trail_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].trail_occ_lsb));
 			    urms_datafile.queue_occ[i] = 0.1 * ((gen_mess.urms_status_response.queue_stat[0][i].occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.queue_stat[0][i].occ_lsb));
@@ -642,8 +645,8 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 				printf("1:ML%d occ %.1f ", i+1, urms_datafile.mainline_lead_occ[i]);
 			 	printf("1:MT%d occ %.1f ", i+1, urms_datafile.mainline_trail_occ[i]);
 				printf("1:Q%d-1 occ %.1f ", i+1, urms_datafile.queue_occ[i]);
-				printf("1:lane %d cmd_src %hhu ", i+1, db_urms_status.cmd_src[i]);
-				printf("1:lane %d action %hhu\n", i+1, db_urms_status.action[i]);
+				printf("1:lane %d cmd_src %hhu ", i+1, db_urms_status2.cmd_src[i]);
+				printf("1:lane %d action %hhu\n", i+1, db_urms_status2.action[i]);
 			    }
 			    if(verbose) {
 				printf("2:ML%d occ %.1f ", i+1, urms_datafile.mainline_lead_occ[i]);
