@@ -1,0 +1,5 @@
+#!/bin/bash
+
+gcc -c hash.c -o hash.o
+gcc -o idtest idtest.c hash.o
+

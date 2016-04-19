@@ -1,0 +1,22 @@
+Super: ./restore_tscp221Mb002
+chx /f0/cmds
+tar xvpf /r2/tscp221Mb002.tar
+drwxrwxrwx 0/0        0 Jul  1 11:15 2015 /f0/TSCP/
+-rwxrwxr-x 0/0    11908 Apr 27 15:19 2015 /f0/TSCP/dkey
+-rwxrwxr-x 0/0    32572 Apr 30 12:39 2010 /f0/TSCP/fioman
+-rwxrwxr-x 0/0    20866 Apr 30 12:39 2010 /f0/TSCP/fpaman
+-rwxrwxr-x 0/0     8922 Apr 30 12:39 2010 /f0/TSCP/fthread
+-rwxrwxr-x 0/0     7338 Apr 30 12:39 2010 /f0/TSCP/ledman
+-rw-rw---- 0/0      326 Sep 21 11:36 2012 /f0/TSCP/startup
+-rwxrwxr-x 0/0   243004 Jun 17 14:54 2015 /f0/TSCP/serialman
+-rwxrwxr-x 0/0   506620 Jul  1 08:25 2015 /f0/TSCP/tscp
+-rw-rw---- 0/0      174 Jun  4 15:06 2015 /f0/TSCP/starttscp
+-rwxrwxr-x 0/0    59812 Mar  6 11:11 2015 /f0/TSCP/netman
+-rwxrwxr-x 0/0    20260 Apr 30 12:39 2010 /f0/TSCP/suncalc
+-rwxrwxr-x 0/0    11880 Apr 30 12:39 2010 /f0/TSCP/scfman
+-rw-rw---- 0/0    10240 Jul  1 11:13 2015 /f0/TSCP/startup.tar
+tar xvpf /f0/tscp/startup.tar
+-rw-rw---- 0/0      326 Sep 21 11:36 2012 /f0/startup
+del /f0/tscp/startup.tar -q
+***** TSCP installation completed! *****
+

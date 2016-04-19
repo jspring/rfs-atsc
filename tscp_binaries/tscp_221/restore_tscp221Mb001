@@ -1,0 +1,1 @@
+echo "chx /f0/cmds"      chx /f0/cmdsecho "tar xvpf /r2/tscp221Mb001.tar"      tar xvpf /r2/tscp221Mb001.tarecho "tar xvpf /f0/tscp/startup.tar"      tar xvpf /f0/tscp/startup.tarecho "del /f0/tscp/startup.tar -q"      del /f0/tscp/startup.tar -q      del /f0/tscp/trfm -q      del /f0/tscp/fm_netman -qecho "***** TSCP installation completed! *****"chd /f0

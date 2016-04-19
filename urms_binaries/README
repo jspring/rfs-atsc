@@ -1,0 +1,31 @@
+In the /f0 directory there is a file named "startup"
+
+This file tell the controller what to do when it starts up (ie. run TSCP or
+the URMS)
+
+Within each of the URMS and TSCP folders there is also a copy of the
+startup script.
+
+Basicly to change it to a TSCP controller from a URMS controller
+
+   1.  chd /f0
+   2. rename startup URMSstartup
+   3. copy tscp/startup startup
+   4. break
+
+Basicly to change it to a URMS controller from a TSCP controller
+
+   1.  chd /f0
+   2. rename startup TSCPstartup
+   3. copy urms/startup startup
+   4. break
+
+Sometimes I have a little more problems when the TSCP is installed because
+that application does not always allow renaming the startup file while the
+program is being run.
+
+
+
+
+David J. Wells
+
