@@ -30,9 +30,9 @@ const char *usage = "-d <Database number (Modulo 4!)> -v (verbose) -r <controlle
 
 db_id_t db_vars_list[] =  {
         {0, sizeof(db_urms_status_t)},
-        {0, sizeof(db_urms_status2_t)},
-        {0, sizeof(urms_datafile_t)},
-        {0, sizeof(db_urms_t)},
+        {1, sizeof(urms_datafile_t)},
+        {2, sizeof(db_urms_t)},
+        {3, sizeof(db_urms_status2_t)},
 };
 int num_db_vars = sizeof(db_vars_list)/sizeof(db_id_t);
 
@@ -67,7 +67,9 @@ int main(int argc, char *argv[]) {
         posix_timer_typ *ptimer;
         trig_info_typ trig_info;
 	int db_urms_status_var = 0;
+	int db_urms_status2_var = 0;
 	int db_urms_var = 0;
+	int db_urms_datafile_var = 0;
 	db_urms_t db_urms;
 	db_urms_t db_urms_sav;
 	db_urms_status_t db_urms_status;
@@ -119,8 +121,9 @@ int main(int argc, char *argv[]) {
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
 
-printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_stat %d addl_det_stat %d\n",
+printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %d metered_lane_stat %d queue_stat %d addl_det_stat %d\n",
 	sizeof(db_urms_status_t),
+	sizeof(db_urms_status2_t),
 	sizeof(struct mainline_stat),
 	sizeof(struct metered_lane_stat),
 	sizeof(struct queue_stat),
@@ -130,7 +133,9 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
                 switch(option) {
                 case 'd':
                         db_urms_status_var = atoi(optarg);
+                        db_urms_datafile_var = db_urms_status_var + 1;
                         db_urms_var = db_urms_status_var + 2;
+                        db_urms_status2_var = db_urms_status_var + 3;
                         break;
                 case 'r':
 			controllerIP = strdup(optarg);
@@ -252,6 +257,7 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 	db_vars_list[0].id = db_urms_status_var;
 	db_vars_list[1].id = db_urms_status_var + 1;
 	db_vars_list[2].id = db_urms_status_var + 2;
+	db_vars_list[3].id = db_urms_status_var + 3;
 	db_trig_list[0] = db_urms_status_var + 2;
 
 	if(set_tos_action)
@@ -278,7 +284,8 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 		    else {
 			// Connect to database
 		        get_local_name(hostname, MAXHOSTNAMELEN);
-		        if ( (pclt = db_list_init(argv[0], hostname, domain, xport, db_vars_list, num_db_vars, db_trig_list, num_trig_variables)) == NULL) {
+//		        if ( (pclt = db_list_init(argv[0], hostname, domain, xport, db_vars_list, num_db_vars, db_trig_list, num_trig_variables)) == NULL) {
+		        if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, NULL, 0)) == NULL) {
 		            exit(EXIT_FAILURE);
 			}
 			db_clt_read(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
@@ -414,9 +421,8 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 	}
 	// Connect to database
         get_local_name(hostname, MAXHOSTNAMELEN);
-        if ( (pclt = db_list_init(argv[0], hostname, domain,
-            xport, db_vars_list, num_db_vars, db_trig_list,
-            num_trig_variables)) == NULL) {
+	if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, NULL, 0)) == NULL) {
+//        if ( (pclt = db_list_init(argv[0], hostname, domain, xport, db_vars_list, num_db_vars, db_trig_list, num_trig_variables)) == NULL) {
             exit(EXIT_FAILURE);
 	}
 
@@ -432,8 +438,6 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 			urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose);
 #endif
                 close(urmsfd);
-                db_list_done(pclt, db_vars_list, num_db_vars, db_trig_list, num_trig_variables);
-		printf("get_status_err %d\n", get_status_err);
                 exit(EXIT_SUCCESS);
         } else
                sig_ign(sig_list, sig_hand);
@@ -502,8 +506,9 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 		// TIMER_WAIT; it'll add another timer interval to
 		// the loop.
 		clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
-		db_clt_read(pclt, db_urms_var, sizeof(db_urms_t), &db_urms);
 		if( DB_TRIG_VAR(&trig_info) == db_urms_var ) {
+			db_clt_read(pclt, db_urms_var, sizeof(db_urms_t), &db_urms);
+			printf("db_clt_read: db_urms_var %d\n", db_urms_var);
 			if(verbose)
 				printf("Got db_urms_var trigger\n");
 			if(no_control == 0) 
@@ -671,6 +676,7 @@ printf("sizeof(db_urms_status_t) %d mainline_stat %d metered_lane_stat %d queue_
 			}
 
 			db_clt_write(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
+			db_clt_write(pclt, db_urms_status_var + 4, sizeof(db_urms_status2_t), &db_urms_status2);
 			db_clt_write(pclt, db_urms_status_var + 1, sizeof(urms_datafile_t), &urms_datafile);
 		    }
 		}
