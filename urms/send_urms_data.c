@@ -24,7 +24,9 @@ static void sig_hand(int code)
 const char *usage = "-v (verbose) -r <controller IP address (def. 10.0.1.7)> -p <port (def. 4444)> -s (standalone, no DB) -l (print log)\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t";
 
 db_id_t db_vars_list[] =  {
-        {DB_URMS_STATUS_VAR, sizeof(db_urms_status_t)}
+        {DB_URMS_STATUS_VAR, sizeof(db_urms_status_t)},
+        {DB_URMS_STATUS2_VAR, sizeof(db_urms_status2_t)},
+        {DB_URMS_STATUS3_VAR, sizeof(db_urms_status3_t)}
 };
 int num_db_variables = sizeof(db_vars_list)/sizeof(db_id_t);
 
@@ -51,6 +53,7 @@ int main(int argc, char *argv[]) {
         trig_info_typ trig_info;
 	db_urms_status_t db_urms_status;
 	db_urms_status2_t db_urms_status2;
+	db_urms_status3_t db_urms_status3;
 	db_urms_t db_urms;
 	int loop_interval = 5000; 	// Loop interval, ms
 	int verbose = 0;
@@ -63,6 +66,8 @@ int main(int argc, char *argv[]) {
 	struct timeval timeout;
 	char *inportisset = "not yet initialized";
 	unsigned char *buf = (unsigned char *) &db_urms_status;
+	unsigned char *buf2 = (unsigned char *) &db_urms_status2;
+	unsigned char *buf3 = (unsigned char *) &db_urms_status3;
 	unsigned char rmc2ac_ctr = 0;
 	unsigned short checksum = 0;
 	int comp_finished_ctr = 5;
@@ -127,31 +132,39 @@ int main(int argc, char *argv[]) {
 		clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
 		if( DB_TRIG_VAR(&trig_info) == DB_URMS_STATUS_VAR ) {
 			db_clt_read(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
+			db_clt_read(pclt, DB_URMS_STATUS2_VAR, sizeof(db_urms_status2_t), &db_urms_status2);
+			db_clt_read(pclt, DB_URMS_STATUS3_VAR, sizeof(db_urms_status3_t), &db_urms_status3);
 			if(verbose) {
 			    printf("Got DB_URMS_STATUS_VAR trigger sizeof(db_urms_status_t) %d\n", sizeof(db_urms_status_t));
 			    for(i=0; i < sizeof(db_urms_status_t); i++)
 			       	printf("%d:%#hhx ", i, buf[i]);
+			    printf("Got DB_URMS_STATUS2_VAR trigger\n");
+			    for(i=0; i < sizeof(db_urms_status2_t); i++)
+			       	printf("%d:%#hhx ", i, buf2[i]);
+			    printf("Got DB_URMS_STATUS3_VAR\n");
+			    for(i=0; i < sizeof(db_urms_status3_t); i++)
+			       	printf("%d:%#hhx ", i, buf3[i]);
 			    printf("\n");
 			    printf("%#hhx %#hhx \n", db_urms_status.metered_lane_stat[0].metered_lane_rate_msb, db_urms_status.metered_lane_stat[0].metered_lane_rate_lsb);
-			    printf("%#hhx %#hhx \n", db_urms_status.queue_stat[0].occ_msb, db_urms_status.queue_stat[0].occ_lsb);
+			    printf("%#hhx %#hhx \n", db_urms_status2.queue_stat[0][0].occ_msb, db_urms_status2.queue_stat[0][0].occ_lsb);
 			}
 //			db_urms_status.rmc2ac_ctr = rmc2ac_ctr++;
 
 			//This bit of code keeps the computation_finished flag TRUE
 			// for 5 intervals after it transitions from 1->0
 			// This was necessary for ac_rm_algo to reliably poll the database
-			if( db_urms_status2.computation_finished != 0) {
+			if( db_urms_status3.computation_finished != 0) {
 				comp_finished_ctr = 5;
 			}
 			else {
 				if(comp_finished_ctr-- > 0)
-					db_urms_status2.computation_finished = 1;
+					db_urms_status3.computation_finished = 1;
 			}
 
 			checksum = 0;
 			for(i=0; i < (sizeof(db_urms_status_t) - 2); i++)
 				checksum += buf[i];
-			db_urms_status2.checksum = checksum;
+			db_urms_status.checksum = checksum;
 			write(urmsfd, &db_urms_status2, sizeof(db_urms_status2_t));
 		}
 		else {

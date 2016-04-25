@@ -85,6 +85,8 @@ int main(int argc, char *argv[]) {
 	detector_msg_t detector_block_sav;
 	detector_msg_t detector_block;
 	db_urms_status_t db_urms_status;
+	db_urms_status2_t db_urms_status2;
+	db_urms_status3_t db_urms_status3;
 	db_urms_t db_urms;
 	raw_signal_status_msg_t raw_signal_status_msg;
 	int retval;
@@ -496,6 +498,8 @@ exit(EXIT_SUCCESS);
 		}
 
 		db_clt_read(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
+		db_clt_read(pclt, DB_URMS_STATUS2_VAR, sizeof(db_urms_status2_t), &db_urms_status2);
+		db_clt_read(pclt, DB_URMS_STATUS3_VAR, sizeof(db_urms_status3_t), &db_urms_status3);
 		clock_gettime(CLOCK_REALTIME, &tp);
 		ltime = localtime(&tp.tv_sec);
 		dow = ltime->tm_wday;
@@ -510,7 +514,7 @@ exit(EXIT_SUCCESS);
 			// struct members whose values should not be zero.
 			db_urms_struct_null = db_urms_status.num_meter + 
 						db_urms_status.num_main + 
-						db_urms_status.num_opp + 
+						db_urms_status3.num_opp + 
 						db_urms_status.mainline_stat[0].trail_stat + 
 						db_urms_status.mainline_stat[1].trail_stat + 
 						db_urms_status.mainline_stat[2].trail_stat;

@@ -33,6 +33,7 @@ db_id_t db_vars_list[] =  {
         {1, sizeof(urms_datafile_t)},
         {2, sizeof(db_urms_t)},
         {3, sizeof(db_urms_status2_t)},
+        {4, sizeof(db_urms_status3_t)},
 };
 int num_db_vars = sizeof(db_vars_list)/sizeof(db_id_t);
 
@@ -68,6 +69,7 @@ int main(int argc, char *argv[]) {
         trig_info_typ trig_info;
 	int db_urms_status_var = 0;
 	int db_urms_status2_var = 0;
+	int db_urms_status3_var = 0;
 	int db_urms_var = 0;
 	int db_urms_datafile_var = 0;
 	db_urms_t db_urms;
@@ -76,6 +78,8 @@ int main(int argc, char *argv[]) {
 	char *buf = (char *)&db_urms_status;
 	db_urms_status2_t db_urms_status2;
 	char *buf2 = (char *)&db_urms_status2;
+	db_urms_status3_t db_urms_status3;
+	char *buf3 = (char *)&db_urms_status3;
 	urms_datafile_t urms_datafile;
 	unsigned char rm2rmc_ctr = 0;
 
@@ -89,6 +93,7 @@ int main(int argc, char *argv[]) {
 	int set_tos_action = 0;
 	int set_tos_det = 0;
 	int i;
+	int j;
 	unsigned char rm_action_code_tos2[4];
 	unsigned char num_lanes = 3;
 	unsigned char det_enable[8] = {1, 1, 1, 1, 1, 1, 1, 1};
@@ -121,9 +126,10 @@ int main(int argc, char *argv[]) {
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
 
-printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %d metered_lane_stat %d queue_stat %d addl_det_stat %d\n",
+printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_status3_t) %d mainline_stat %d metered_lane_stat %d queue_stat %d addl_det_stat %d\n",
 	sizeof(db_urms_status_t),
 	sizeof(db_urms_status2_t),
+	sizeof(db_urms_status3_t),
 	sizeof(struct mainline_stat),
 	sizeof(struct metered_lane_stat),
 	sizeof(struct queue_stat),
@@ -136,6 +142,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %
                         db_urms_datafile_var = db_urms_status_var + 1;
                         db_urms_var = db_urms_status_var + 2;
                         db_urms_status2_var = db_urms_status_var + 3;
+                        db_urms_status3_var = db_urms_status_var + 4;
                         break;
                 case 'r':
 			controllerIP = strdup(optarg);
@@ -258,6 +265,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %
 	db_vars_list[1].id = db_urms_status_var + 1;
 	db_vars_list[2].id = db_urms_status_var + 2;
 	db_vars_list[3].id = db_urms_status_var + 3;
+	db_vars_list[4].id = db_urms_status_var + 4;
 	db_trig_list[0] = db_urms_status_var + 2;
 
 	if(set_tos_action)
@@ -289,6 +297,8 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %
 		            exit(EXIT_FAILURE);
 			}
 			db_clt_read(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
+			db_clt_read(pclt, db_urms_status2_var, sizeof(db_urms_status2_t), &db_urms_status2);
+			db_clt_read(pclt, db_urms_status3_var, sizeof(db_urms_status3_t), &db_urms_status3);
 			if(lane_1_release_rate != 0)
 				db_urms.lane_1_release_rate = lane_1_release_rate;
 			else
@@ -304,27 +314,27 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %
 			if(lane_1_plan != 0)
 				db_urms.lane_1_plan = lane_1_plan;
 			else
-				db_urms.lane_1_plan = db_urms_status2.plan[0];
+				db_urms.lane_1_plan = db_urms_status3.plan[0];
 			if(lane_2_plan != 0)
 				db_urms.lane_2_plan = lane_2_plan;
 			else
-				db_urms.lane_2_plan = db_urms_status2.plan[1];
+				db_urms.lane_2_plan = db_urms_status3.plan[1];
 			if(lane_3_plan != 0)
 				db_urms.lane_3_plan = lane_3_plan;
 			else
-				db_urms.lane_3_plan = db_urms_status2.plan[2];
+				db_urms.lane_3_plan = db_urms_status3.plan[2];
 			if(lane_1_action != 0)
 				db_urms.lane_1_action = lane_1_action;
 			else
-				db_urms.lane_1_action = db_urms_status2.action[0];
+				db_urms.lane_1_action = db_urms_status3.action[0];
 			if(lane_2_action != 0)
 				db_urms.lane_2_action = lane_2_action;
 			else
-				db_urms.lane_2_action = db_urms_status2.action[1];
+				db_urms.lane_2_action = db_urms_status3.action[1];
 			if(lane_3_action != 0)
 				db_urms.lane_3_action = lane_3_action;
 			else
-				db_urms.lane_3_action = db_urms_status2.action[2];
+				db_urms.lane_3_action = db_urms_status3.action[2];
 			printf("lane 1 rate=%d lane 2 rate=%d lane 3 rate=%d\nlane 1 plan=%d lane 2 plan=%d lane 3 plan=%d\nlane 1 action=%d lane 2 action=%d lane 3 action=%d\n", 
 				db_urms.lane_1_release_rate, 
 				db_urms.lane_2_release_rate, 
@@ -530,13 +540,13 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %
 			if( clock_gettime(CLOCK_REALTIME, &curr_timespec) < 0)
 				perror("urms clock_gettime");
 			curr_time = curr_timespec.tv_sec + (curr_timespec.tv_nsec / 1000000000.0);
-			db_urms_status2.rm2rmc_ctr = rm2rmc_ctr++;
+			db_urms_status3.rm2rmc_ctr = rm2rmc_ctr++;
 			db_urms_status.num_meter = gen_mess.urms_status_response.num_meter;
 			db_urms_status.num_main = gen_mess.urms_status_response.num_main;
-			db_urms_status2.num_opp = gen_mess.urms_status_response.num_opp;
-			db_urms_status.num_addl_det = gen_mess.urms_status_response.num_addl_det;
-			db_urms_status2.mainline_dir = gen_mess.urms_status_response.mainline_dir;
-			db_urms_status2.is_metering = gen_mess.urms_status_response.is_metering;
+			db_urms_status3.num_opp = gen_mess.urms_status_response.num_opp;
+			db_urms_status2.num_addl_det = gen_mess.urms_status_response.num_addl_det;
+			db_urms_status3.mainline_dir = gen_mess.urms_status_response.mainline_dir;
+			db_urms_status3.is_metering = gen_mess.urms_status_response.is_metering;
 			db_urms_status.hour = gen_mess.urms_status_response.hour;
 			db_urms_status.minute = gen_mess.urms_status_response.minute;
 			db_urms_status.second = gen_mess.urms_status_response.second;
@@ -588,9 +598,6 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %
 					no_control_sav = 0;
 				}
 			}
-#define	MAX_MAINLINES		6
-#define	MAX_METERED_LANES	3
-#define	MAX_OFFRAMPS		2
 
 			for(i = 0; i < MAX_METERED_LANES; i++) {
 			    db_urms_status.metered_lane_stat[i].demand_vol = gen_mess.urms_status_response.metered_lane_stat[i].demand_vol;
@@ -601,17 +608,24 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %
 			    db_urms_status.metered_lane_stat[i].metered_lane_interval_zone = gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_interval_zone;
 			    db_urms_status.metered_lane_stat[i].metered_lane_rate_msb = gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_msb;
 			    db_urms_status.metered_lane_stat[i].metered_lane_rate_lsb = gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_lsb;
+			    for(j = 0; j < MAX_QUEUE_LOOPS; j++) {
+				db_urms_status2.queue_stat[i][j].vol = gen_mess.urms_status_response.queue_stat[i][j].vol;
+				db_urms_status2.queue_stat[i][j].occ_msb = gen_mess.urms_status_response.queue_stat[i][j].occ_msb;
+				db_urms_status2.queue_stat[i][j].occ_lsb = gen_mess.urms_status_response.queue_stat[i][j].occ_lsb;
+				db_urms_status2.queue_stat[i][j].stat = gen_mess.urms_status_response.queue_stat[i][j].stat;
+				db_urms_status2.queue_stat[i][j].flag = gen_mess.urms_status_response.queue_stat[i][j].flag;
+			    }
 //printf("urms.c: interval_zone %d %d rate %hu\n", i,db_urms_status.metered_lane_stat[i].metered_lane_interval_zone, (db_urms_status.metered_lane_stat[i].metered_lane_rate_msb << 8) + (unsigned char)db_urms_status.metered_lane_stat[i].metered_lane_rate_lsb);
 			    comp_finished_temp += db_urms_status.metered_lane_stat[i].demand_vol + 
-						 db_urms_status.metered_lane_stat[i].passage_vol + 
-						 db_urms_status.mainline_stat[i].lead_vol + 
-						 db_urms_status.mainline_stat[i].trail_vol + 
-						 db_urms_status.queue_stat[i].vol; 
+						db_urms_status.metered_lane_stat[i].passage_vol + 
+						db_urms_status.mainline_stat[i].lead_vol + 
+						db_urms_status.mainline_stat[i].trail_vol + 
+						db_urms_status2.queue_stat[i][0].vol; 
 			    if( (comp_finished_temp != comp_finished_sav) ||
 			    	((curr_time + 0.025 - time_sav) >= 30.0) ) { //The 0.025 is one-half the loop interval of wrfiles_ac_rm. This was done only so
 									 // that the printed times are synchronized.  However, Dongyan's code will be using
 									 // the printed string as input, so this has a real use.
-				db_urms_status2.computation_finished = 1;
+				db_urms_status3.computation_finished = 1;
 				time_sav = curr_time;
 				if( comp_finished_temp != comp_finished_sav ) {
 					comp_finished_sav = comp_finished_temp;
@@ -621,7 +635,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %
 			
 			    }
 			    else
-				db_urms_status2.computation_finished = 0;
+				db_urms_status3.computation_finished = 0;
 			}
 
 			for(i = 0; i < MAX_MAINLINES; i++) {
@@ -634,14 +648,10 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %
 			    db_urms_status.mainline_stat[i].trail_occ_msb = gen_mess.urms_status_response.mainline_stat[i].trail_occ_msb;
 			    db_urms_status.mainline_stat[i].trail_occ_lsb = gen_mess.urms_status_response.mainline_stat[i].trail_occ_lsb;
 			    db_urms_status.mainline_stat[i].trail_stat = gen_mess.urms_status_response.mainline_stat[i].trail_stat;
-			    db_urms_status.queue_stat[i].occ_msb = gen_mess.urms_status_response.queue_stat[0][i].occ_msb;
-			    db_urms_status.queue_stat[i].occ_lsb = gen_mess.urms_status_response.queue_stat[0][i].occ_lsb;
-			    db_urms_status.queue_stat[i].vol = gen_mess.urms_status_response.queue_stat[0][i].vol;
-			    db_urms_status.queue_stat[i].stat = gen_mess.urms_status_response.queue_stat[0][i].stat;
-			    db_urms_status2.cmd_src[i] = gen_mess.urms_status_response.metered_lane_ctl[i].cmd_src;
-			    db_urms_status2.action[i] = gen_mess.urms_status_response.metered_lane_ctl[i].action;
-			    db_urms_status2.plan[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan;
-			    db_urms_status2.plan_base_lvl[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan_base_lvl;
+			    db_urms_status3.cmd_src[i] = gen_mess.urms_status_response.metered_lane_ctl[i].cmd_src;
+			    db_urms_status3.action[i] = gen_mess.urms_status_response.metered_lane_ctl[i].action;
+			    db_urms_status3.plan[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan;
+			    db_urms_status3.plan_base_lvl[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan_base_lvl;
 			    urms_datafile.mainline_lead_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].lead_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].lead_occ_lsb));
 			    urms_datafile.mainline_trail_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].trail_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].trail_occ_lsb));
 			    urms_datafile.queue_occ[i] = 0.1 * ((gen_mess.urms_status_response.queue_stat[0][i].occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.queue_stat[0][i].occ_lsb));
@@ -650,8 +660,8 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %
 				printf("1:ML%d occ %.1f ", i+1, urms_datafile.mainline_lead_occ[i]);
 			 	printf("1:MT%d occ %.1f ", i+1, urms_datafile.mainline_trail_occ[i]);
 				printf("1:Q%d-1 occ %.1f ", i+1, urms_datafile.queue_occ[i]);
-				printf("1:lane %d cmd_src %hhu ", i+1, db_urms_status2.cmd_src[i]);
-				printf("1:lane %d action %hhu\n", i+1, db_urms_status2.action[i]);
+				printf("1:lane %d cmd_src %hhu ", i+1, db_urms_status3.cmd_src[i]);
+				printf("1:lane %d action %hhu\n", i+1, db_urms_status3.action[i]);
 			    }
 			    if(verbose) {
 				printf("2:ML%d occ %.1f ", i+1, urms_datafile.mainline_lead_occ[i]);
@@ -662,16 +672,20 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d mainline_stat %
 
 
 			for(i = 0; i < MAX_OFFRAMPS; i++) {
-			    db_urms_status.additional_det[i].occ_msb = gen_mess.urms_status_response.additional_det[i].occ_msb;
-			    db_urms_status.additional_det[i].occ_lsb = gen_mess.urms_status_response.additional_det[i].occ_lsb;
-			    db_urms_status.additional_det[i].volume = gen_mess.urms_status_response.additional_det[i].volume;
-			    db_urms_status.additional_det[i].stat = gen_mess.urms_status_response.additional_det[i].stat;
+			    db_urms_status2.additional_det[i].occ_msb = gen_mess.urms_status_response.additional_det[i].occ_msb;
+			    db_urms_status2.additional_det[i].occ_lsb = gen_mess.urms_status_response.additional_det[i].occ_lsb;
+			    db_urms_status2.additional_det[i].volume = gen_mess.urms_status_response.additional_det[i].volume;
+			    db_urms_status2.additional_det[i].stat = gen_mess.urms_status_response.additional_det[i].stat;
 
 			}
 
 			if(verbose) {
 				for(i=0; i < sizeof(db_urms_status_t); i++)
 					printf("%d:%#hhx ", i, buf[i]);
+				for(i=0; i < sizeof(db_urms_status2_t); i++)
+					printf("%d:%#hhx ", i, buf2[i]);
+				for(i=0; i < sizeof(db_urms_status3_t); i++)
+					printf("%d:%#hhx ", i, buf3[i]);
 				printf("\n");
 			}
 

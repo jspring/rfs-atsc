@@ -34,7 +34,9 @@ const char *usage = "-v (verbose) -p <port (def. 4444)> -i <loop interval (ms)>"
 
 db_id_t db_vars_list[] =  {
         {DB_URMS_VAR, sizeof(db_urms_t)},
-        {DB_URMS_STATUS_VAR, sizeof(db_urms_status_t)}
+        {DB_URMS_STATUS_VAR, sizeof(db_urms_status_t)},
+        {DB_URMS_STATUS_VAR+3, sizeof(db_urms_status2_t)},
+        {DB_URMS_STATUS_VAR+1, sizeof(urms_datafile_t)}
 };
 int num_db_variables = sizeof(db_vars_list)/sizeof(db_id_t);
 
@@ -59,6 +61,7 @@ int main(int argc, char *argv[]) {
         posix_timer_typ *ptimer;
         trig_info_typ trig_info;
 	db_urms_status_t db_urms_status;
+	db_urms_status2_t db_urms_status2;
 	unsigned char *inmsg = (unsigned char *) &db_urms_status;
 	unsigned short checksum = 0;
 	db_urms_t db_urms;
@@ -172,6 +175,7 @@ int main(int argc, char *argv[]) {
 					    checksum = 0;
 					    for(i=0; i < (sizeof(db_urms_status_t) - 2); i++)
 					   	 checksum += inmsg[i];
+
 					    if(checksum == db_urms_status.checksum) {
 						db_clt_write(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
 						for(i=0; i<3; i++) {
@@ -179,8 +183,8 @@ int main(int argc, char *argv[]) {
 											         + (unsigned char)(db_urms_status.mainline_stat[i].lead_occ_lsb));
 							urms_datafile.mainline_trail_occ[i] = 0.1 * ((db_urms_status.mainline_stat[i].trail_occ_msb << 8) 
 												 + (unsigned char)(db_urms_status.mainline_stat[i].trail_occ_lsb));
-							urms_datafile.queue_occ[i] = 0.1 * ((db_urms_status.queue_stat[i].occ_msb << 8) 
-											 + (unsigned char)(db_urms_status.queue_stat[i].occ_lsb));
+							urms_datafile.queue_occ[i] = 0.1 * ((db_urms_status2.queue_stat[i][0].occ_msb << 8) 
+											 + (unsigned char)(db_urms_status2.queue_stat[i][0].occ_lsb));
 							urms_datafile.metering_rate[i] = ((db_urms_status.metered_lane_stat[i].metered_lane_rate_msb << 8) 
 											 + (unsigned char)(db_urms_status.metered_lane_stat[i].metered_lane_rate_lsb));
 							if(verbose) {
@@ -189,8 +193,9 @@ int main(int argc, char *argv[]) {
 							    printf("2:Q%d-1 occ %.1f\n", i+1, urms_datafile.queue_occ[i]);
 							}
 						}
-						db_clt_write(pclt, DB_URMS_DATAFILE_VAR, sizeof(urms_datafile_t), &urms_datafile);
+						db_clt_write(pclt, DB_URMS_STATUS_VAR+3, sizeof(urms_datafile_t), &urms_datafile);
 					    }
+
                                         }
                                         if(nread == 0) {
                                                 fprintf(stderr, "Lost connection to SOBU. Exiting....\n");
