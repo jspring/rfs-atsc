@@ -158,7 +158,7 @@ struct addl_det_stat {
 	char occ_msb;	//188 BC Additional Delector 1 Occupancy(MSB) 
 	char occ_lsb;	//189 BD Additional Delector 1 Occupancy(MLB) 
 	char stat;	//190 BE Additional Delector 1 Status 
-};
+} IS_PACKED;
 
 struct metered_lane_stat{
 	char demand_vol;	//251 FB Demand 1 Volume 
@@ -205,7 +205,7 @@ struct queue_stat{
 			DETECTOR_ERROR_AT_SENSOR = 7,
 			DETECTOR_DEPENDENT_NO_ACTIVITY = 8 */
 	char flag;	// Queue Flag
-};
+} IS_PACKED;
 
 typedef struct {
 
@@ -276,9 +276,7 @@ typedef struct {
 typedef struct {
 		// URMS Poll Response   
 		// Dec Hex Parameter 
-	char num_addl_det;	//2 Number of Additional Detectors 
 	struct queue_stat queue_stat[MAX_METERED_LANES][MAX_QUEUE_LOOPS]; //0-79
-        struct addl_det_stat additional_det[16]; //80-123
 } IS_PACKED db_urms_status2_t;
 
 typedef struct {
@@ -291,6 +289,8 @@ typedef struct {
 	unsigned char	computation_finished; //12
 	char	plan_base_lvl[3]; //13-15
 	unsigned char	rm2rmc_ctr; //16
+	char num_addl_det;	//2 Number of Additional Detectors 
+        struct addl_det_stat additional_det[16]; //80-123
 } IS_PACKED db_urms_status3_t;
 
 /*

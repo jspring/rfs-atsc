@@ -544,7 +544,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 			db_urms_status.num_meter = gen_mess.urms_status_response.num_meter;
 			db_urms_status.num_main = gen_mess.urms_status_response.num_main;
 			db_urms_status3.num_opp = gen_mess.urms_status_response.num_opp;
-			db_urms_status2.num_addl_det = gen_mess.urms_status_response.num_addl_det;
+			db_urms_status3.num_addl_det = gen_mess.urms_status_response.num_addl_det;
 			db_urms_status3.mainline_dir = gen_mess.urms_status_response.mainline_dir;
 			db_urms_status3.is_metering = gen_mess.urms_status_response.is_metering;
 			db_urms_status.hour = gen_mess.urms_status_response.hour;
@@ -672,10 +672,10 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 
 
 			for(i = 0; i < MAX_OFFRAMPS; i++) {
-			    db_urms_status2.additional_det[i].occ_msb = gen_mess.urms_status_response.additional_det[i].occ_msb;
-			    db_urms_status2.additional_det[i].occ_lsb = gen_mess.urms_status_response.additional_det[i].occ_lsb;
-			    db_urms_status2.additional_det[i].volume = gen_mess.urms_status_response.additional_det[i].volume;
-			    db_urms_status2.additional_det[i].stat = gen_mess.urms_status_response.additional_det[i].stat;
+			    db_urms_status3.additional_det[i].occ_msb = gen_mess.urms_status_response.additional_det[i].occ_msb;
+			    db_urms_status3.additional_det[i].occ_lsb = gen_mess.urms_status_response.additional_det[i].occ_lsb;
+			    db_urms_status3.additional_det[i].volume = gen_mess.urms_status_response.additional_det[i].volume;
+			    db_urms_status3.additional_det[i].stat = gen_mess.urms_status_response.additional_det[i].stat;
 
 			}
 
