@@ -5,7 +5,6 @@
 #include "urms.h"
 #include "tos.h"
 #include "ab3418_lib.h"
-#include "/home/art_coord_ramp_metering/src/wrfiles_ac_rm.h"
 
 #define BUF_SIZE	sizeof(gen_mess_t)
 
