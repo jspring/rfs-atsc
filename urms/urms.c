@@ -520,7 +520,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 			printf("db_clt_read: db_urms_var %d\n", db_urms_var);
 			if(verbose)
 				printf("Got db_urms_var trigger\n");
-			if(no_control == 0) 
+			if(no_control == 0)
 				{
 				db_urms.lane_1_action = 6;
 #ifdef ALLOW_SET_METER
@@ -531,6 +531,14 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 			}
 		}
 		else {
+		     if(!use_db_with_standalone) {
+				// Open connection to URMS controller
+				urmsfd = OpenURMSConnection(controllerIP, port);
+				if(urmsfd < 0) {
+					fprintf(stderr, "Could not open connection to URMS controller\n");
+					exit(EXIT_FAILURE);
+				}
+		    }
 		    if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
 			fprintf(stderr, "Bad status command\n");
 			get_status_err++;
@@ -654,6 +662,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 			db_clt_write(pclt, db_urms_status_var + 4, sizeof(db_urms_status3_t), &db_urms_status3);
 		    }
 		}
+		close(urmsfd);
 	}
 }
 
