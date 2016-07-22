@@ -271,7 +271,7 @@ typedef struct {
 } IS_PACKED db_urms_status_t;
 
 #define MAX_MAINLINES           8
-#define MAX_OFFRAMPS            2
+#define MAX_OFFRAMPS		16
 #define MAX_QUEUE_LOOPS         4
 
 typedef struct {
@@ -291,7 +291,7 @@ typedef struct {
 	char	plan_base_lvl[3]; //13-15
 	unsigned char	rm2rmc_ctr; //16
 	char num_addl_det;	//2 Number of Additional Detectors 
-        struct addl_det_stat additional_det[16]; //80-123
+        struct addl_det_stat additional_det[MAX_OFFRAMPS]; //80-123
 } IS_PACKED db_urms_status3_t;
 
 /*
@@ -342,10 +342,10 @@ typedef union {
 } IS_PACKED gen_mess_t;
 
 typedef struct {
-	float mainline_lead_occ[3];
-	float mainline_trail_occ[3];
-	float queue_occ[3];
-	short metering_rate[3];
+	float mainline_lead_occ[8];
+	float mainline_trail_occ[8];
+	float queue_occ[4];
+	short metering_rate[4];
 } IS_PACKED urms_datafile_t;
 
 #endif
