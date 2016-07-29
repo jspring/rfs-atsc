@@ -554,6 +554,15 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
                         memcpy(&db_urms_status3.additional_det[0], &gen_mess.urms_status_response.additional_det[0], sizeof(struct addl_det_stat)*16);
 
 			db_urms_status3.rm2rmc_ctr = rm2rmc_ctr++;
+			db_urms_status.num_meter = gen_mess.urms_status_response.num_meter;
+			db_urms_status.num_main = gen_mess.urms_status_response.num_main;
+			db_urms_status3.num_opp = gen_mess.urms_status_response.num_opp;
+			db_urms_status3.num_addl_det = gen_mess.urms_status_response.num_addl_det;
+			db_urms_status3.mainline_dir = gen_mess.urms_status_response.mainline_dir;
+			db_urms_status3.is_metering = gen_mess.urms_status_response.is_metering;
+			db_urms_status.hour = gen_mess.urms_status_response.hour;
+			db_urms_status.minute = gen_mess.urms_status_response.minute;
+			db_urms_status.second = gen_mess.urms_status_response.second;
 			comp_finished_temp = 0;
 
 			ltime = localtime(&curr_timespec.tv_sec);
@@ -628,6 +637,10 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 			}
 
 			for(i = 0; i < MAX_MAINLINES; i++) {
+			    db_urms_status3.cmd_src[i] = gen_mess.urms_status_response.metered_lane_ctl[i].cmd_src;
+			    db_urms_status3.action[i] = gen_mess.urms_status_response.metered_lane_ctl[i].action;
+			    db_urms_status3.plan[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan;
+			    db_urms_status3.plan_base_lvl[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan_base_lvl;
 			    urms_datafile.mainline_lead_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].lead_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].lead_occ_lsb));
 			    urms_datafile.mainline_trail_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].trail_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].trail_occ_lsb));
 			    urms_datafile.queue_occ[i] = 0.1 * ((gen_mess.urms_status_response.queue_stat[0][i].occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.queue_stat[0][i].occ_lsb));
