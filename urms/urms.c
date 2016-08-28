@@ -669,6 +669,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 				printf("\n");
 			}
 
+			get_current_timestamp(&db_urms_status2.ts);
 			db_clt_write(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
 			db_clt_write(pclt, db_urms_status_var + 1, sizeof(urms_datafile_t), &urms_datafile);
 			db_clt_write(pclt, db_urms_status_var + 3, sizeof(db_urms_status2_t), &db_urms_status2);

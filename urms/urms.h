@@ -277,6 +277,7 @@ typedef struct {
 typedef struct {
 		// URMS Poll Response   
 		// Dec Hex Parameter 
+	timestamp_t ts;
 	struct queue_stat queue_stat[MAX_METERED_LANES][MAX_QUEUE_LOOPS]; //0-79
 } IS_PACKED db_urms_status2_t;
 
