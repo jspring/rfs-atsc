@@ -534,7 +534,6 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 				printf("Got db_urms_var trigger\n");
 			if(no_control == 0)
 				{
-//				db_urms.lane_1_action = 6;
 #ifdef ALLOW_SET_METER
 				printf("2: Opening connection to %s on port %s\n",
 					controllerIP,
@@ -595,10 +594,13 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 
 			ltime = localtime(&curr_timespec.tv_sec);
 			dow = ltime->tm_wday;
-//			printf("dow=%d dow%%6=%d hour %d\n", dow, dow % 6, db_urms_status.hour);
+			printf("dow=%d dow%%6=%d hour %d\n", dow, dow % 6, db_urms_status.hour);
 
-//			if( ((dow % 6) == 0) || (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) || (db_urms.no_control != 0)) {
-			if( db_urms.no_control != 0 ) {
+			if( ((dow % 6) == 0) || 		//Disable control if it's Sunday, ...
+			    (db_urms_status.hour < 6) || 	//or if it's before 6 AM, ...
+			    ((db_urms_status.hour >= 9) && (db_urms_status.hour < 15) ) || //or if it's between 9 AM and 3 PM, ...
+			    (db_urms_status.hour >= 19) || 	//or if it's after 7 PM, ...
+			    (db_urms.no_control != 0)) { 	//or if the no_control flag has been set!
 				no_control = 1;
 				if( no_control_sav == 0) {
                                 printf("%02d/%02d/%04d %02d:%02d:%02d Disabling control of ramp meter controller: hour=%d no_control %d DOW=%d\n",
