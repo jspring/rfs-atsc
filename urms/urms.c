@@ -1,7 +1,7 @@
 /* urms.c - Controls URMS running on a 2070 via ethernet
 **
 */
-#undef ALLOW_SET_METER
+#define ALLOW_SET_METER
 #include "urms.h"
 #include "tos.h"
 #include "ab3418_lib.h"
@@ -134,7 +134,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 	sizeof(struct queue_stat),
 	sizeof(struct addl_det_stat)
 );
-        while ((option = getopt(argc, argv, "d:r:vgsup:i:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:")) != EOF) {
+        while ((option = getopt(argc, argv, "d:r:vgsup:i:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:J:")) != EOF) {
                 switch(option) {
                 case 'd':
                         db_urms_status_var = atoi(optarg);
@@ -265,14 +265,26 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 	db_vars_list[2].id = db_urms_status_var + 2;
 	db_vars_list[3].id = db_urms_status_var + 3;
 	db_vars_list[4].id = db_urms_status_var + 4;
-	db_trig_list[0] = db_urms_status_var + 2;
+	db_trig_list[0] = db_urms_var;
 
+	printf("Starting urms.c: IP address %s port %s db_urms_status_var %d db_trig_list[0] %d num_trig_variables %d no_control %d\n",
+		controllerIP,
+		port,
+		db_urms_status_var,
+		db_trig_list[0],
+		num_trig_variables,
+		no_control
+	);
 	if(set_tos_action)
 	for(i=0 ; i<num_lanes; i++)
 		printf("top: rm_action_code_tos2[%d] %#hhx\n", i, rm_action_code_tos2[i]);
 
 	if(!use_db_with_standalone) {
 		// Open connection to URMS controller
+		printf("1: Opening connection to %s on port %s\n",
+			controllerIP,
+			port
+		);
 		urmsfd = OpenURMSConnection(controllerIP, port);
 		if(urmsfd < 0) {
 			fprintf(stderr, "Could not open connection to URMS controller\n");
@@ -291,8 +303,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 		    else {
 			// Connect to database
 		        get_local_name(hostname, MAXHOSTNAMELEN);
-//		        if ( (pclt = db_list_init(argv[0], hostname, domain, xport, db_vars_list, num_db_vars, db_trig_list, num_trig_variables)) == NULL) {
-		        if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, NULL, 0)) == NULL) {
+		        if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, db_trig_list, num_trig_variables)) == NULL) {
 		            exit(EXIT_FAILURE);
 			}
 			db_clt_read(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
@@ -395,7 +406,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 			}
 #ifdef ALLOW_SET_METER
 			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
-				fprintf(stderr, "Bad meter setting command\n");
+				fprintf(stderr, "1:Bad meter setting command\n");
 				exit(EXIT_FAILURE);
 			}
 #endif
@@ -430,8 +441,9 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 	}
 	// Connect to database
         get_local_name(hostname, MAXHOSTNAMELEN);
-	if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, NULL, 0)) == NULL) {
+//	if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, NULL, 0)) == NULL) {
 //        if ( (pclt = db_list_init(argv[0], hostname, domain, xport, db_vars_list, num_db_vars, db_trig_list, num_trig_variables)) == NULL) {
+	if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, db_trig_list, num_trig_variables)) == NULL) {
             exit(EXIT_FAILURE);
 	}
 
@@ -522,10 +534,21 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 				printf("Got db_urms_var trigger\n");
 			if(no_control == 0)
 				{
-				db_urms.lane_1_action = 6;
+//				db_urms.lane_1_action = 6;
 #ifdef ALLOW_SET_METER
+				printf("2: Opening connection to %s on port %s\n",
+					controllerIP,
+					port
+				);
+				close(urmsfd);
+				urmsfd = OpenURMSConnection(controllerIP, port);
+				if(urmsfd < 0) {
+					fprintf(stderr, "Could not open connection to URMS controller\n");
+					exit(EXIT_FAILURE);
+				}
 				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
-					fprintf(stderr, "Bad meter setting command\n");
+					fprintf(stderr, "2:Bad meter setting command\n");
+					exit(EXIT_FAILURE);
 				}
 #endif
 			}
@@ -533,6 +556,11 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 		else {
 		     if(!use_db_with_standalone) {
 				// Open connection to URMS controller
+				printf("3: Opening connection to %s on port %s\n",
+					controllerIP,
+					port
+				);
+				close(urmsfd);
 				urmsfd = OpenURMSConnection(controllerIP, port);
 				if(urmsfd < 0) {
 					fprintf(stderr, "Could not open connection to URMS controller\n");
@@ -569,7 +597,8 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 			dow = ltime->tm_wday;
 //			printf("dow=%d dow%%6=%d hour %d\n", dow, dow % 6, db_urms_status.hour);
 
-			if( ((dow % 6) == 0) || (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) || (db_urms.no_control != 0)) {
+//			if( ((dow % 6) == 0) || (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) || (db_urms.no_control != 0)) {
+			if( db_urms.no_control != 0 ) {
 				no_control = 1;
 				if( no_control_sav == 0) {
                                 printf("%02d/%02d/%04d %02d:%02d:%02d Disabling control of ramp meter controller: hour=%d no_control %d DOW=%d\n",
@@ -589,7 +618,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 					db_urms.lane_3_action = 6;
 #ifdef ALLOW_SET_METER
 				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
-					fprintf(stderr, "Bad meter setting command\n");
+					fprintf(stderr, "3:Bad meter setting command\n");
 				}
 #endif
 				}
@@ -732,6 +761,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	int nread;
 	char buf[BUF_SIZE];
 	timestamp_t ts;
+	int ret;
 
 	// Initialize URMS message
 	// Lane 1: 900 VPH release rate, fixed rate, plan 1
@@ -749,7 +779,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 
 	// If requested metering rate is 0, assume no change
 	// ALL of the parameters MUST be set!
-/*
+
 	if(db_urms->lane_1_release_rate == 0) {
 		db_urms->lane_1_release_rate = db_urms_sav->lane_1_release_rate;
 		db_urms->lane_1_action = db_urms_sav->lane_1_action;
@@ -770,7 +800,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 		db_urms->lane_4_action = db_urms_sav->lane_4_action;
 		db_urms->lane_4_plan = db_urms_sav->lane_4_plan;
 	}
-*/
+
 	gen_mess.urmsctl.lane_1_action = db_urms->lane_1_action;
 	gen_mess.urmsctl.lane_1_plan = db_urms->lane_1_plan;
 	gen_mess.urmsctl.lane_1_release_rate_MSB = 
@@ -799,11 +829,33 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	for(i=0; i<=20; i++)
 		csum += msgbuf[i];
 	msgbuf[22] = csum;
-	printf("urms_set_meter: lane 1 action %d lane 2 action %d lne 3 action %d\n", gen_mess.urmsctl.lane_1_action, gen_mess.urmsctl.lane_2_action, gen_mess.urmsctl.lane_3_action);
-	if (write(fd, msgbuf, sizeof(urmsctl_t)) != sizeof(urmsctl_t)) {
-	  fprintf(stderr, "urms_set_meter: partial/failed write\n");
+	printf("urms_set_meter: lane 1 action %d rate %d plan %d lane 2 action %d rate %d plan %d lane 3 action %d rate %d plan %d  lane 4 action %d rate %d plan %d \n", 
+		gen_mess.urmsctl.lane_1_action, 
+		(gen_mess.urmsctl.lane_1_release_rate_MSB << 8) + gen_mess.urmsctl.lane_1_release_rate_LSB , 
+		gen_mess.urmsctl.lane_1_plan, 
+		gen_mess.urmsctl.lane_2_action, 
+		(gen_mess.urmsctl.lane_2_release_rate_MSB << 8) + gen_mess.urmsctl.lane_2_release_rate_LSB , 
+		gen_mess.urmsctl.lane_2_plan, 
+		gen_mess.urmsctl.lane_3_action, 
+		(gen_mess.urmsctl.lane_3_release_rate_MSB << 8) + gen_mess.urmsctl.lane_3_release_rate_LSB , 
+		gen_mess.urmsctl.lane_3_plan,
+		gen_mess.urmsctl.lane_4_action, 
+		(gen_mess.urmsctl.lane_4_release_rate_MSB << 8) + gen_mess.urmsctl.lane_4_release_rate_LSB , 
+		gen_mess.urmsctl.lane_4_plan
+	);
+
+	if ((ret = write(fd, msgbuf, sizeof(urmsctl_t))) != sizeof(urmsctl_t)) {
+	  perror("urms_set_meter write");
+	  fprintf(stderr, "urms_set_meter: partial/failed write, ret %d sizeof(urmsctl_t) %d\n",
+		ret,
+		sizeof(urmsctl_t)
+	  );
 	  return -2;
 	}
+	  fprintf(stderr, "urms_set_meter: partial/failed write, ret %d sizeof(urmsctl_t) %d\n",
+		ret,
+		sizeof(urmsctl_t)
+	  );
 
 	nread = read(fd, buf, BUF_SIZE);
 	if (nread == -1) {
