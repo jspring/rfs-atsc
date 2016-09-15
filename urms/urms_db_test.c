@@ -6,7 +6,7 @@
 
 #define BUF_SIZE 500
 
-const char *Usage = "-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t";
+const char *Usage = "-d <base database variable number> -1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-7 <lane 3 release rate>\n\t-8 <lane 3 action>\n\t-9 <lane 3 plan>\n\t-A <lane 4 release rate)>\n\t-B <lane 4 action>\n\t-C <lane 4 plan>\n";
 
 extern int db_set_ramp_metering(db_clt_typ *pclt, db_urms_t *db_urms_msg);
 
