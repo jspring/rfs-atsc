@@ -9,7 +9,7 @@
 **	chain.
 */
 
-#define ALLOW_SET_METER
+#undef ALLOW_SET_METER
 #include "urms.h"
 #include "tos.h"
 #include "ab3418_lib.h"
@@ -487,13 +487,11 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 				urmsfd = OpenURMSConnection(controllerIP, port);
 				if(urmsfd < 0) {
 					fprintf(stderr, "Could not open connection to URMS controller\n");
-//					exit(EXIT_FAILURE);
-					continue;
+					exit(EXIT_FAILURE);
 				}
 				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
 					fprintf(stderr, "2:Bad meter setting command\n");
-//					exit(EXIT_FAILURE);
-					continue;
+					exit(EXIT_FAILURE);
 				}
 				close(urmsfd);
 				if(urmsfd < 0) {
@@ -518,8 +516,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 			urmsfd = OpenURMSConnection(controllerIP, port);
 			if(urmsfd < 0) {
 				fprintf(stderr, "Could not open connection to URMS controller\n");
-//				exit(EXIT_FAILURE);
-				continue;
+				exit(EXIT_FAILURE);
 			}
 			if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
 				fprintf(stderr, "Bad status command\n");
@@ -555,9 +552,10 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 				// Check metering windows
 				if( ((dow % 6) == 0) || 		//Disable control if it's Sunday, ...
 				    (db_urms_status.hour < 6) || 	//or if it's before 6 AM, ...
-				    ((db_urms_status.hour >= 9) && (db_urms_status.hour < 15) ) || //or if it's between 9 AM and 3 PM, ...
-				    (db_urms_status.hour >= 19) || 	//or if it's after 7 PM, ...
-				    (db_urms.no_control != 0)) { 	//or if the no_control_startup flag has been set!
+				    (db_urms_status.hour >= 9) || 	//or if it's after 9 AM, ...
+//These two lines deal with afternoon ((db_urms_status.hour >= 9) && (db_urms_status.hour < 15) ) || //or if it's between 9 AM and 3 PM, ...
+//peak hours. we're not doing that yet (db_urms_status.hour >= 19) || 	//or if it's after 7 PM, ...
+				    (db_urms.no_control != 0)) { 	//or if the database no_control flag has been set!
 					no_control_runtime = 1;
 					if( no_control_runtime_sav == 0) {
 						printf("%02d/%02d/%04d %02d:%02d:%02d Disabling control of ramp meter controller: hour=%d db_urms.no_control %d DOW=%d\n",
@@ -809,10 +807,6 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	  );
 	  return -2;
 	}
-	  fprintf(stderr, "urms_set_meter: partial/failed write, ret %d sizeof(urmsctl_t) %d\n",
-		ret,
-		sizeof(urmsctl_t)
-	  );
 
 	nread = read(fd, buf, BUF_SIZE);
 	if (nread == -1) {
