@@ -735,25 +735,49 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	// If requested metering rate is 0, assume no change
 	// ALL of the parameters MUST be set!
 
-	if(db_urms->lane_1_release_rate == 0) {
-		db_urms->lane_1_release_rate = db_urms_sav->lane_1_release_rate;
-		db_urms->lane_1_action = db_urms_sav->lane_1_action;
-		db_urms->lane_1_plan = db_urms_sav->lane_1_plan;
+	if( (db_urms->lane_1_release_rate < 150) || (db_urms->lane_1_action < 1) ||
+	   (db_urms->lane_1_release_rate > 2000) || (db_urms->lane_1_action > 7) ){
+		fprintf(stderr, "lane 1 release rate %d (out of range) action %d: (invalid action)!!\n",
+			db_urms->lane_1_release_rate,
+			db_urms->lane_1_action
+		);
+		exit(EXIT_FAILURE);
 	}
-	if(db_urms->lane_2_release_rate == 0) {
-		db_urms->lane_2_release_rate = db_urms_sav->lane_2_release_rate;
-		db_urms->lane_2_action = db_urms_sav->lane_2_action;
-		db_urms->lane_2_plan = db_urms_sav->lane_2_plan;
+
+	if( (db_urms->lane_2_release_rate < 150) || (db_urms->lane_2_action < 1) ||
+	   (db_urms->lane_2_release_rate > 2000) || (db_urms->lane_2_action > 7) ){
+		fprintf(stderr, "lane 2 release rate %d (out of range) action %d: (invalid action)!!\n",
+			db_urms->lane_2_release_rate,
+			db_urms->lane_2_action
+		);
+		exit(EXIT_FAILURE);
 	}
-	if(db_urms->lane_3_release_rate == 0) {
-		db_urms->lane_3_release_rate = db_urms_sav->lane_3_release_rate;
-		db_urms->lane_3_action = db_urms_sav->lane_3_action;
-		db_urms->lane_3_plan = db_urms_sav->lane_3_plan;
+
+	if( (db_urms->lane_3_release_rate < 150) || (db_urms->lane_3_action < 1) ||
+	   (db_urms->lane_3_release_rate > 2000) || (db_urms->lane_3_action > 7) ){
+		fprintf(stderr, "lane 3 release rate %d (out of range) action %d: (invalid action)!!\n",
+			db_urms->lane_3_release_rate,
+			db_urms->lane_3_action
+		);
+		exit(EXIT_FAILURE);
 	}
-	if(db_urms->lane_4_release_rate == 0) {
-		db_urms->lane_4_release_rate = db_urms_sav->lane_4_release_rate;
-		db_urms->lane_4_action = db_urms_sav->lane_4_action;
-		db_urms->lane_4_plan = db_urms_sav->lane_4_plan;
+
+	if( (db_urms->lane_4_release_rate < 150) || (db_urms->lane_4_action < 1) ||
+	   (db_urms->lane_4_release_rate > 2000) || (db_urms->lane_4_action > 7) ){
+		fprintf(stderr, "lane 4 release rate %d (out of range) action %d: (invalid action)!!\n",
+			db_urms->lane_4_release_rate,
+			db_urms->lane_4_action
+		);
+		exit(EXIT_FAILURE);
+	}
+
+	if( (db_urms->lane_1_release_rate < 150) || (db_urms->lane_1_action < 1) ||
+	   (db_urms->lane_1_release_rate > 2000) || (db_urms->lane_1_action > 7) ){
+		fprintf(stderr, "lane 1 release rate %d (out of range) action %d: (invalid action)!!\n",
+			db_urms->lane_1_release_rate,
+			db_urms->lane_1_action
+		);
+		exit(EXIT_FAILURE);
 	}
 
 	gen_mess.urmsctl.lane_1_action = db_urms->lane_1_action;

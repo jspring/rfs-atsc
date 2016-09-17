@@ -19,7 +19,9 @@
 #define URMS_ACTION_REST_IN_DARK	1
 #define URMS_ACTION_REST_IN_GREEN	2
 #define URMS_ACTION_FIXED_RATE		3
+#define URMS_ACTION_TRAFFIC_RESPONSIVE	4
 #define URMS_ACTION_SKIP		6
+#define URMS_ACTION_SLAVE_RESPONSIVE	7
 
 //Active interval status (interval zone)
 #define INITIALIZATION		1
