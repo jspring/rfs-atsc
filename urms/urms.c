@@ -9,7 +9,7 @@
 **	chain.
 */
 
-#undef ALLOW_SET_METER
+#define ALLOW_SET_METER
 #include "urms.h"
 #include "tos.h"
 #include "ab3418_lib.h"
@@ -737,7 +737,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	// ALL of the parameters MUST be set!
 
 	if( (db_urms->lane_1_release_rate < 150) || (db_urms->lane_1_action < 1) ||
-	   (db_urms->lane_1_release_rate > 2000) || (db_urms->lane_1_action > 7) ){
+	   (db_urms->lane_1_release_rate > 1100) || (db_urms->lane_1_action > 7) ){
 		fprintf(stderr, "lane 1 release rate %d (out of range) action %d: (invalid action)!!\n",
 			db_urms->lane_1_release_rate,
 			db_urms->lane_1_action
@@ -746,7 +746,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	}
 
 	if( (db_urms->lane_2_release_rate < 150) || (db_urms->lane_2_action < 1) ||
-	   (db_urms->lane_2_release_rate > 2000) || (db_urms->lane_2_action > 7) ){
+	   (db_urms->lane_2_release_rate > 1100) || (db_urms->lane_2_action > 7) ){
 		fprintf(stderr, "lane 2 release rate %d (out of range) action %d: (invalid action)!!\n",
 			db_urms->lane_2_release_rate,
 			db_urms->lane_2_action
@@ -755,7 +755,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	}
 
 	if( (db_urms->lane_3_release_rate < 150) || (db_urms->lane_3_action < 1) ||
-	   (db_urms->lane_3_release_rate > 2000) || (db_urms->lane_3_action > 7) ){
+	   (db_urms->lane_3_release_rate > 1100) || (db_urms->lane_3_action > 7) ){
 		fprintf(stderr, "lane 3 release rate %d (out of range) action %d: (invalid action)!!\n",
 			db_urms->lane_3_release_rate,
 			db_urms->lane_3_action
@@ -764,7 +764,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	}
 
 	if( (db_urms->lane_4_release_rate < 150) || (db_urms->lane_4_action < 1) ||
-	   (db_urms->lane_4_release_rate > 2000) || (db_urms->lane_4_action > 7) ){
+	   (db_urms->lane_4_release_rate > 1100) || (db_urms->lane_4_action > 7) ){
 		fprintf(stderr, "lane 4 release rate %d (out of range) action %d: (invalid action)!!\n",
 			db_urms->lane_4_release_rate,
 			db_urms->lane_4_action
@@ -773,7 +773,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	}
 
 	if( (db_urms->lane_1_release_rate < 150) || (db_urms->lane_1_action < 1) ||
-	   (db_urms->lane_1_release_rate > 2000) || (db_urms->lane_1_action > 7) ){
+	   (db_urms->lane_1_release_rate > 1100) || (db_urms->lane_1_action > 7) ){
 		fprintf(stderr, "lane 1 release rate %d (out of range) action %d: (invalid action)!!\n",
 			db_urms->lane_1_release_rate,
 			db_urms->lane_1_action
