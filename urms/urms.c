@@ -98,7 +98,6 @@ int main(int argc, char *argv[]) {
 	int set_tos_action = 0;
 	int set_tos_det = 0;
 	int i;
-	int j;
 	unsigned char rm_action_code_tos2[4];
 	unsigned char num_lanes = 3;
 	unsigned char det_enable[8] = {1, 1, 1, 1, 1, 1, 1, 1};
@@ -554,8 +553,8 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 				    (dow == 6) || 		//Disable control if it's Saturday, ...
 				    (db_urms_status.hour < 6) || 	//or if it's before 6 AM, ...
 				    (db_urms_status.hour >= 9) || 	//or if it's after 9 AM, ...
-//These two lines deal with afternoon ((db_urms_status.hour >= 9) && (db_urms_status.hour < 15) ) || //or if it's between 9 AM and 3 PM, ...
-//peak hours. we're not doing that yet (db_urms_status.hour >= 19) || 	//or if it's after 7 PM, ...
+				    ((db_urms_status.hour >= 9) && (db_urms_status.hour < 15) ) || //or if it's between 9 AM and 3 PM, ...
+				    (db_urms_status.hour >= 18) || 	//or if it's after 6 PM, ...
 				    (db_urms.no_control != 0)) { 	//or if the database no_control flag has been set!
 					no_control_runtime = 1;
 					if( no_control_runtime_sav == 0) {
@@ -572,9 +571,9 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 						);
 					}
 					no_control_runtime_sav = 1;
-					db_urms.lane_1_action = 6;
-					db_urms.lane_2_action = 6;
-					db_urms.lane_3_action = 6;
+					db_urms.lane_1_action = URMS_ACTION_SKIP;
+					db_urms.lane_2_action = URMS_ACTION_SKIP;
+					db_urms.lane_3_action = URMS_ACTION_SKIP;
 #ifdef ALLOW_SET_METER
 					if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
 						fprintf(stderr, "3:Bad meter setting command\n");
@@ -733,6 +732,26 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	gen_mess.urmsctl.tail1 = 0xaa;
 	gen_mess.urmsctl.tail2 = 0x55;
 
+//	memset(gen_mess, 0, sizeof(gen_mess_t));
+//	gen_mess->urms_status_poll.msg_type = 0x51;
+//	gen_mess->urms_status_poll.drop_num = 2;
+//	gen_mess->urms_status_poll.num_bytes = 8;
+//	gen_mess->urms_status_poll.action = db_urms->lane_1_action;
+//	gen_mess->urms_status_poll.rate_msb = (db_urms->lane_1_release_rate & 0xFF00) >> 8;
+//	gen_mess->urms_status_poll.rate_lsb = (db_urms->lane_1_release_rate & 0x00FF);
+//	gen_mess->urms_status_poll.plan = db_urms->lane_1_plan;
+//	gen_mess->urms_status_poll.gp_out = 0;
+//	gen_mess->urms_status_poll.future_use = 0;
+//	gen_mess->urms_status_poll.enable = 0x08;
+//	gen_mess->urms_status_poll.checksum_msb = 0;
+//	gen_mess->urms_status_poll.checksum_lsb = 0;
+
+//	csum = 0;
+//	for(i=0; i < (sizeof(urms_status_poll_t) - 2); i++)
+//		csum += msgbuf[i];
+//	gen_mess->urms_status_poll.checksum_msb = ((csum >> 8) & 0xFF);
+//	gen_mess->urms_status_poll.checksum_lsb = (csum  & 0xFF);
+
 	// If requested metering rate is 0, assume no change
 	// ALL of the parameters MUST be set!
 
@@ -742,7 +761,16 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 			db_urms->lane_1_release_rate,
 			db_urms->lane_1_action
 		);
-		exit(EXIT_FAILURE);
+		if(db_urms->lane_1_release_rate < 150)
+			db_urms->lane_1_release_rate = 150;
+		if(db_urms->lane_1_release_rate > 1100)
+			db_urms->lane_1_release_rate = 1100;
+		if( (db_urms->lane_1_action < 1) ||(db_urms->lane_1_action > 7) )
+			db_urms->lane_1_action = URMS_ACTION_SKIP;
+		fprintf(stderr, "Setting lane 1 release rate to %d and action to %d\n",
+			db_urms->lane_1_release_rate,
+			db_urms->lane_1_action
+		);
 	}
 
 	if( (db_urms->lane_2_release_rate < 150) || (db_urms->lane_2_action < 1) ||
@@ -751,7 +779,16 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 			db_urms->lane_2_release_rate,
 			db_urms->lane_2_action
 		);
-		exit(EXIT_FAILURE);
+		if(db_urms->lane_2_release_rate < 150)
+			db_urms->lane_2_release_rate = 150;
+		if(db_urms->lane_2_release_rate > 1100)
+			db_urms->lane_2_release_rate = 1100;
+		if( (db_urms->lane_2_action < 1) ||(db_urms->lane_2_action > 7) )
+			db_urms->lane_2_action = URMS_ACTION_SKIP;
+		fprintf(stderr, "Setting lane 2 release rate to %d and action to %d\n",
+			db_urms->lane_2_release_rate,
+			db_urms->lane_2_action
+		);
 	}
 
 	if( (db_urms->lane_3_release_rate < 150) || (db_urms->lane_3_action < 1) ||
@@ -760,7 +797,16 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 			db_urms->lane_3_release_rate,
 			db_urms->lane_3_action
 		);
-		exit(EXIT_FAILURE);
+		if(db_urms->lane_3_release_rate < 150)
+			db_urms->lane_3_release_rate = 150;
+		if(db_urms->lane_3_release_rate > 1100)
+			db_urms->lane_3_release_rate = 1100;
+		if( (db_urms->lane_3_action < 1) ||(db_urms->lane_3_action > 7) )
+			db_urms->lane_3_action = URMS_ACTION_SKIP;
+		fprintf(stderr, "Setting lane 3 release rate to %d and action to %d\n",
+			db_urms->lane_3_release_rate,
+			db_urms->lane_3_action
+		);
 	}
 
 	if( (db_urms->lane_4_release_rate < 150) || (db_urms->lane_4_action < 1) ||
@@ -769,16 +815,16 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 			db_urms->lane_4_release_rate,
 			db_urms->lane_4_action
 		);
-		exit(EXIT_FAILURE);
-	}
-
-	if( (db_urms->lane_1_release_rate < 150) || (db_urms->lane_1_action < 1) ||
-	   (db_urms->lane_1_release_rate > 1100) || (db_urms->lane_1_action > 7) ){
-		fprintf(stderr, "lane 1 release rate %d (out of range) action %d: (invalid action)!!\n",
-			db_urms->lane_1_release_rate,
-			db_urms->lane_1_action
+		if(db_urms->lane_4_release_rate < 150)
+			db_urms->lane_4_release_rate = 150;
+		if(db_urms->lane_4_release_rate > 1100)
+			db_urms->lane_4_release_rate = 1100;
+		if( (db_urms->lane_4_action < 1) ||(db_urms->lane_4_action > 7) )
+			db_urms->lane_4_action = URMS_ACTION_SKIP;
+		fprintf(stderr, "Setting lane 4 release rate to %d and action to %d\n",
+			db_urms->lane_4_release_rate,
+			db_urms->lane_4_action
 		);
-		exit(EXIT_FAILURE);
 	}
 
 	gen_mess.urmsctl.lane_1_action = db_urms->lane_1_action;
@@ -854,8 +900,6 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 
 int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 
-	char *msgbuf = (char *)&gen_mess->urms_status_poll;
-	int csum;
 	int i;
 	int j;
 	int nread;
@@ -865,25 +909,20 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	struct timespec end_time;
 	int msg_len = 0;
 
-	memset(gen_mess, 0, sizeof(gen_mess_t));
-	gen_mess->urms_status_poll.msg_type = 0x51;
-	gen_mess->urms_status_poll.drop_num = 2;
-	gen_mess->urms_status_poll.num_bytes = 8;
-	gen_mess->urms_status_poll.action = 6;
-	gen_mess->urms_status_poll.rate_msb = 0;
-	gen_mess->urms_status_poll.rate_lsb = 200;
-	gen_mess->urms_status_poll.plan = 2;
-	gen_mess->urms_status_poll.gp_out = 0;
-	gen_mess->urms_status_poll.future_use = 0;
-	gen_mess->urms_status_poll.enable = 0;
-	gen_mess->urms_status_poll.checksum_msb = 0;
-	gen_mess->urms_status_poll.checksum_lsb = 0;
-
-	csum = 0;
-	for(i=0; i < (sizeof(urms_status_poll_t) - 2); i++)
-		csum += msgbuf[i];
-	gen_mess->urms_status_poll.checksum_msb = ((csum >> 8) & 0xFF);
-	gen_mess->urms_status_poll.checksum_lsb = (csum  & 0xFF);
+//	memset(gen_mess, 0, sizeof(gen_mess_t));
+//	gen_mess->urms_status_poll.msg_type = 0x51;
+//	gen_mess->urms_status_poll.drop_num = 2;
+//	gen_mess->urms_status_poll.num_bytes = 8;
+//	gen_mess->urms_status_poll.action = 6;
+//	gen_mess->urms_status_poll.rate_msb = 0;
+//	gen_mess->urms_status_poll.rate_lsb = 200;
+//	gen_mess->urms_status_poll.plan = 2;
+//	gen_mess->urms_status_poll.gp_out = 0;
+//	gen_mess->urms_status_poll.future_use = 0;
+//	gen_mess->urms_status_poll.enable = 0;
+//	gen_mess->urms_status_poll.checksum_msb = 0;
+//	gen_mess->urms_status_poll.checksum_lsb = 0;
+//	MUST DO FCS16 CHECKSUM HERE!!
 
 	clock_gettime(CLOCK_REALTIME, &start_time);
 
