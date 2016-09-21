@@ -271,10 +271,11 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 	db_vars_list[4].id = db_urms_status_var + 4;
 	db_trig_list[0] = db_urms_var;
 
-	printf("Starting urms.c: IP address %s port %s db_urms_status_var %d db_trig_list[0] %d num_trig_variables %d no_control_startup %d no_control_runtime %d\n",
+	printf("Starting urms.c: IP address %s port %s db_urms_status_var %d db_urms_var %d db_trig_list[0] %d num_trig_variables %d no_control_startup %d no_control_runtime %d\n",
 		controllerIP,
 		port,
 		db_urms_status_var,
+		db_urms_var,
 		db_trig_list[0],
 		num_trig_variables,
 		no_control_startup,
@@ -552,10 +553,10 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 				if( (dow == 0) || 		//Disable control if it's Sunday, ...
 				    (dow == 6) || 		//Disable control if it's Saturday, ...
 				    (db_urms_status.hour < 6) || 	//or if it's before 6 AM, ...
-				    (db_urms_status.hour >= 9) || 	//or if it's after 9 AM, ...
 				    ((db_urms_status.hour >= 9) && (db_urms_status.hour < 15) ) || //or if it's between 9 AM and 3 PM, ...
 				    (db_urms_status.hour >= 18) || 	//or if it's after 6 PM, ...
-				    (db_urms.no_control != 0)) { 	//or if the database no_control flag has been set!
+				    (db_urms.no_control != 0)	||	//or if the database no_control flag has been set, ...
+				    (no_control_startup != 0)) { 	//or if the startup no_control flag has been set!
 					no_control_runtime = 1;
 					if( no_control_runtime_sav == 0) {
 						printf("%02d/%02d/%04d %02d:%02d:%02d Disabling control of ramp meter controller: hour=%d db_urms.no_control %d DOW=%d\n",
