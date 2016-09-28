@@ -210,6 +210,11 @@ struct queue_stat{
 	char flag;	// Queue Flag
 } IS_PACKED;
 
+#define MAX_MAINLINES           8
+#define MAX_METERED_LANES	4
+#define MAX_OFFRAMPS		16
+#define MAX_QUEUE_LOOPS         4
+
 typedef struct {
 
 		// URMS Poll Response   
@@ -244,7 +249,6 @@ typedef struct {
 	struct mainline_stat opposite_stat[8]; //106-185
 	char opposite_dir;	//186 BA Opposite Mainline Direction Bits (Each Lane 0=Normal, 1=Reverse) 
 	struct addl_det_stat additional_det[16]; //187-250
-#define MAX_METERED_LANES	4
 	struct metered_lane_stat metered_lane_stat[MAX_METERED_LANES]; //251-282
 	char is_metering;	//283 11B Is Metering (1 = YES) 
 	char traffic_responsive_vol_msb;	//284 11C Traffic Responsive Volume (VPH)(MSB) 
@@ -263,18 +267,14 @@ typedef struct {
 typedef struct {
 	char num_meter;	//0 Number of Metered Lanes 
 	char num_main;	//1 Number of Mainline Lanes 
-	struct mainline_stat mainline_stat[8]; //3-62
-	struct metered_lane_stat metered_lane_stat[4]; //63-94
+	struct mainline_stat mainline_stat[MAX_MAINLINES]; //3-62
+	struct metered_lane_stat metered_lane_stat[MAX_METERED_LANES]; //63-94
 	char	hour; //95
 	char	minute; //96
 	char	second; //97
 	char	no_control; //98
 	unsigned short  checksum; //99
 } IS_PACKED db_urms_status_t;
-
-#define MAX_MAINLINES           8
-#define MAX_OFFRAMPS		16
-#define MAX_QUEUE_LOOPS         4
 
 typedef struct {
 		// URMS Poll Response   
@@ -287,14 +287,14 @@ typedef struct {
 	char mainline_dir;	//0 Mainline Direction Bits (Each Lane 0=Normal, 1=Reverse) 
 	char num_opp;		//1 Number of Opposite Mainline Lanes 
 	char is_metering;	//2 Is Metering (1 = YES) 
-	char	cmd_src[3]; //3-5
-	char	action[3]; //6-8
-	unsigned char	plan[3];   //9-11
-	unsigned char	computation_finished; //12
-	char	plan_base_lvl[3]; //13-15
-	unsigned char	rm2rmc_ctr; //16
-	char num_addl_det;	//2 Number of Additional Detectors 
-        struct addl_det_stat additional_det[MAX_OFFRAMPS]; //80-123
+	char	cmd_src[MAX_METERED_LANES]; //3-6
+	char	action[MAX_METERED_LANES]; //7-10
+	unsigned char	plan[MAX_METERED_LANES];   //11-14
+	unsigned char	computation_finished; //15
+	char	plan_base_lvl[MAX_METERED_LANES]; //16-19
+	unsigned char	rm2rmc_ctr; //20
+	char num_addl_det;	//21 Number of Additional Detectors 
+        struct addl_det_stat additional_det[MAX_OFFRAMPS]; //22-85
 } IS_PACKED db_urms_status3_t;
 
 /*
