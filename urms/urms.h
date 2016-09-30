@@ -291,10 +291,11 @@ typedef struct {
 	char	action[MAX_METERED_LANES]; //7-10
 	unsigned char	plan[MAX_METERED_LANES];   //11-14
 	unsigned char	computation_finished; //15
-	char	plan_base_lvl[MAX_METERED_LANES]; //16-19
-	unsigned char	rm2rmc_ctr; //20
-	char num_addl_det;	//21 Number of Additional Detectors 
-        struct addl_det_stat additional_det[MAX_OFFRAMPS]; //22-85
+	int metering_rate[MAX_METERED_LANES]; //16-31
+	char	plan_base_lvl[MAX_METERED_LANES]; //32-35
+	unsigned char	rm2rmc_ctr; //36
+	char num_addl_det;	//37 Number of Additional Detectors 
+        struct addl_det_stat additional_det[MAX_OFFRAMPS]; //38-101
 } IS_PACKED db_urms_status3_t;
 
 /*

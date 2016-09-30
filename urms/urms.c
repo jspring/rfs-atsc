@@ -603,9 +603,9 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 					db_urms_status3.action[i] = gen_mess.urms_status_response.metered_lane_ctl[i].action;
 					db_urms_status3.plan[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan;
 					db_urms_status3.plan_base_lvl[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan_base_lvl;
-					urms_datafile.metering_rate[i] = 
-						(db_urms_status.metered_lane_stat[i].metered_lane_rate_msb *256) + 
-						db_urms_status.metered_lane_stat[i].metered_lane_rate_lsb;
+					db_urms_status3.metering_rate[i] = 
+						(int)((gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_msb << 8) +
+						(unsigned char)(gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_lsb));
 					comp_finished_temp += db_urms_status.metered_lane_stat[i].demand_vol + 
 						db_urms_status.metered_lane_stat[i].passage_vol + 
 						db_urms_status.mainline_stat[i].lead_vol + 
@@ -629,7 +629,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 						printf("IP %s Lane %d rate %d cmd_src %d action %d plan %d plan_base level %d\n",
 							controllerIP,
 							i+1, 
-							urms_datafile.metering_rate[i],
+							db_urms_status3.metering_rate[i],
 							db_urms_status3.cmd_src[i],
 							db_urms_status3.action[i],
 							db_urms_status3.plan[i],
