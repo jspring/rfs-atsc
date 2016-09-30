@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
 	unsigned char lane_4_action = 0;
 	unsigned char lane_4_plan = 0;
 	unsigned char no_control_startup = 0;
-	unsigned char no_control_runtime = 0;
+	unsigned char no_control_runtime = 1;
 	unsigned char no_control_runtime_sav = 0;
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
@@ -261,8 +261,6 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
                         break;
                 }
         }
-
-	no_control_runtime =  no_control_startup;
 
 	db_vars_list[0].id = db_urms_status_var;
 	db_vars_list[1].id = db_urms_status_var + 1;
@@ -577,7 +575,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 					db_urms.lane_3_action = URMS_ACTION_SKIP;
 #ifdef ALLOW_SET_METER
 					if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
-						fprintf(stderr, "3:Bad meter setting command\n");
+						fprintf(stderr, "3:Bad meter setting command for IP %s\n", controllerIP);
 					}
 #endif
 				}
@@ -973,6 +971,17 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	printf("MT2 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[1].trail_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[1].trail_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[1].trail_occ_lsb));
 	printf("ML3 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[2].lead_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[2].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[2].lead_occ_lsb));
 	printf("MT3 vol %hhu occ %.1f \n", gen_mess->urms_status_response.mainline_stat[2].trail_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[2].trail_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[2].trail_occ_lsb));
+	printf("Metering rate 1 %hu 2 %hu 3 %hu 4 %hu\n",
+		((gen_mess->urms_status_response.metered_lane_stat[0].metered_lane_rate_msb << 8) +
+		(unsigned char)(gen_mess->urms_status_response.metered_lane_stat[0].metered_lane_rate_lsb)),
+		((gen_mess->urms_status_response.metered_lane_stat[1].metered_lane_rate_msb << 8) +
+		(unsigned char)(gen_mess->urms_status_response.metered_lane_stat[1].metered_lane_rate_lsb)),
+		((gen_mess->urms_status_response.metered_lane_stat[2].metered_lane_rate_msb << 8) +
+		(unsigned char)(gen_mess->urms_status_response.metered_lane_stat[3].metered_lane_rate_lsb)),
+		((gen_mess->urms_status_response.metered_lane_stat[3].metered_lane_rate_msb << 8) +
+		(unsigned char)(gen_mess->urms_status_response.metered_lane_stat[3].metered_lane_rate_lsb))
+	);
+
 	}
 	return 0;
 }
