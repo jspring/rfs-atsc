@@ -573,6 +573,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 					db_urms.lane_1_action = URMS_ACTION_SKIP;
 					db_urms.lane_2_action = URMS_ACTION_SKIP;
 					db_urms.lane_3_action = URMS_ACTION_SKIP;
+					db_urms.lane_4_action = URMS_ACTION_SKIP;
 #ifdef ALLOW_SET_METER
 					if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
 						fprintf(stderr, "3:Bad meter setting command for IP %s\n", controllerIP);
@@ -598,7 +599,13 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 				}
 
 				for(i = 0; i < MAX_METERED_LANES; i++) {
-//printf("urms.c: interval_zone %d %d rate %hu\n", i,db_urms_status.metered_lane_stat[i].metered_lane_interval_zone, (db_urms_status.metered_lane_stat[i].metered_lane_rate_msb << 8) + (unsigned char)db_urms_status.metered_lane_stat[i].metered_lane_rate_lsb);
+					db_urms_status3.cmd_src[i] = gen_mess.urms_status_response.metered_lane_ctl[i].cmd_src;
+					db_urms_status3.action[i] = gen_mess.urms_status_response.metered_lane_ctl[i].action;
+					db_urms_status3.plan[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan;
+					db_urms_status3.plan_base_lvl[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan_base_lvl;
+					urms_datafile.metering_rate[i] = 
+						(db_urms_status.metered_lane_stat[i].metered_lane_rate_msb *256) + 
+						db_urms_status.metered_lane_stat[i].metered_lane_rate_lsb;
 					comp_finished_temp += db_urms_status.metered_lane_stat[i].demand_vol + 
 						db_urms_status.metered_lane_stat[i].passage_vol + 
 						db_urms_status.mainline_stat[i].lead_vol + 
@@ -618,17 +625,23 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 				    	}
 					else
 						db_urms_status3.computation_finished = 0;
+					if(verbose) {
+						printf("IP %s Lane %d rate %d cmd_src %d action %d plan %d plan_base level %d\n",
+							controllerIP,
+							i+1, 
+							urms_datafile.metering_rate[i],
+							db_urms_status3.cmd_src[i],
+							db_urms_status3.action[i],
+							db_urms_status3.plan[i],
+							db_urms_status3.plan_base_lvl[i]
+						);
+				    	}
 				}
 
 				for(i = 0; i < MAX_MAINLINES; i++) {
-				    db_urms_status3.cmd_src[i] = gen_mess.urms_status_response.metered_lane_ctl[i].cmd_src;
-				    db_urms_status3.action[i] = gen_mess.urms_status_response.metered_lane_ctl[i].action;
-				    db_urms_status3.plan[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan;
-				    db_urms_status3.plan_base_lvl[i] = gen_mess.urms_status_response.metered_lane_ctl[i].plan_base_lvl;
 				    urms_datafile.mainline_lead_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].lead_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].lead_occ_lsb));
 				    urms_datafile.mainline_trail_occ[i] = 0.1 * ((gen_mess.urms_status_response.mainline_stat[i].trail_occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.mainline_stat[i].trail_occ_lsb));
 				    urms_datafile.queue_occ[i] = 0.1 * ((gen_mess.urms_status_response.queue_stat[0][i].occ_msb << 8) + (unsigned char)(gen_mess.urms_status_response.queue_stat[0][i].occ_lsb));
-				    urms_datafile.metering_rate[i] = ((gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_msb << 8) + (unsigned char)(gen_mess.urms_status_response.metered_lane_stat[i].metered_lane_rate_lsb));
 				    if(verbose) {
 					printf("1:ML%d occ %.1f ", i+1, urms_datafile.mainline_lead_occ[i]);
 				 	printf("1:MT%d occ %.1f ", i+1, urms_datafile.mainline_trail_occ[i]);
@@ -636,11 +649,6 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 					printf("1:lane %d cmd_src %hhu ", i+1, db_urms_status3.cmd_src[i]);
 					printf("1:lane %d action %hhu\n", i+1, db_urms_status3.action[i]);
 				    }
-				    if(verbose) {
-					printf("2:ML%d occ %.1f ", i+1, urms_datafile.mainline_lead_occ[i]);
-				 	printf("2:MT%d occ %.1f ", i+1, urms_datafile.mainline_trail_occ[i]);
-					printf("2:Q%d-1 occ %.1f\n", i+1, urms_datafile.queue_occ[i]);
-		    		    }
 				}
 
 				if(verbose) {
