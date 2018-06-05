@@ -236,6 +236,18 @@ typedef struct
 	char          end_flag;      /* 0x7e */
 } IS_PACKED set_time_t;
 
+typedef struct {
+	char	start_flag;	/* 0x7e */
+	char	address;	/* 0x05 2070 controller */
+	char	control;	/* 0x13 - unnumbered information, individual address */
+	char	ipi;		/* 0xc0 - NTCIP Class B Protocol */
+	char	mess_type;	/* 0x93 - set pattern request */
+	unsigned char	pattern;	/* Pattern number (0-255); 0 Standby, 251-253 reserved, 254 Flash, 255 Free */
+	unsigned char FCSmsb;        /* FCS (Frame Checking Sequence) MSB */
+	unsigned char FCSlsb;        /* FCS least significant byte */
+	char          end_flag;      /* 0x7e */
+} IS_PACKED set_pattern_t;
+
 
 /*************************************************************************************************
 TSMSS Support for TSCP

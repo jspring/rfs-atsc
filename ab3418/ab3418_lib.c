@@ -38,6 +38,7 @@
 #define FLAGS		0X06
 #define TIMING_DATA	0X07
 #define LONG_STATUS8	0X0D
+#define ERR_RESPONSE_SIZE 10
 
 int print_status(get_long_status8_resp_mess_typ *status);
 int set_timing(db_timing_set_2070_t *db_timing_set_2070, int *msg_len, int fpin, int fpout, char verbose);
@@ -86,6 +87,246 @@ char *plan_strings[] = {
         "Offset(B)",
         "(C)"
 };
+
+bool_typ ser_driver_read_udp( gen_mess_typ *pMessagebuff, int fpin, char verbose) 
+{
+	char *msgbuf = (char *)pMessagebuff;
+	int i;
+	int ii;
+	unsigned short oldfcs;
+	unsigned short newfcs;
+	atsc_typ atsc;
+	struct timeb timeptr_raw;
+	struct tm time_converted;
+        fd_set readfds;
+        int selectval = 1000;
+        struct timeval timeout;
+        char *inportisset = "not yet initialized";
+
+	/* Read from serial port. */
+	/* Blocking read is used, so control doesn't return unless data is
+	 * available.  Keep reading until the beginning of a message is 
+	 * determined by reading the start flag 0x7e.  */
+//	memset( msgbuf, 0x0, 100 );
+	while ( msgbuf[0] != 0x7e ) {
+		if(verbose != 0) 
+			printf("ser_driver_read_udp 1: Ready to read:\n");
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+		    if(errno != EINTR) {
+			perror("select 1");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("\n\nser_driver_read_udp 1: fpin %d selectval %d inportisset %s\n\n", fpin, selectval, inportisset);
+			return FALSE;
+		    }
+		}
+
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+		    if(errno != EINTR) {
+			perror("select 2");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("\n\nser_driver_read_udp 2: fpin %d selectval %d inportisset %s\n\n", fpin, selectval, inportisset);
+			return FALSE;
+		    }
+		}
+
+	    read ( fpin, &msgbuf[0], 1);
+		if(verbose != 0) {
+			printf("%x \n",msgbuf[0]);
+			fflush(stdout);
+		}
+	
+		if(verbose != 0) 
+			printf("\n");
+	
+		/* Read next character.  If this is 0x7e, then this is really
+		 * the start of new message, previous 0x7e was end of previous message.
+		*/
+
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+		    if(errno != EINTR) {
+			perror("select 3");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("\n\nser_driver_read_udp 3: fpin %d selectval %d inportisset %s\n\n", fpin, selectval, inportisset);
+			return FALSE;
+		    }
+		}
+
+		read ( fpin, &msgbuf[1], 1 );
+		if(verbose != 0) 
+			printf("%x ", msgbuf[1] );
+		if ( msgbuf[1] != 0x7e ) {
+			ii=2;
+			if(verbose != 0) 
+				printf("%x ",msgbuf[1]);
+		}
+		else {
+			ii=1;
+			if(verbose != 0) 
+				printf("\n");
+		}
+	
+		/* Header found, now read remainder of message. Continue reading
+		 * until end flag is found (0x7e).  If more than 95 characters are
+		 * read, this message is junk so just take an error return. */
+		for ( i=ii; i<100; i++ ) {
+
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+		    if(errno != EINTR) {
+			perror("select 4");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("\n\nser_driver_read_udp 4: fpin %d selectval %d inportisset %s\n\n", fpin, selectval, inportisset);
+			return FALSE;
+		    }
+		}
+
+			read ( fpin, &msgbuf[i], 1);
+			if(verbose != 0) {
+				printf("%x ", msgbuf[i]);
+				fflush(stdout);
+			}
+			if ( i>95 ) {
+				printf("ser_driver_read_udp: message > 95 bytes\n");
+				return( FALSE );
+			}
+			if ( msgbuf[i] == 0x7e )
+			break;
+			/* If the byte read was 0x7d read the next byte.  If the next
+			* byte is 0x5e, convert the first byte to 0x7e.  If the next
+			* byte is 0x5d, the first byte really should be 0x7d.  If
+			* the next byte is neither 0x5e nor 0x5d, take an error exit. */
+			if ( msgbuf[i] == 0x7d ) {
+
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+		    if(errno != EINTR) {
+			perror("select 5");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("\n\nser_driver_read_udp 5: fpin %d selectval %d inportisset %s\n\n", fpin, selectval, inportisset);
+
+		    }
+		}
+
+				read ( fpin, &msgbuf[i+1], 1 );
+				if(verbose != 0) 
+				printf("%x ", msgbuf[i+1] );
+				if ( msgbuf[i+1] == 0x5e )
+				msgbuf[i] = 0x7e;
+				else if ( msgbuf[i+1] != 0x5d ) {
+					printf("Illegal 0x7d\n");
+					return (FALSE);
+				}
+			}
+		}
+	
+		memcpy( pMessagebuff->data, &msgbuf[0], 100);
+	
+		oldfcs = ~(msgbuf[i-2] << 8) | ~msgbuf[i-1];
+		newfcs = pppfcs( oldfcs, &msgbuf[1], i-1 );
+		if(verbose != 0) 
+			printf("newfcs=%x\n",newfcs);
+		if ( newfcs != 0xf0b8 ) {
+			printf( "FCS error, msg type %x\n", msgbuf[4] );
+			return (FALSE);
+		}
+		else {
+	if(verbose != 0) 
+		printf("ser_driver_read_udp: message type %#hhx ",pMessagebuff->data[4]);
+        switch( pMessagebuff->data[4] ) {
+            case 0xc4:    // GetShortStatus message
+		// Get time of day and save in the database. 
+                ftime ( &timeptr_raw );
+                localtime_r ( &timeptr_raw.time, &time_converted );
+                atsc.ts.hour = time_converted.tm_hour;
+                atsc.ts.min = time_converted.tm_min;
+                atsc.ts.sec = time_converted.tm_sec;
+                atsc.ts.millisec = timeptr_raw.millitm;
+
+		if(verbose != 0) 
+			printf("ser_driver_read_udp: %02d:%02d:%02d:%03d: Got get_short_status response. Green %#hhx status %#hhx pattern %#hhx\n",
+				atsc.ts.hour,atsc.ts.min,
+				atsc.ts.sec,atsc.ts.millisec,
+				pMessagebuff->data[5],
+				pMessagebuff->data[6],
+				pMessagebuff->data[7] );
+		break;
+            case 0xcc:    // GetLongStatus8 message
+		// Get time of day and save in the database. 
+                ftime ( &timeptr_raw );
+                localtime_r ( &timeptr_raw.time, &time_converted );
+                atsc.ts.hour = time_converted.tm_hour;
+                atsc.ts.min = time_converted.tm_min;
+                atsc.ts.sec = time_converted.tm_sec;
+                atsc.ts.millisec = timeptr_raw.millitm;
+
+		if(verbose != 0) 
+			printf("ser_driver_read_udp: %02d:%02d:%02d:%03d\n",atsc.ts.hour,atsc.ts.min,
+				atsc.ts.sec,atsc.ts.millisec );
+		if(verbose == 2)
+			print_status( (get_long_status8_resp_mess_typ *) pMessagebuff );
+		break;
+	    case 0xc7:
+		printf("ser_driver_read_udp: get_overlap returned OK\n");
+		break;
+	    case 0xc9:
+		if(verbose)
+			printf("ser_driver_read_udp: GetControllerTimingData returned OK\n");
+		break;
+	    case 0xce:
+		break;
+	    case 0xd2:
+			printf("ser_driver_read_udp: SetTime returned OK\n");
+		break;
+	    case 0xd6:
+		if( (pMessagebuff->data[5] == 2) && (pMessagebuff->data[6] == 4) )
+			printf("ser_driver_read_udp: SetOverlap returned OK\n");
+		else
+			printf("ser_driver_read_udp: set TSMSS message returned; page ID %d block ID %d\n",
+				pMessagebuff->data[5], pMessagebuff->data[6]); 
+		break;
+	    case 0xd9:
+		printf("ser_driver_read_udp: SetControllerTiming returned OK\n");
+		break;
+	    case 0xe4:
+		printf("ser_driver_read_udp: GetShortStatus error: %hhd index %hhd\n",
+			pMessagebuff->data[5], pMessagebuff->data[6]);
+		break;
+	    case 0xe9:
+		printf("ser_driver_read_udp: GetControllerTiming error: %hhd index %hhd\n",
+			pMessagebuff->data[5], pMessagebuff->data[6]);
+		break;
+	    case 0xf9:
+		printf("ser_driver_read_udp: SetControllerTiming error: %hhd index %hhd\n",
+			pMessagebuff->data[5], pMessagebuff->data[6]);
+		break;
+	    default:
+	    	printf("ser_driver_read_udp: Unknown message type : 0x%x\n", pMessagebuff->data[4] );
+	    	break;
+	}  
+		    return (TRUE);
+		}
+	}
+	return (TRUE);
+}
+
 
 bool_typ ser_driver_read( gen_mess_typ *pMessagebuff, int fpin, char verbose) 
 {
@@ -220,7 +461,7 @@ bool_typ ser_driver_read( gen_mess_typ *pMessagebuff, int fpin, char verbose)
 			perror("select 5");
 			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
 			printf("\n\nser_driver_read 5: fpin %d selectval %d inportisset %s\n\n", fpin, selectval, inportisset);
-			return FALSE;
+
 		    }
 		}
 
@@ -290,6 +531,9 @@ bool_typ ser_driver_read( gen_mess_typ *pMessagebuff, int fpin, char verbose)
 			printf("ser_driver_read: GetControllerTimingData returned OK\n");
 		break;
 	    case 0xce:
+		break;
+	    case 0xd2:
+			printf("ser_driver_read: SetTime returned OK\n");
 		break;
 	    case 0xd6:
 		if( (pMessagebuff->data[5] == 2) && (pMessagebuff->data[6] == 4) )
@@ -618,7 +862,7 @@ int get_timing(db_timing_get_2070_t *db_timing_get_2070, int wait_for_data, phas
         /* Send the message to request GetLongStatus8 from 2070. */
         get_controller_timing_data_request_mess.start_flag = 0x7e;
         get_controller_timing_data_request_mess.address = 0x05;
-        get_controller_timing_data_request_mess.control = 0x13;
+        get_controller_timing_data_request_mess.control = 0x33;
         get_controller_timing_data_request_mess.ipi = 0xc0;
         get_controller_timing_data_request_mess.mess_type = 0x89;
         get_controller_timing_data_request_mess.offset = calc_cell_addr(db_timing_get_2070->page + 0x10, db_timing_get_2070->phase);
@@ -690,6 +934,125 @@ printf("get_timing 4.5: *fpin %d\n", *fpin);
 	return 0;
 }
 
+int get_timing_udp(db_timing_get_2070_t *db_timing_get_2070, int wait_for_data, phase_timing_t *phase_timing, int fpin, int fpout, struct sockaddr_in *dst_addr, char verbose) {
+
+	int msg_len;
+        fd_set readfds;
+        fd_set writefds;
+        int selectval = 1000;
+        struct timeval timeout;
+        char *inportisset = "not yet initialized";
+        char *outportisset = "not yet initialized";
+	int ser_driver_retval;
+	get_controller_timing_data_request_t get_controller_timing_data_request_mess;
+	gen_mess_typ readBuff;
+	int bytes_sent = 0;
+	int bytes_recd = 0;
+	char *charbuf = &readBuff;
+	char recvbuff[1000];
+	int i;
+        struct timespec start_time;
+        struct timespec end_time;
+
+        /* Send the message to request GetLongStatus8 from 2070. */
+        get_controller_timing_data_request_mess.start_flag = 0x7e;
+        get_controller_timing_data_request_mess.address = 0x05;
+        get_controller_timing_data_request_mess.control = 0x13;
+        get_controller_timing_data_request_mess.ipi = 0xc0;
+        get_controller_timing_data_request_mess.mess_type = 0x89;
+        get_controller_timing_data_request_mess.offset = calc_cell_addr(db_timing_get_2070->page + 0x10, db_timing_get_2070->phase);
+        get_controller_timing_data_request_mess.num_bytes = 16;
+        get_controller_timing_data_request_mess.FCSmsb = 0x00;
+        get_controller_timing_data_request_mess.FCSlsb = 0x00;
+
+
+
+	if(fpout <= 0)
+		return -1;
+	/* Now append the FCS. */
+	msg_len = sizeof(get_controller_timing_data_request_t) - 4;
+	fcs_hdlc(msg_len, &get_controller_timing_data_request_mess, verbose);
+	FD_ZERO(&writefds);
+	FD_SET(fpout, &writefds);
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+	if( (selectval = select(fpout+1, NULL, &writefds, NULL, &timeout)) <=0) {
+		perror("select 10");
+		outportisset = (FD_ISSET(fpout, &writefds)) == 0 ? "no" : "yes";
+		printf("get_timing_udp 3: fpout %d selectval %d outportisset %s\n", fpout, selectval, outportisset);
+		return -3;
+	}
+                if(verbose != 0) {
+                        clock_gettime(CLOCK_REALTIME, &start_time);
+                }
+	bytes_sent = sendto(fpout, &get_controller_timing_data_request_mess, msg_len + 4, 0, dst_addr, sizeof(struct sockaddr));
+
+	printf("get_timing_udp: bytes_sent %d\n", bytes_sent);
+	msg_len = sizeof(struct sockaddr);
+sleep(1);
+//	bytes_recd = recvfrom(fpout, readBuff, sizeof(get_long_status8_resp_mess_typ), 0,
+	bytes_recd = recvfrom(fpout, recvbuff, 1000, 0,
+		dst_addr, &msg_len);
+	printf("get_timing_udp: bytes_recd %d\n", bytes_recd);
+	printf("get_timing_udp response: ");
+	for(i=0; i<bytes_recd; i++ )
+		printf(" %#hhx", charbuf[i]);
+	printf("\n"); 
+	fflush(NULL);
+
+	ser_driver_retval = 100;
+
+	if(wait_for_data) {
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+		    if(errno != EINTR) {
+			perror("select 9");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("get_timing 4: fpin %d selectval %d inportisset %s\n", fpin, selectval, inportisset);
+			return -2;
+		    }
+		}
+printf("get_timing 4.5: fpin %d\n", fpin);
+		ser_driver_retval = ser_driver_read_udp(&readBuff, fpin, verbose);
+		if(ser_driver_retval == 0) {
+			printf("get_timing 5: Lost USB connection\n");
+			return -1;
+		}
+		else {
+			memcpy(phase_timing, &readBuff.data[8], 16);
+			if(verbose) {
+				printf("\nPhase %d timing parameters:\n", db_timing_get_2070->phase);
+				printf("Walk_1\t\t%hhu sec\n", phase_timing->walk_1);
+				printf("Don't walk\t%hhu sec\n", phase_timing->dont_walk);
+				printf("Min Green\t%hhu sec\n", phase_timing->min_green);
+				printf("Detector Limit\t%hhu sec\n", phase_timing->detector_limit);
+				printf("Max Green 1\t%hhu sec\n", phase_timing->max_green1);
+				printf("Max Green 2\t%hhu sec\n", phase_timing->max_green2);
+				printf("Max Green 3\t%hhu sec\n", phase_timing->max_green3);
+				printf("Extension\t%.1f sec\n", 0.1 * phase_timing->extension);
+				printf("Max Gap\t\t%.1f sec\n", 0.1 * phase_timing->max_gap);
+				printf("Min Gap\t\t%.1f sec\n", 0.1 * phase_timing->min_gap);
+				printf("Add per veh\t%.1f sec\n", 0.1 * phase_timing->add_per_veh);
+				printf("Reduce gap by\t%.1f sec\n", 0.1 * phase_timing->reduce_gap_by);
+				printf("Reduce every\t%.1f sec\n", 0.1 * phase_timing->reduce_every);
+				printf("Yellow\t\t%.1f sec\n", 0.1 * phase_timing->yellow);
+				printf("All red\t\t%.1f sec\n", 0.1 * phase_timing->all_red);
+			}
+		}
+	}
+	if(verbose != 0)
+                        clock_gettime(CLOCK_REALTIME, &end_time);
+                        printf("get_status: Time for function call %f sec\n",
+                                (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) -
+                                (start_time.tv_sec + (start_time.tv_nsec/1.0e9))
+                                );
+		printf("get_timing 6-end: fpin %d selectval %d inportisset %s *fpout %d selectval %d outportisset %s ser_driver_retval %d get_controller_timing_data_request_mess.offset %hx\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval, get_controller_timing_data_request_mess.offset);
+	return 0;
+}
+
 int get_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose) {
 	int msg_len;
         fd_set readfds;
@@ -736,7 +1099,7 @@ int get_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, c
 	fflush(NULL);
 
 	ser_driver_retval = 100;
-
+printf("get_status wait_for data %d readBuff %ld\n", wait_for_data, (long) readBuff);
 	if(wait_for_data && readBuff) {
 		FD_ZERO(&readfds);
 		FD_SET(fpin, &readfds);
@@ -766,12 +1129,107 @@ int get_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, c
 	return 0;
 }
 
+int get_status_udp(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, struct sockaddr_in *dst_addr, char verbose) {
+	int msg_len;
+        fd_set readfds;
+        fd_set writefds;
+        int selectval = 1000;
+        struct timeval timeout;
+        char *inportisset = "not yet initialized";
+        char *outportisset = "not yet initialized";
+	int ser_driver_retval;
+	get_long_status8_mess_typ get_long_status8_request;
+        struct timespec start_time;
+        struct timespec end_time;
+	int bytes_sent = 0;
+	int bytes_recd = 0;
+	char *charbuf = readBuff;
+	int i;
+	
+	if(verbose != 0)
+		printf("get_status_udp 1: Starting get_status request\n");
+	/* Send the message to request GetLongStatus8 from 2070. */
+	get_long_status8_request.start_flag = 0x7e;
+	get_long_status8_request.address = 0x05;
+	get_long_status8_request.control = 0x13;
+	get_long_status8_request.ipi = 0xc0;
+	get_long_status8_request.mess_type = 0x8c;
+	get_long_status8_request.FCSmsb = 0x00;
+	get_long_status8_request.FCSlsb = 0x00;
+
+	if(fpout <= 0)
+		return -1;
+	/* Now append the FCS. */
+	msg_len = sizeof(get_long_status8_mess_typ) - 4;
+	fcs_hdlc(msg_len, &get_long_status8_request, verbose);
+	FD_ZERO(&writefds);
+	FD_SET(fpout, &writefds);
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+	if( (selectval = select(fpout+1, NULL, &writefds, NULL, &timeout)) <=0) {
+		perror("select 10");
+		outportisset = (FD_ISSET(fpout, &writefds)) == 0 ? "no" : "yes";
+		printf("get_status_udp 3: fpout %d selectval %d outportisset %s\n", fpout, selectval, outportisset);
+		return -3;
+	}
+                if(verbose != 0) {
+                        clock_gettime(CLOCK_REALTIME, &start_time);
+                }
+	bytes_sent = sendto(fpout, &get_long_status8_request, msg_len + 4, 0,
+		dst_addr, sizeof(struct sockaddr));
+
+	if(verbose != 0)
+	printf("get_status_udp: bytes_sent %d\n", bytes_sent);
+	fflush(NULL);
+
+	ser_driver_retval = 100;
+	if(verbose != 0)
+		printf("get_status_udp wait_for data %d readBuff %ld\n", wait_for_data, (long) readBuff);
+	if(wait_for_data && readBuff) {
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+		    if(errno != EINTR) {
+			perror("select 11");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("get_status_udp 4: fpin %d selectval %d inportisset %s\n", fpin, selectval, inportisset);
+			return -2;
+		    }
+		}
+		msg_len = sizeof(struct sockaddr);
+		bytes_recd = recvfrom(fpout, readBuff, sizeof(get_long_status8_resp_mess_typ), 0,
+			dst_addr, &msg_len);
+		if(verbose != 0) {
+			printf("get_status_udp: bytes_recd %d\n", bytes_recd);
+			printf("get_status_udp response: ");
+			for(i=0; i<bytes_recd; i++ )
+				printf(" %#hhx", charbuf[i]);
+			printf("\n"); 
+		}
+		ser_driver_retval = ser_driver_read_udp(readBuff, fpin, verbose);
+		if(ser_driver_retval == 0) {
+			printf("get_status_udp 5: Lost USB connection\n");
+			return -1;
+		}
+	}
+	if(verbose != 0) {
+                        clock_gettime(CLOCK_REALTIME, &end_time);
+                        printf("get_status_udp: Time for function call %f sec\n",
+                                (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) -
+                                (start_time.tv_sec + (start_time.tv_nsec/1.0e9))
+                                );
+		printf("get_status_udp 6-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
+	}
+	return 0;
+}
+
 int get_spat(int wait_for_data, raw_signal_status_msg_t *praw_signal_status_msg, int fpin, int fpout, char verbose, char print_packed_binary) {
         fd_set readfds;
         int selectval = 1000;
         struct timeval timeout;
         char *inportisset = "not yet initialized";
-        char *outportisset = "not yet initialized";
 	int ser_driver_retval;
 	gen_mess_typ *readBuff = (gen_mess_typ *)praw_signal_status_msg;
 
@@ -1280,7 +1738,9 @@ printf("Got to 1\n");
                         clock_gettime(CLOCK_REALTIME, &start_time);
                 }
 
-	write ( fpout, &get_controller_timing_data_request_mess, sizeof(get_controller_timing_data_request_t));
+//	write ( fpout, &get_controller_timing_data_request_mess, sizeof(get_controller_timing_data_request_t));
+//	bytes_sent = sendto(fpout, &get_controller_timing_data_request_mess, msg_len + 4, 0,
+//		dst_addr, sizeof(struct sockaddr));
 	fflush(NULL);
 //	sleep(2);
 //printf("get_mem: got to here get_controller_timing_data_request_mess.offset %hx \n", get_controller_timing_data_request_mess.offset);
@@ -1311,10 +1771,10 @@ printf("get_mem 2.5: fpin %d\n", fpin);
                                 (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) -
                                 (start_time.tv_sec + (start_time.tv_nsec/1.0e9))
                                 );
-printf("Got to 2 end_time.tv_sec %d end_time.tv_nsec/1.0e9 %f start_time.tv_sec %d start_time.tv_nsec/1.0e9\n",
-	end_time.tv_sec,
+printf("Got to 2 end_time.tv_sec %d end_time.tv_nsec/1.0e9 %f start_time.tv_sec %d start_time.tv_nsec/1.0e9 %f\n",
+	(int)end_time.tv_sec,
 	end_time.tv_nsec/1.0e9,
-	start_time.tv_sec,
+	(int)start_time.tv_sec,
 	start_time.tv_nsec/1.0e9);
 		printf("get_mem 4-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
 	return 0;
@@ -1385,3 +1845,298 @@ int get_short_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fp
 		printf("get_short_status 5-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
 	return 0;
 }
+
+
+int set_time(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose) {
+
+		struct timeb timeptr_raw;
+		struct tm time_converted;
+		int msg_len;
+        	fd_set readfds;
+        fd_set writefds;
+        int selectval = 1000;
+        struct timeval timeout;
+        char *inportisset = "not yet initialized";
+        char *outportisset = "not yet initialized";
+	int ser_driver_retval;
+	set_time_t set_time;
+	
+                if(verbose)
+                        printf("Starting SetTime request\n");
+                /* Send the message to request GetLongStatus8 from 2070. */
+                set_time.start_flag = 0x7e;
+                set_time.address = 0x05;
+                set_time.control = 0x13;
+                set_time.ipi = 0xc0;
+                set_time.mess_type = 0x92;
+                set_time.FCSmsb = 0x00;
+                set_time.FCSlsb = 0x00;
+
+                ftime ( &timeptr_raw );
+                localtime_r ( &timeptr_raw.time, &time_converted );
+                set_time.day_of_week = time_converted.tm_wday + 1;
+                set_time.month = time_converted.tm_mon + 1;
+                set_time.day_of_month = time_converted.tm_mday;
+                set_time.year = time_converted.tm_year - 100;
+                set_time.hour = time_converted.tm_hour;
+                set_time.minute = time_converted.tm_min;
+                set_time.second = time_converted.tm_sec;
+                set_time.tenths = timeptr_raw.millitm / 100;
+
+                if(verbose) {
+
+                        printf("day_of_week %d\n",
+                                set_time.day_of_week);
+                        printf("month %d\n",
+                                set_time.month);
+                        printf("day_of_month %d\n",
+                                set_time.day_of_month);
+                        printf("year %d\n",
+                                set_time.year);
+                        printf("hour %d\n",
+                                set_time.hour);
+                        printf("minute %d\n",
+                                set_time.minute);
+                        printf("second %d\n",
+                                set_time.second);
+                        printf("tenths %d\n",
+                                set_time.tenths);
+                }
+
+                /* Now append the FCS. */
+                msg_len = sizeof(set_time_t) - 4;
+		fcs_hdlc(msg_len, &set_time, verbose);
+	FD_ZERO(&writefds);
+	FD_SET(fpout, &writefds);
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+	if( (selectval = select(fpout+1, NULL, &writefds, NULL, &timeout)) <=0) {
+		perror("select 20");
+		outportisset = (FD_ISSET(fpout, &writefds)) == 0 ? "no" : "yes";
+		printf("set_time 2: fpout %d selectval %d outportisset %s\n", fpout, selectval, outportisset);
+		return -3;
+	}
+	write ( fpout, &set_time, msg_len + 4 );
+	fflush(NULL);
+	ser_driver_retval = 100;
+
+	if(wait_for_data && readBuff) {
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 10;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+		    if(errno != EINTR) {
+			perror("select 21");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("set_time 3: fpin %d selectval %d inportisset %s\n", fpin, selectval, inportisset);
+			return -2;
+		    }
+		}
+		ser_driver_retval = ser_driver_read(readBuff, fpin, verbose);
+		if(ser_driver_retval == 0) {
+			printf("set_time 4: Lost USB connection\n");
+			return -1;
+		}
+	}
+	if(verbose != 0)
+		printf("set_time 5-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
+		return 0;
+        }
+
+
+int set_time_udp(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, struct sockaddr_in *dst_addr, char verbose) {
+
+		struct timeb timeptr_raw;
+		struct tm time_converted;
+		int msg_len;
+        	fd_set readfds;
+        fd_set writefds;
+        int selectval = 1000;
+        struct timeval timeout;
+        char *inportisset = "not yet initialized";
+        char *outportisset = "not yet initialized";
+	int ser_driver_retval;
+	set_time_t set_time;
+	int bytes_sent = 0;
+	char *charbuf = (char *)readBuff;
+	int i;
+	
+                if(verbose)
+                        printf("Starting SetTime request\n");
+                /* Send the message to request GetLongStatus8 from 2070. */
+                set_time.start_flag = 0x7e;
+                set_time.address = 0x05;
+                set_time.control = 0x13;
+                set_time.ipi = 0xc0;
+                set_time.mess_type = 0x92;
+                set_time.FCSmsb = 0x00;
+                set_time.FCSlsb = 0x00;
+
+                ftime ( &timeptr_raw );
+                localtime_r ( &timeptr_raw.time, &time_converted );
+                set_time.day_of_week = time_converted.tm_wday + 1;
+                set_time.month = time_converted.tm_mon + 1;
+                set_time.day_of_month = time_converted.tm_mday;
+                set_time.year = time_converted.tm_year - 100;
+                set_time.hour = time_converted.tm_hour;
+                set_time.minute = time_converted.tm_min;
+                set_time.second = time_converted.tm_sec;
+                set_time.tenths = timeptr_raw.millitm / 100;
+
+                if(verbose) {
+
+                        printf("day_of_week %d\n",
+                                set_time.day_of_week);
+                        printf("month %d\n",
+                                set_time.month);
+                        printf("day_of_month %d\n",
+                                set_time.day_of_month);
+                        printf("year %d\n",
+                                set_time.year);
+                        printf("hour %d\n",
+                                set_time.hour);
+                        printf("minute %d\n",
+                                set_time.minute);
+                        printf("second %d\n",
+                                set_time.second);
+                        printf("tenths %d\n",
+                                set_time.tenths);
+                }
+
+                /* Now append the FCS. */
+                msg_len = sizeof(set_time_t) - 4;
+		fcs_hdlc(msg_len, &set_time, verbose);
+	FD_ZERO(&writefds);
+	FD_SET(fpout, &writefds);
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+	if( (selectval = select(fpout+1, NULL, &writefds, NULL, &timeout)) <=0) {
+		perror("select 22");
+		outportisset = (FD_ISSET(fpout, &writefds)) == 0 ? "no" : "yes";
+		printf("set_time 2: fpout %d selectval %d outportisset %s\n", fpout, selectval, outportisset);
+		return -3;
+	}
+	bytes_sent = sendto(fpout, &set_time, msg_len + 4, 0,
+		dst_addr, sizeof(struct sockaddr));
+	printf("set_time_udp: bytes_sent %d\n", bytes_sent);
+
+//	write ( fpout, &set_time, msg_len + 4 );
+	fflush(NULL);
+	fpin = fpout;
+	if(wait_for_data && readBuff) {
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 10;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+		    if(errno != EINTR) {
+			perror("select 23");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("set_time 3: fpin %d selectval %d inportisset %s\n", fpin, selectval, inportisset);
+			return -2;
+		    }
+		}
+		msg_len = sizeof(struct sockaddr);
+		bytes_sent = recvfrom(fpout, readBuff, ERR_RESPONSE_SIZE, 0,
+			dst_addr, &msg_len);
+		printf("SetTime response: ");
+		for(i=0; i<ERR_RESPONSE_SIZE; i++ )
+			printf(" %#hhx", charbuf[i]);
+		printf("\n"); 
+//		ser_driver_retval = ser_driver_read(readBuff, fpin, verbose);
+		ser_driver_retval = ser_driver_read_udp( readBuff, fpin, verbose);
+		if(ser_driver_retval == 0) {
+			printf("set_time 4: Lost USB connection\n");
+			return -1;
+		}
+	}
+
+	if(verbose != 0)
+		printf("set_time 5-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
+		return 0;
+        }
+
+int set_pattern(int wait_for_data, gen_mess_typ *readBuff, char pattern, int fpin, int fpout, struct sockaddr_in *dst_addr, char verbose) {
+
+		struct timeb timeptr_raw;
+		struct tm time_converted;
+		int msg_len;
+        	fd_set readfds;
+        fd_set writefds;
+        int selectval = 1000;
+        struct timeval timeout;
+        char *inportisset = "not yet initialized";
+        char *outportisset = "not yet initialized";
+	int ser_driver_retval;
+	set_pattern_t set_pattern;
+	int bytes_sent = 0;
+	char *charbuf = (char *)readBuff;
+	int i;
+	
+	if(verbose)
+		printf("Starting SetPattern request\n");
+	/* Send the message to request GetLongStatus8 from 2070. */
+	set_pattern.start_flag = 0x7e;
+	set_pattern.address = 0x05;
+	set_pattern.control = 0x13;
+	set_pattern.ipi = 0xc0;
+	set_pattern.mess_type = 0x93;
+	set_pattern.pattern = pattern;
+	set_pattern.FCSmsb = 0x00;
+	set_pattern.FCSlsb = 0x00;
+
+
+                /* Now append the FCS. */
+                msg_len = sizeof(set_pattern_t) - 4;
+		fcs_hdlc(msg_len, &set_pattern, verbose);
+	FD_ZERO(&writefds);
+	FD_SET(fpout, &writefds);
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+	if( (selectval = select(fpout+1, NULL, &writefds, NULL, &timeout)) <=0) {
+		perror("select 24");
+		outportisset = (FD_ISSET(fpout, &writefds)) == 0 ? "no" : "yes";
+		printf("set_pattern 2: fpout %d selectval %d outportisset %s\n", fpout, selectval, outportisset);
+		return -3;
+	}
+	bytes_sent = sendto(fpout, &set_pattern, msg_len + 4, 0,
+		dst_addr, sizeof(struct sockaddr));
+	if(bytes_sent < 0)
+		perror("set_pattern");
+	printf("set_pattern: bytes_sent %d\n", bytes_sent);
+
+	fflush(NULL);
+	fpin = fpout;
+	if(wait_for_data && readBuff) {
+		FD_ZERO(&readfds);
+		FD_SET(fpin, &readfds);
+		timeout.tv_sec = 10;
+		timeout.tv_usec = 0;
+		if( (selectval = select(fpin+1, &readfds, NULL, NULL, &timeout)) <=0) {
+		    if(errno != EINTR) {
+			perror("select 25");
+			inportisset = (FD_ISSET(fpin, &readfds)) == 0 ? "no" : "yes";
+			printf("set_pattern 3: fpin %d selectval %d inportisset %s\n", fpin, selectval, inportisset);
+			return -2;
+		    }
+		}
+		msg_len = sizeof(struct sockaddr);
+		bytes_sent = recvfrom(fpout, readBuff, ERR_RESPONSE_SIZE, 0,
+			dst_addr, &msg_len);
+		printf("SetPattern response: ");
+		for(i=0; i<ERR_RESPONSE_SIZE; i++ )
+			printf(" %#hhx", charbuf[i]);
+		printf("\n"); 
+//		ser_driver_retval = ser_driver_read(readBuff, fpin, verbose);
+		ser_driver_retval = ser_driver_read_udp( readBuff, fpin, verbose);
+		if(ser_driver_retval == 0) {
+			printf("set_pattern 4: Lost USB connection\n");
+			return -1;
+		}
+	}
+
+	if(verbose != 0)
+		printf("set_pattern 5-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
+		return 0;
+        }

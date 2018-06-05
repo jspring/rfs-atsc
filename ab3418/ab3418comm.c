@@ -33,6 +33,11 @@ int OpenTSCPConnection(char *controllerIP, char *port);
 int process_phase_status( get_long_status8_resp_mess_typ *pstatus, int verbose, unsigned char greens, phase_status_t *pphase_status);
 int get_detector(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char detector, char verbose);
 int set_detector(detector_msg_t *pdetector_set_request, int fpin, int fpout, char detector, char verbose);
+int set_time_udp(int wait_for_data, gen_mess_typ *readBuff, int td_in, int td_out, struct sockaddr_in *time_addr, char verbose);
+int get_status_udp(int wait_for_data, gen_mess_typ *readBuff, int sd_in, int sd_out, struct sockaddr_in *dst_addr, char verbose);
+int get_short_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
+int set_pattern(int wait_for_data, gen_mess_typ *readBuff, unsigned char pattern, int fpin, int fpout, struct sockaddr_in *dst_addr, char verbose);
+int set_time(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
 
 static db_id_t db_vars_ab3418comm[] = {
         {DB_2070_TIMING_GET_VAR, sizeof(db_timing_get_2070_t)},
@@ -57,6 +62,9 @@ int db_trig_list[] =  {
 
 int NUM_TRIG_VARS = sizeof(db_trig_list)/sizeof(int);
 
+const char *usage = "-p <port, (def. /dev/ttyS0)>\n\t\t -u (use db) -v (verbose)\n\t\t -i <loop interval>\n\t\t -c (create database variables)\n\t\t -n (no control)\n\t\t -d <detector number>\n\t\t -b (output binary SPaT message)\n\t\t -a <remote IP address>\n\t\t -A <local IP address>\n\t\t -o <UDP unicast port>\n\t\t -I <TCP/IP address>\n\t\t -P <pattern or plan number>\n\t\t -T <time port>";
+
+
 int main(int argc, char *argv[]) {
 
         db_clt_typ *pclt;              /* Database client pointer */
@@ -71,6 +79,7 @@ int main(int argc, char *argv[]) {
 	int i;
 	int fpin = 0;
 	int fpout = 0;
+	int td = 0;
 	FILE *fifofd = 0;
 	db_timing_set_2070_t db_timing_set_2070;
 	db_timing_get_2070_t db_timing_get_2070;
@@ -91,8 +100,16 @@ int main(int argc, char *argv[]) {
 	raw_signal_status_msg_t raw_signal_status_msg;
 	int retval;
 	int check_retval;
-	char port[14] = "/dev/ttyS0";
+	char port[30] = "/dev/ttyS0";
 	char strbuf[300];
+	struct sockaddr_in dst_addr;
+	struct sockaddr_in time_addr;
+	char *local_ipaddr = NULL;       /// address of UDP destination
+	char *remote_ipaddr = NULL;       /// address of UDP destination
+
+
+
+	char *tcpip_addr = NULL;
 
 	struct timespec start_time;
 	struct timespec end_time;
@@ -113,24 +130,24 @@ int main(int argc, char *argv[]) {
 	char db_urms_struct_null = 0;
 	char detector = 0;
 	unsigned int temp_addr;
-	short temp_port;
 //	int blocknum;
 //	int rem;
 //	unsigned char new_phase_assignment;	
 	unsigned char output_spat_binary = 0;
+	short temp_port;
 
         int sd_out;             /// socket descriptor for UDP send
         short udp_port = 0;    /// set from command line option
-        char *udp_name = NULL;  /// address of UDP destination
-        int bytes_sent;         /// returned from sendto
+	unsigned char pattern;
+	short time_port = 0;
  
-        while ((opt = getopt(argc, argv, "p:uvi:cnd:a:bho:s:")) != -1)
+        while ((opt = getopt(argc, argv, "p:uvi:cnd:a:bho:s:A:I:P:T:")) != -1)
         {
                 switch (opt)
                 {
                   case 'p':
 			memset(port, 0, sizeof(port));
-                        strncpy(&port[0], optarg, 13);
+                        strncpy(&port[0], optarg, 29);
                         break;
                   case 'u':
                         use_db = 1;
@@ -152,6 +169,7 @@ int main(int argc, char *argv[]) {
                         break;
                   case 'a':
 //                      new_phase_assignment = (unsigned char)atoi(optarg);
+			remote_ipaddr = strdup(optarg);
                         break;
                   case 'b':
                         output_spat_binary = 1;
@@ -159,16 +177,27 @@ int main(int argc, char *argv[]) {
                   case 'o':
                         udp_port = (short)atoi(optarg);
                         break;
-                  case 's':
-                        udp_name = strdup(optarg);
+		  case 'A': 
+			local_ipaddr = strdup(optarg);
+			break;
+		  case 'I':
+                        tcpip_addr = strdup(optarg);
                         break;
+                  case 'P':
+                        pattern = (unsigned char)atoi(optarg);
+                        break;
+                  case 'T':
+                        time_port = (short)atoi(optarg);
+                        break;
+
 		  case 'h':
 		  default:
-			fprintf(stderr, "Usage: %s -p <port, (def. /dev/ttyS0)> -u (use db) -v (verbose) -i <loop interval> -b (output binary SPaT message) -s <UDP unicast destination> -o <UDP unicast port>\n", argv[0]);
+			fprintf(stderr, "Usage: %s %s\n", argv[0], usage);
 			exit(EXIT_FAILURE);
 		}
 	}
 
+printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 	// Clear message structs
 	memset(&detector_block, 0, sizeof(detector_msg_t));
 	memset(&detector_block_sav, 0, sizeof(detector_msg_t));
@@ -178,34 +207,83 @@ int main(int argc, char *argv[]) {
 	memset(&db_timing_set_2070, 0, sizeof(db_timing_set_2070));
 	memset(&raw_signal_status_msg, 0, sizeof(raw_signal_status_msg));
 	memset(&snd_addr, 0, sizeof(snd_addr));
+	memset(&dst_addr, 0, sizeof(dst_addr));
+	memset(&time_addr, 0, sizeof(time_addr));
 
 	if ((ptmr = timer_init( interval, ChannelCreate(0))) == NULL) {
 		fprintf(stderr, "Unable to initialize delay timer\n");
 		exit(EXIT_FAILURE);
 	}
 
-	if( (udp_port != 0) && (udp_name != NULL) ) {
+        /* Initialize port. */
+	if( (udp_port != 0) && (remote_ipaddr != NULL) ) {
 		fprintf(stderr, "Opening UDP unicast to destination %s port %hu\n",
-			udp_name, udp_port);
-                sd_out = udp_unicast_init(&snd_addr, udp_name, udp_port);
+			remote_ipaddr, udp_port);
+        	if ( (sd_out = udp_peer2peer_init(&dst_addr, remote_ipaddr, local_ipaddr, udp_port, 0)) < 0) {
+               		 printf("Failure to initialize socket from %s to %s on port %d\n",
+               		         remote_ipaddr, local_ipaddr, udp_port);
+               		 longjmp(exit_env, 2);
+        	}
 
 		if (sd_out < 0) {
 			printf("failure opening socket on %s %d\n",
-				udp_name, udp_port);
+				remote_ipaddr, udp_port);
 			exit(EXIT_FAILURE);
 		}
 		else {
 			printf("Success opening socket %hhu on %s %d\n",
-				sd_out, udp_name, udp_port);
-			printf("port %d addr 0x%08x\n", ntohs(snd_addr.sin_port),
-			ntohl(snd_addr.sin_addr.s_addr));
-			temp_addr = snd_addr.sin_addr.s_addr;
-			temp_port = snd_addr.sin_port;
+				sd_out, remote_ipaddr, udp_port);
+			printf("port %d addr 0x%08x\n", ntohs(dst_addr.sin_port), ntohl(dst_addr.sin_addr.s_addr));
+			temp_addr = dst_addr.sin_addr.s_addr;
+			temp_port = dst_addr.sin_port;
 		}
 	}
 
-        /* Initialize serial port. */
-	check_retval = check_and_reconnect_serial(0, &fpin, &fpout, port);
+	if( (time_port != 0) && (remote_ipaddr != NULL) ) {
+		fprintf(stderr, "Opening UDP unicast to destination %s time port %hu\n",
+			remote_ipaddr, time_port);
+		if ( (td = udp_peer2peer_init(&time_addr, remote_ipaddr, local_ipaddr, time_port, 0)) < 0) {
+			printf("Failure to initialize socket from %s to %s on time port %d\n",
+				remote_ipaddr, local_ipaddr, time_port);
+			longjmp(exit_env, 2);
+		}
+
+
+		if (td < 0) {
+			printf("failure opening socket on %s %d\n",
+				remote_ipaddr, time_port);
+			exit(EXIT_FAILURE);
+		}
+		else {
+			printf("Success opening socket %hhu on %s %d\n",
+				td, remote_ipaddr, time_port);
+			printf("port %d addr 0x%08x\n", ntohs(time_addr.sin_port), ntohl(time_addr.sin_addr.s_addr));
+			temp_addr = time_addr.sin_addr.s_addr;
+			temp_port = time_addr.sin_port;
+		}
+	}
+
+	if( (udp_port != 0) && (remote_ipaddr != NULL) ) {
+		fpin = fpout = sd_out;
+		printf("Using UDP name %s and UDP port %d\n", remote_ipaddr, udp_port);
+		if(time_port != 0)
+			retval = set_time_udp(wait_for_data, &readBuff, td, td, &time_addr, verbose);
+		retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
+//		retval = get_short_status(wait_for_data, &readBuff, fpin, fpout, verbose);
+		retval = set_pattern(wait_for_data, &readBuff, pattern, fpin, fpout, &dst_addr, verbose);
+	}
+	else
+		if(tcpip_addr == NULL) {
+			check_retval = check_and_reconnect_serial(0, &fpin, &fpout, port);
+			retval = set_time(wait_for_data, &readBuff, fpin, fpout, verbose);
+			retval = set_pattern(wait_for_data, &readBuff, pattern, fpin, fpout, &dst_addr, verbose);
+			retval = get_status(wait_for_data, &readBuff, fpin, fpout, verbose);
+			retval = get_short_status(wait_for_data, &readBuff, fpin, fpout, verbose);
+		}
+	else
+		fpout = fpin = OpenTSCPConnection(tcpip_addr, "2011");
+
+/*
 while(1) {
 	retval = get_spat(wait_for_data, &raw_signal_status_msg, fpin, fpout, verbose, output_spat_binary);
 	snd_addr.sin_port = temp_port;
@@ -278,6 +356,7 @@ while(1) {
 	TIMER_WAIT(ptmr);
 }
 	exit(EXIT_SUCCESS);
+*/
 
 /*
 while(1) {
@@ -395,8 +474,9 @@ exit(EXIT_SUCCESS);
 		else {
 		    if ( ((pclt = db_list_init(argv[0], hostname,
 			domain, xport, NULL, 0, 
-			db_trig_list, NUM_TRIG_VARS)) == NULL))
+			db_trig_list, NUM_TRIG_VARS)) == NULL)) {
 			exit(EXIT_FAILURE);
+		    }
 		}
 	}
 
@@ -441,7 +521,11 @@ exit(EXIT_SUCCESS);
 	for(i=0; i<MAX_PHASES; i++) {
 		db_timing_get_2070.phase = i+1;	
 		db_timing_get_2070.page = 0x100; //phase timing page	
-		retval = get_timing(&db_timing_get_2070, wait_for_data, &phase_timing[i], &fpin, &fpout, verbose);
+//		retval = get_timing(&db_timing_get_2070, wait_for_data, &phase_timing[i], &fpin, &fpout, verbose);
+//		retval = get_timing_udp(&db_timing_get_2070, wait_for_data, &phase_timing[i], sd_out, sd_out, &dst_addr, verbose);
+//		retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
+
+		if(use_db)
 		db_clt_write(pclt, DB_PHASE_1_TIMING_VAR + i, sizeof(phase_timing_t), &phase_timing[i]);
 		usleep(500000);
 	}
@@ -456,25 +540,29 @@ exit(EXIT_SUCCESS);
 			}
 		}
 		else {	
+wait_for_data=1;
+		if( (udp_port != 0) && (remote_ipaddr != NULL) ) 
+			retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
+		else {
 			retval = get_status(wait_for_data, &readBuff, fpin, fpout, verbose);
 			if(retval < 0) 
+				printf("get_status returned negative value: %d\n", retval);
 				check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
-			if(use_db && (retval == 0) ) {
-				db_clt_write(pclt, DB_TSCP_STATUS_VAR, sizeof(get_long_status8_resp_mess_typ), (get_long_status8_resp_mess_typ *)&readBuff);
-				retval = process_phase_status( (get_long_status8_resp_mess_typ *)&readBuff, verbose, greens, &phase_status);
-				db_clt_write(pclt, DB_PHASE_STATUS_VAR, sizeof(phase_status_t), &phase_status);
-				fifofd = fopen("/tmp/blah", "w");
-				for(i=0; i<8; i++) {
-					fprintf(fifofd, "%d", phase_status.phase_status_colors[i]);
-				}
-				fclose(fifofd);
+		}
+		if(use_db && (retval == 0) ) {
+			db_clt_write(pclt, DB_TSCP_STATUS_VAR, sizeof(get_long_status8_resp_mess_typ), (get_long_status8_resp_mess_typ *)&readBuff);
+			retval = process_phase_status( (get_long_status8_resp_mess_typ *)&readBuff, verbose, greens, &phase_status);
+			db_clt_write(pclt, DB_PHASE_STATUS_VAR, sizeof(phase_status_t), &phase_status);
+			fifofd = fopen("/tmp/blah", "w");
+			for(i=0; i<8; i++) {
+				fprintf(fifofd, "%d", phase_status.phase_status_colors[i]);
+			}
+			fclose(fifofd);
 			if(verbose) 
 				print_status( (get_long_status8_resp_mess_typ *)&readBuff);
-			}
-			else 
-				if(retval < 0) 
-					printf("get_status returned negative value: %d\n", retval);
-			usleep(80000);
+		}
+		usleep(80000);
+		if(udp_port == 0)
 			retval = get_short_status(wait_for_data, &readBuff, fpin, fpout, verbose);
 			if(retval < 0) 
 				check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
@@ -497,67 +585,72 @@ exit(EXIT_SUCCESS);
 			clock_gettime(CLOCK_REALTIME, &start_time);
 		}
 
-		db_clt_read(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
-		db_clt_read(pclt, DB_URMS_STATUS2_VAR, sizeof(db_urms_status2_t), &db_urms_status2);
-		db_clt_read(pclt, DB_URMS_STATUS3_VAR, sizeof(db_urms_status3_t), &db_urms_status3);
-		clock_gettime(CLOCK_REALTIME, &tp);
-		ltime = localtime(&tp.tv_sec);
-		dow = ltime->tm_wday;
-//		printf("dow=%d dow%%6=%d hour %d\n", dow, dow % 6, db_urms_status.hour);
-
-		if( ((dow % 6) == 0) || (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) ) {
-			no_control = 1;
-			db_urms.no_control = 1;
-	
-			//When the software is first started, the db_urms_status struct is cleared
-			// to all zeroes, including the hour.  So we check a few of the other 
-			// struct members whose values should not be zero.
-			db_urms_struct_null = db_urms_status.num_meter + 
-						db_urms_status.num_main + 
-						db_urms_status3.num_opp + 
-						db_urms_status.mainline_stat[0].trail_stat + 
-						db_urms_status.mainline_stat[1].trail_stat + 
-						db_urms_status.mainline_stat[2].trail_stat;
-
-			if(( no_control_sav == 0) && (db_urms_struct_null != 0)){
-				// Set phase 3 max green 1 to 30 seconds (default) when we are outside of the TOD period
-				db_timing_set_2070.cell_addr_data.cell_addr = 0x118;
-				db_timing_set_2070.phase = 3;
-				db_timing_set_2070.cell_addr_data.data = 30;
-//				retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
-				printf("%02d/%02d/%04d %02d:%02d:%02d Disabling control of arterial controller: hour=%d DOW=%d\n", 
-					ltime->tm_mon+1, 
-					ltime->tm_mday, 
-					ltime->tm_year+1900, 
-					ltime->tm_hour,  
-					ltime->tm_min, 
-					ltime->tm_sec, 
-					db_urms_status.hour, 
-					dow
-				);
-				no_control_sav = 1;
-//				set_detector(&detector_block_sav, fpin, fpout, detector, verbose);
-			}
-		}
-		else {
-			no_control = 0;
-			db_urms.no_control = 0;
-			if( no_control_sav == 1) {
-				printf("%02d/%02d/%04d %02d:%02d:%02d Enabling control of arterial controller: hour=%d DOW=%d\n", 
-					ltime->tm_mon+1, 
-					ltime->tm_mday, 
-					ltime->tm_year+1900, 
-					ltime->tm_hour,  
-					ltime->tm_min, 
-					ltime->tm_sec, 
-					db_urms_status.hour, 
-					dow
-				);
-//				set_detector(&detector_block, fpin, fpout, detector, verbose);
-				no_control_sav = 0;
-			}
-		}
-
+//###### The following block of code was used in the Taylor Street project.  It was a hard-coded time check that stopped control 
+//###### when we were outside of the morning and afternoon peak hours. This control SHOULD be done elsewhere, but was required in that project.
+//###### I'm commenting it out now, but not removing it.
+//
+//	if(use_db) {
+//		db_clt_read(pclt, DB_URMS_STATUS_VAR, sizeof(db_urms_status_t), &db_urms_status);
+//		db_clt_read(pclt, DB_URMS_STATUS2_VAR, sizeof(db_urms_status2_t), &db_urms_status2);
+//		db_clt_read(pclt, DB_URMS_STATUS3_VAR, sizeof(db_urms_status3_t), &db_urms_status3);
+//		clock_gettime(CLOCK_REALTIME, &tp);
+//		ltime = localtime(&tp.tv_sec);
+//		dow = ltime->tm_wday;
+////		printf("dow=%d dow%%6=%d hour %d\n", dow, dow % 6, db_urms_status.hour);
+//
+//		if( ((dow % 6) == 0) || (db_urms_status.hour < 15) || (db_urms_status.hour >= 19) ) {
+//			no_control = 1;
+//			db_urms.no_control = 1;
+//	
+//			//When the software is first started, the db_urms_status struct is cleared
+//			// to all zeroes, including the hour.  So we check a few of the other 
+//			// struct members whose values should not be zero.
+//			db_urms_struct_null = db_urms_status.num_meter + 
+//						db_urms_status.num_main + 
+//						db_urms_status3.num_opp + 
+//						db_urms_status.mainline_stat[0].trail_stat + 
+//						db_urms_status.mainline_stat[1].trail_stat + 
+//						db_urms_status.mainline_stat[2].trail_stat;
+//
+//			if(( no_control_sav == 0) && (db_urms_struct_null != 0)){
+//				// Set phase 3 max green 1 to 30 seconds (default) when we are outside of the TOD period
+//				db_timing_set_2070.cell_addr_data.cell_addr = 0x118;
+//				db_timing_set_2070.phase = 3;
+//				db_timing_set_2070.cell_addr_data.data = 30;
+////				retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
+//				printf("%02d/%02d/%04d %02d:%02d:%02d Disabling control of arterial controller: hour=%d DOW=%d\n", 
+//					ltime->tm_mon+1, 
+//					ltime->tm_mday, 
+//					ltime->tm_year+1900, 
+//					ltime->tm_hour,  
+//					ltime->tm_min, 
+//					ltime->tm_sec, 
+//					db_urms_status.hour, 
+//					dow
+//				);
+//				no_control_sav = 1;
+////				set_detector(&detector_block_sav, fpin, fpout, detector, verbose);
+//			}
+//		}
+//		else {
+//			no_control = 0;
+//			db_urms.no_control = 0;
+//			if( no_control_sav == 1) {
+//				printf("%02d/%02d/%04d %02d:%02d:%02d Enabling control of arterial controller: hour=%d DOW=%d\n", 
+//					ltime->tm_mon+1, 
+//					ltime->tm_mday, 
+//					ltime->tm_year+1900, 
+//					ltime->tm_hour,  
+//					ltime->tm_min, 
+//					ltime->tm_sec, 
+//					db_urms_status.hour, 
+//					dow
+//				);
+//////				set_detector(&detector_block, fpin, fpout, detector, verbose);
+//				no_control_sav = 0;
+//			}
+//		}
+//	}
 		if(!use_db)
 			TIMER_WAIT(ptmr);
 	}
@@ -568,14 +661,16 @@ int OpenTSCPConnection(char *controllerIP, char *port) {
         struct addrinfo hints;
         struct addrinfo *result, *rp;
         int sfd, s;
-
+printf("OpenTSCPConnection: Got to 1\n");
         /* Obtain address(es) matching host/port */
         memset(&hints, 0, sizeof(struct addrinfo));
         hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
         hints.ai_socktype = SOCK_STREAM; /* TCP socket */
         hints.ai_flags = 0;
         hints.ai_protocol = 0;     /* Any protocol */
+printf("OpenTSCPConnection: Got to 1.01\n");
         s = getaddrinfo(controllerIP, port, &hints, &result);
+printf("OpenTSCPConnection: Got to 1.1\n");
         if (s != 0) {
                 fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
                 exit(EXIT_FAILURE);
@@ -594,16 +689,19 @@ int OpenTSCPConnection(char *controllerIP, char *port) {
                         continue;
                 }
                 if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1) {
+printf("OpenTSCPConnection: Got to 1.2\n");
                         break;              /* Success */
                 }
                 perror("connect");
                 close(sfd);
         }
         if (rp == NULL) {                /* No address succeeded */
+printf("OpenTSCPConnection: Got to 1.3\n");
                 fprintf(stderr, "Could not connect\n");
                 return -1;
         }
         freeaddrinfo(result);       /* No longer needed */
+printf("OpenTSCPConnection: Got to 2 fd %d\n", sfd);
         return sfd;
 }
 
