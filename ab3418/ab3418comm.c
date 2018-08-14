@@ -283,186 +283,6 @@ printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 	else
 		fpout = fpin = OpenTSCPConnection(tcpip_addr, "2011");
 
-/*
-while(1) {
-	retval = get_spat(wait_for_data, &raw_signal_status_msg, fpin, fpout, verbose, output_spat_binary);
-	snd_addr.sin_port = temp_port;
-	snd_addr.sin_addr.s_addr = temp_addr;
-	if(output_spat_binary) {
-	bytes_sent = sendto(sd_out, &raw_signal_status_msg.active_phase, sizeof(raw_signal_status_msg_t) - 9, 0,
-		(struct sockaddr *) &snd_addr, sizeof(snd_addr));
-	}
-	else {
-		memset(strbuf, 0, sizeof(strbuf));
-                sprintf(strbuf, "%#hhx %#hhx  %#hhx %.1f %.1f %#hhx %#hhx %#hhx %hhu %hhu %hhu %#hhx %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu\n",
-                        raw_signal_status_msg.active_phase,
-                        raw_signal_status_msg.interval_A,
-                        raw_signal_status_msg.interval_B,
-                        raw_signal_status_msg.intvA_timer/10.0,
-                        raw_signal_status_msg.intvB_timer/10.0,
-                        raw_signal_status_msg.next_phase,
-                        raw_signal_status_msg.ped_call,
-                        raw_signal_status_msg.veh_call,
-                        raw_signal_status_msg.plan_num,
-                        raw_signal_status_msg.local_cycle_clock,
-                        raw_signal_status_msg.master_cycle_clock,
-                        raw_signal_status_msg.preempt,
-                        raw_signal_status_msg.permissive[0],
-                        raw_signal_status_msg.permissive[1],
-                        raw_signal_status_msg.permissive[2],
-                        raw_signal_status_msg.permissive[3],
-                        raw_signal_status_msg.permissive[4],
-                        raw_signal_status_msg.permissive[5],
-                        raw_signal_status_msg.permissive[6],
-                        raw_signal_status_msg.permissive[7],
-                        raw_signal_status_msg.force_off_A,
-                        raw_signal_status_msg.force_off_B,
-                        raw_signal_status_msg.ped_permissive[0],
-                        raw_signal_status_msg.ped_permissive[1],
-                        raw_signal_status_msg.ped_permissive[2],
-                        raw_signal_status_msg.ped_permissive[3],
-                        raw_signal_status_msg.ped_permissive[4],
-                        raw_signal_status_msg.ped_permissive[5],
-                        raw_signal_status_msg.ped_permissive[6],
-                        raw_signal_status_msg.ped_permissive[7]
-                );
-		bytes_sent = sendto(sd_out, strbuf, sizeof(strbuf), 0,
-		     (struct sockaddr *) &snd_addr, sizeof(snd_addr));
-	}
-
-	fflush(NULL);
-
-	if (verbose) {
-		printf("%d bytes sent\n", bytes_sent);
-		printf("port %d addr 0x%08x\n", ntohs(snd_addr.sin_port),
-			ntohl(snd_addr.sin_addr.s_addr));
-		fflush(stdout);
-	}
-
-	if (bytes_sent < 0) {
-		perror("sendto error");
-		printf("port %d addr 0x%08x\n", ntohs(snd_addr.sin_port),
-			ntohl(snd_addr.sin_addr.s_addr));
-		fflush(stdout);
-	}
-
-//        ftime ( &timeptr_raw );
-//        localtime_r ( &timeptr_raw.time, &time_converted );
-//	printf("Time %02d:%02d:%02d.%03d\n",
-//		time_converted.tm_hour,
-//		time_converted.tm_min,
-//		time_converted.tm_sec,
-//		timeptr_raw.millitm);
-	TIMER_WAIT(ptmr);
-}
-	exit(EXIT_SUCCESS);
-*/
-
-/*
-while(1) {
-	get_special_flags(wait_for_data, &get_set_special_flags, fpin, fpout, verbose);
-	get_set_special_flags.call_to_phase_3 = detector;
-	retval = set_special_flags( (get_set_special_flags_t *)&get_set_special_flags, fpin, fpout, verbose);
-	TIMER_WAIT(ptmr);
-	get_set_special_flags.call_to_phase_1 = 0;
-	retval = set_special_flags( (get_set_special_flags_t *)&get_set_special_flags, fpin, fpout, verbose);
-	TIMER_WAIT(ptmr);
-}
-	retval = get_overlap(wait_for_data, &overlap, fpin, fpout, verbose);
-exit(EXIT_SUCCESS);
-*/
-	// Change detector 26 assignment from phase 6 to phase 3. Save original
-	// assignment.
-#define NUM_DET_PER_BLOCK 4
-#define NUM_DET_BLOCKS	11
-	detector = 26;
-//	blocknum = (detector / NUM_DET_PER_BLOCK) + 1;
-//	rem = detector - 1 - ((blocknum-1) * NUM_DET_PER_BLOCK);
-//	retval = get_detector(wait_for_data, &detector_block, fpin, fpout, detector, verbose);
-//	memcpy(&detector_block_sav, &detector_block, sizeof(detector_msg_t));
-
-//	printf("detector_block_sav after first GET\n");
-//	printf("Detector %d blocknum %d rem %d type %d phase_assignment %#hhx lock %d delay %hhu extend %.1f recall %d input port %.1f\n",
-//		detector,
-//		blocknum,
-//		rem,
-//		detector_block_sav.detector_attr[rem].det_type,
-//		detector_block_sav.detector_attr[rem].phase_assignment,
-//		detector_block_sav.detector_attr[rem].lock,
-//		detector_block_sav.detector_attr[rem].delay_time,
-//		detector_block_sav.detector_attr[rem].extend_time/10.0,
-//		detector_block_sav.detector_attr[rem].recall_time,
-//		detector_block_sav.detector_attr[rem].input_port/10.0
-//		);
-//
-//	printf("detector_block after first GET\n");
-//	printf("Detector %d blocknum %d rem %d type %d phase_assignment %#hhx lock %d delay %hhu extend %.1f recall %d input port %.1f\n",
-//		detector,
-//		blocknum,
-//		rem,
-//		detector_block.detector_attr[rem].det_type,
-//		detector_block.detector_attr[rem].phase_assignment,
-//		detector_block.detector_attr[rem].lock,
-//		detector_block.detector_attr[rem].delay_time,
-//		detector_block.detector_attr[rem].extend_time/10.0,
-//		detector_block.detector_attr[rem].recall_time,
-//		detector_block.detector_attr[rem].input_port/10.0
-//		);
-
-	// Set detector 26 assignment to phase 3
-//	detector_block.detector_attr[rem].phase_assignment = 0x04;
-//	set_detector(&detector_block, fpin, fpout, detector, verbose);
-//	retval = get_detector(wait_for_data, &detector_block, fpin, fpout, detector, verbose);
-
-//	printf("detector_block_sav after SET and second GET\n");
-//	printf("Detector %d blocknum %d rem %d type %d phase_assignment %#hhx lock %d delay %hhu extend %.1f recall %d input port %.1f\n",
-//		detector,
-//		blocknum,
-//		rem,
-//		detector_block_sav.detector_attr[rem].det_type,
-//		detector_block_sav.detector_attr[rem].phase_assignment,
-//		detector_block_sav.detector_attr[rem].lock,
-//		detector_block_sav.detector_attr[rem].delay_time,
-//		detector_block_sav.detector_attr[rem].extend_time/10.0,
-//		detector_block_sav.detector_attr[rem].recall_time,
-//		detector_block_sav.detector_attr[rem].input_port/10.0
-//		);
-//
-//	printf("detector_block after SET and second GET\n");
-//	printf("Detector %d blocknum %d rem %d type %d phase_assignment %#hhx lock %d delay %hhu extend %.1f recall %d input port %.1f\n",
-//		detector,
-//		blocknum,
-//		rem,
-//		detector_block.detector_attr[rem].det_type,
-//		detector_block.detector_attr[rem].phase_assignment,
-//		detector_block.detector_attr[rem].lock,
-//		detector_block.detector_attr[rem].delay_time,
-//		detector_block.detector_attr[rem].extend_time/10.0,
-//		detector_block.detector_attr[rem].recall_time,
-//		detector_block.detector_attr[rem].input_port/10.0
-//		);
-
-	// Change overlap B parent from 6 & 7 to 3 & 7. Save original parent 
-	// assignment.
-//	retval = get_overlap(wait_for_data, &overlap, fpin, fpout, verbose);
-//	if(retval < 0) 
-//		check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
-//	memcpy(&overlap_sav, &overlap, sizeof(overlap_msg_t));
-
-	//Now set the parent of overlap B to phases 3 & 7
-#define	OV_PHASE_1	0x01
-#define	OV_PHASE_2	0x02
-#define	OV_PHASE_3	0x04
-#define	OV_PHASE_4	0x08
-#define	OV_PHASE_5	0x10
-#define	OV_PHASE_6	0x20
-#define	OV_PHASE_7	0x40
-#define	OV_PHASE_8	0x80
-//	overlap.overlapB_parent = OV_PHASE_3 | OV_PHASE_7;
-//	retval = set_overlap( (overlap_msg_t *)&overlap, fpin, fpout, verbose);
-//	if(retval < 0) 
-//		check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
-
 	if(use_db) {
 		get_local_name(hostname, MAXHOSTNAMELEN);
 		if(create_db_vars) {
@@ -481,12 +301,6 @@ exit(EXIT_SUCCESS);
 	}
 
 		if (setjmp(exit_env) != 0) {
-
-//			// Revert overlap B to phase 6 as parent
-//			retval = set_overlap( (overlap_msg_t *)&overlap_sav, fpin, fpout, verbose);
-
-//			// Revert detector 26 assignment to phase 6
-//			set_detector(&detector_block_sav, fpin, fpout, detector, verbose);
 
 			// Tell ramp meter computer to stop controlling
 			db_clt_read(pclt, DB_URMS_VAR, sizeof(db_urms_t), &db_urms);
@@ -806,7 +620,7 @@ int get_detector(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout,
         detector_get_request.get_hdr.ipi = 0xc0;
         detector_get_request.get_hdr.mess_type = 0x87;
         detector_get_request.get_hdr.page_id = 0x07;
-        detector_get_request.get_hdr.block_id = (detector/NUM_DET_PER_BLOCK) + 1;//Block ID 1=det 1-4
+//        detector_get_request.get_hdr.block_id = (detector/NUM_DET_PER_BLOCK) + 1;//Block ID 1=det 1-4
         detector_get_request.get_tail.FCSmsb = 0x00;
         detector_get_request.get_tail.FCSlsb = 0x00;
 
@@ -879,7 +693,7 @@ printf("\n");
         pdetector_set_request->detector_hdr.ipi = 0xc0;
         pdetector_set_request->detector_hdr.mess_type = 0x96;
         pdetector_set_request->detector_hdr.page_id = 0x07;
-        pdetector_set_request->detector_hdr.block_id = (detector/NUM_DET_PER_BLOCK) + 1;//Block ID 1=det 1-4
+//        pdetector_set_request->detector_hdr.block_id = (detector/NUM_DET_PER_BLOCK) + 1;//Block ID 1=det 1-4
         pdetector_set_request->detector_tail.FCSmsb = 0x00;
         pdetector_set_request->detector_tail.FCSlsb = 0x00;
 
