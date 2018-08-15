@@ -20,7 +20,7 @@ PATH_CFLAGS += -I$(ATSC_INC_DIR) -pg
 
 HDRS = fcs.h msgs.h ab3418comm.h ab3418_lib.h server_lib.h set_min_max_green.h
 
-EXEC =  $(OBJDIR)/rd3418  $(OBJDIR)/server $(OBJDIR)/client $(OBJDIR)/ab3418comm $(OBJDIR)/set_min_max_green_db_test $(OBJDIR)/tscp_memory_probe $(OBJDIR)/receive_urms_data
+EXEC =  $(OBJDIR)/rd3418  $(OBJDIR)/server $(OBJDIR)/client $(OBJDIR)/ab3418comm $(OBJDIR)/set_min_max_green_db_test $(OBJDIR)/tscp_memory_probe $(OBJDIR)/receive_urms_data $(OBJDIR)/send_char_to_db_var
 
 all: $(OBJDIR) $(SET_MIN_MAX_GREEN_LIB) $(SERVER_LIB) $(AB3418_LIB) $(EXEC) 
 
