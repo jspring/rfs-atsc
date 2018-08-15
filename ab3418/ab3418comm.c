@@ -292,7 +292,10 @@ printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 			retval = set_time_udp(wait_for_data, &readBuff, td, td, &time_addr, verbose);
 		retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
 //		retval = get_short_status(wait_for_data, &readBuff, fpin, fpout, verbose);
-//		retval = set_pattern(wait_for_data, &readBuff, pattern, fpin, fpout, &dst_addr, verbose);
+		if(pattern != 0) {
+			retval = set_pattern(wait_for_data, &readBuff, pattern, fpin, fpout, &dst_addr, verbose);
+			return 0;
+		}
 	}
 	else
 		if(tcpip_addr == NULL) {
