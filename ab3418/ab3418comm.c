@@ -62,6 +62,19 @@ int db_trig_list[] =  {
 
 int NUM_TRIG_VARS = sizeof(db_trig_list)/sizeof(int);
 
+static int db_status_var = 0;
+static int db_set_pattern_var = 0;
+static db_id_t db_vars_san_jose[] = {
+        {0, sizeof(db_set_pattern_t)},
+        {1, sizeof(get_long_status8_resp_mess_typ)},
+};
+#define NUM_SJ_VARS sizeof(db_vars_san_jose)/sizeof(db_id_t)
+
+int db_trig_san_jose[] =  {
+       0
+};
+int NUM_SJ_TRIG_VARS = sizeof(db_trig_san_jose)/sizeof(int);
+
 const char *usage = "-p <port, (def. /dev/ttyS0)>\n\t\t -u (use db) -v (verbose)\n\t\t -i <loop interval>\n\t\t -c (create database variables)\n\t\t -n (no control)\n\t\t -d <detector number>\n\t\t -b (output binary SPaT message)\n\t\t -a <remote IP address>\n\t\t -A <local IP address>\n\t\t -o <UDP unicast port>\n\t\t -I <TCP/IP address>\n\t\t -P <pattern or plan number>\n\t\t -T <time port>";
 
 
@@ -98,6 +111,7 @@ int main(int argc, char *argv[]) {
 	db_urms_status3_t db_urms_status3;
 	db_urms_t db_urms;
 	raw_signal_status_msg_t raw_signal_status_msg;
+	db_set_pattern_t db_set_pattern;
 	int retval;
 	int check_retval;
 	char port[30] = "/dev/ttyS0";
@@ -141,7 +155,7 @@ int main(int argc, char *argv[]) {
 	unsigned char pattern;
 	short time_port = 0;
  
-        while ((opt = getopt(argc, argv, "p:uvi:cnd:a:bho:s:A:I:P:T:")) != -1)
+        while ((opt = getopt(argc, argv, "p:uvi:cnd:a:bho:s:A:I:P:T:D:")) != -1)
         {
                 switch (opt)
                 {
@@ -189,6 +203,10 @@ int main(int argc, char *argv[]) {
                   case 'T':
                         time_port = (short)atoi(optarg);
                         break;
+                  case 'D':
+                        db_set_pattern_var = atoi(optarg);
+			db_status_var = db_set_pattern_var + 1;
+                        break;
 
 		  case 'h':
 		  default:
@@ -196,6 +214,10 @@ int main(int argc, char *argv[]) {
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	db_vars_san_jose[0].id = db_set_pattern_var;
+	db_vars_san_jose[1].id = db_set_pattern_var + 1;
+	db_trig_san_jose[0] = db_set_pattern_var;
 
 printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 	// Clear message structs
@@ -270,7 +292,7 @@ printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 			retval = set_time_udp(wait_for_data, &readBuff, td, td, &time_addr, verbose);
 		retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
 //		retval = get_short_status(wait_for_data, &readBuff, fpin, fpout, verbose);
-		retval = set_pattern(wait_for_data, &readBuff, pattern, fpin, fpout, &dst_addr, verbose);
+//		retval = set_pattern(wait_for_data, &readBuff, pattern, fpin, fpout, &dst_addr, verbose);
 	}
 	else
 		if(tcpip_addr == NULL) {
@@ -291,7 +313,15 @@ printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 			db_trig_list, NUM_TRIG_VARS)) == NULL))
 			exit(EXIT_FAILURE);
 		}
+		if(db_set_pattern_var != 0) {
+printf("Got to 1 db_var %d size %d\n", db_vars_san_jose[0].id, db_vars_san_jose[0].size);
+		    if ( ((pclt = db_list_init(argv[0], hostname,
+			domain, xport, db_vars_san_jose, NUM_SJ_VARS, 
+			db_trig_san_jose, NUM_SJ_TRIG_VARS)) == NULL))
+			exit(EXIT_FAILURE);
+		}
 		else {
+printf("Got to 2 db_var %d size %d\n", db_vars_san_jose[0].id, db_vars_san_jose[0].size);
 		    if ( ((pclt = db_list_init(argv[0], hostname,
 			domain, xport, NULL, 0, 
 			db_trig_list, NUM_TRIG_VARS)) == NULL)) {
@@ -339,18 +369,21 @@ printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 //		retval = get_timing_udp(&db_timing_get_2070, wait_for_data, &phase_timing[i], sd_out, sd_out, &dst_addr, verbose);
 //		retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
 
-		if(use_db)
-		db_clt_write(pclt, DB_PHASE_1_TIMING_VAR + i, sizeof(phase_timing_t), &phase_timing[i]);
-		usleep(500000);
+//		if(use_db)
+//		db_clt_write(pclt, DB_PHASE_1_TIMING_VAR + i, sizeof(phase_timing_t), &phase_timing[i]);
+//		usleep(500000);
 	}
 
 	while(1) {
 		if(use_db)
 			retval = clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
-		if( DB_TRIG_VAR(&trig_info) == DB_2070_TIMING_SET_VAR ) {
-			db_clt_read(pclt, DB_2070_TIMING_SET_VAR, sizeof(db_timing_set_2070_t), &db_timing_set_2070);
+//		if( DB_TRIG_VAR(&trig_info) == DB_2070_TIMING_SET_VAR ) {
+		if( DB_TRIG_VAR(&trig_info) == db_set_pattern_var) {
+//			db_clt_read(pclt, DB_2070_TIMING_SET_VAR, sizeof(db_timing_set_2070_t), &db_timing_set_2070);
+			db_clt_read(pclt, db_set_pattern_var, sizeof(db_set_pattern_t), &db_set_pattern);
 			if(no_control == 0) {
 //				retval = set_timing(&db_timing_set_2070, &msg_len, fpin, fpout, verbose);
+				retval = set_pattern(wait_for_data, &readBuff, db_set_pattern.pattern, fpin, fpout, &dst_addr, verbose);
 			}
 		}
 		else {	
@@ -364,7 +397,8 @@ wait_for_data=1;
 				check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
 		}
 		if(use_db && (retval == 0) ) {
-			db_clt_write(pclt, DB_TSCP_STATUS_VAR, sizeof(get_long_status8_resp_mess_typ), (get_long_status8_resp_mess_typ *)&readBuff);
+//			db_clt_write(pclt, DB_TSCP_STATUS_VAR, sizeof(get_long_status8_resp_mess_typ), (get_long_status8_resp_mess_typ *)&readBuff);
+			db_clt_write(pclt, db_status_var, sizeof(get_long_status8_resp_mess_typ), (get_long_status8_resp_mess_typ *)&readBuff);
 			retval = process_phase_status( (get_long_status8_resp_mess_typ *)&readBuff, verbose, greens, &phase_status);
 			db_clt_write(pclt, DB_PHASE_STATUS_VAR, sizeof(phase_status_t), &phase_status);
 			fifofd = fopen("/tmp/blah", "w");
