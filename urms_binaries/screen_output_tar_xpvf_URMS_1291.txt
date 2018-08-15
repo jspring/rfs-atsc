@@ -1,0 +1,20 @@
+URMS: tar xvpf URMS_1291
+-rw-rw---- 0/0    26354 Aug 28 20:19 2016 /f0/URMS/ACFAIL_Handler
+-rw-rw---- 0/0   336850 Sep  8 16:05 2016 /f0/URMS/Menu
+-rw-rw---- 0/0    94680 Sep  8 16:05 2016 /f0/URMS/Timing
+-rw-rw---- 0/0    78716 Sep  8 16:05 2016 /f0/URMS/cfgman
+-rw-rw---- 0/0    43912 Sep  8 16:05 2016 /f0/URMS/fccs
+-rw-rw---- 0/0    50428 Sep  8 16:05 2016 /f0/URMS/ffioman
+-rw-rw---- 0/0    34782 Sep  8 16:05 2016 /f0/URMS/ledman
+-rw-rw---- 0/0   214564 Sep  8 16:35 2016 /f0/URMS/serman
+-rw-rw---- 0/0    24840 Sep  8 16:05 2016 /f0/URMS/urmsldr
+-rw-rw---- 0/0     1219 Feb 21 02:58 2015 /f0/URMS/startup
+-rwxrwxrwx 0/0     4096 Jun 25 21:52 2015 /f0/URMS/urms.default
+-rw-rw---- 0/0      333 Jan 31 05:38 2015 /f0/URMS/urms.files
+-rwxrwx--x 0/0      316 Apr 24 04:35 2015 /f0/CMDS/VerifyURMS
+-rwxrwx--x 0/0      386 Apr 24 04:36 2015 /f0/CMDS/UpgradeURMS
+-rwxrwx--x 0/0      293 Jan 30 16:35 2012 /f0/CMDS/BuildURMS
+-rwxrwx--x 0/0       51 Jan 30 12:39 2012 /f0/CMDS/MakeDatakey
+-rw-rw---- 0/0      247 Nov 17 13:09 2015 /f0/SYS/password
+-rwxrwxrwx 0/0    30348 Jul 29 12:20 2045 /f0/CMDS/dhcp
+-rw-rw---- 0/0     1219 Jul 28 10:01 2016 /f0/startup
