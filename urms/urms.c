@@ -32,7 +32,7 @@ static void sig_hand(int code)
                 longjmp(exit_env, code);
 }
 
-const char *usage = "\n\t-d <Database number (Modulo 4!)> \n\t-v (verbose) \n\t-r <controller IP address (def. 10.0.1.126)> \n\t-s (standalone, no DB) \n\t-g(Get the controller status; use with -s and -v to just print out the status to screen without using the database)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
+const char *usage = "\n\t-r <controller IP address (def. 10.254.25.113)> \n\t-p <port (def. 1000)>\n\t-d <Database number (Modulo 4!)> \n\t-v (verbose) \n\t-s (standalone, no DB) \n\t-g (Get the controller status; use with -s and -v to just print out the status to screen without using the database)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
 
 
 db_id_t db_vars_list[] =  {
@@ -51,7 +51,7 @@ int db_trig_list[] =  {
 unsigned int num_trig_variables = sizeof(db_trig_list)/sizeof(int);
 
 static int OpenURMSConnection(char *controllerIP, char *port);
-int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verbose);
+int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verbose, char addr_2070);
 int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose);
 int tos_set_action(int fd, gen_mess_t *gen_mess, char verbose, 
 	unsigned char *rm_action_code_tos2, unsigned char num_lanes);
@@ -89,12 +89,14 @@ int main(int argc, char *argv[]) {
 	char *buf3 = (char *)&db_urms_status3;
 	urms_datafile_t urms_datafile;
 	unsigned char rm2rmc_ctr = 0;
+	urms_status_response_t *purms_status_response;
 
 	int standalone = 0;
 	int loop_interval = 5000; 	// Loop interval, ms
 	int verbose = 0;
 	int set_urms = 0;
 	int get_urms = 0;
+	char addr_2070 = 2;
 	int set_tos_action = 0;
 	int set_tos_det = 0;
 	int i;
@@ -131,16 +133,16 @@ int main(int argc, char *argv[]) {
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
 
-printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_status3_t) %d mainline_stat %d metered_lane_stat %d queue_stat %d addl_det_stat %d\n",
-	sizeof(db_urms_status_t),
-	sizeof(db_urms_status2_t),
-	sizeof(db_urms_status3_t),
-	sizeof(struct mainline_stat),
-	sizeof(struct metered_lane_stat),
-	sizeof(struct queue_stat),
-	sizeof(struct addl_det_stat)
-);
-        while ((option = getopt(argc, argv, "d:r:vgsp:i:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:J:")) != EOF) {
+//printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_status3_t) %d mainline_stat %d metered_lane_stat %d queue_stat %d addl_det_stat %d\n",
+//	sizeof(db_urms_status_t),
+//	sizeof(db_urms_status2_t),
+//	sizeof(db_urms_status3_t),
+//	sizeof(struct mainline_stat),
+//	sizeof(struct metered_lane_stat),
+//	sizeof(struct queue_stat),
+//	sizeof(struct addl_det_stat)
+//);
+        while ((option = getopt(argc, argv, "d:r:vgsp:a:i:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:J:")) != EOF) {
 	    switch(option) {
                 case 'd':
                         db_urms_status_var = atoi(optarg);
@@ -163,6 +165,9 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
                         break;
                 case 'p':
                         port = strdup(optarg);
+                        break;
+                case 'a':
+			addr_2070 = atoi(optarg);
                         break;
                 case 'i':
                         loop_interval = atoi(optarg);
@@ -256,7 +261,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 			set_tos_det = 1;
                         break;
                 default:
-                        printf("Usage: %s %s\n", argv[0], usage);
+                        printf("\n\nUsage: %s %s\n", argv[0], usage);
                         exit(EXIT_FAILURE);
                         break;
                 }
@@ -281,7 +286,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 	);
 	if(set_tos_action)
 	for(i=0 ; i<num_lanes; i++)
-		printf("top: rm_action_code_tos2[%d] %#hhx\n", i, rm_action_code_tos2[i]);
+		printf("top: rm_action_code_tos2[%d] %#hx\n", i, rm_action_code_tos2[i]);
 
 	// Open connection to URMS controller
 	printf("1: Opening connection to %s on port %s\n",
@@ -297,6 +302,23 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 	// If just testing in standalone, write message to controller and exit
 	if(standalone) {
 		if(set_urms) {
+			if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
+				fprintf(stderr, "Bad status command\n");
+				exit(EXIT_FAILURE);
+			}
+			purms_status_response = &gen_mess;
+			if( ( (purms_status_response->metered_lane_ctl[0].cmd_src < 3) && (purms_status_response->metered_lane_ctl[0].cmd_src > 0) ) || 
+				( (purms_status_response->metered_lane_ctl[1].cmd_src < 3) && (purms_status_response->metered_lane_ctl[1].cmd_src > 0) ) || 
+				( (purms_status_response->metered_lane_ctl[2].cmd_src < 3) && (purms_status_response->metered_lane_ctl[2].cmd_src > 0) ) || 
+				( (purms_status_response->metered_lane_ctl[3].cmd_src < 3) && (purms_status_response->metered_lane_ctl[3].cmd_src > 0) ) 
+				) {
+					printf("Higher priority command source (i.e. cmd_src < 3) is controlling the meter:\n");
+					printf("\tLane 1 command source %d\n", purms_status_response->metered_lane_ctl[0].cmd_src); 
+					printf("\tLane 2 command source %d\n", purms_status_response->metered_lane_ctl[1].cmd_src); 
+					printf("\tLane 3 command source %d\n", purms_status_response->metered_lane_ctl[2].cmd_src); 
+					printf("\tLane 4 command source %d\n", purms_status_response->metered_lane_ctl[3].cmd_src); 
+					exit(EXIT_FAILURE);
+			}
 			if(lane_1_release_rate != 0) {
 				db_urms.lane_1_release_rate = lane_1_release_rate;
 				db_urms.lane_1_action = lane_1_action;
@@ -342,7 +364,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 				db_urms.lane_4_plan = gen_mess.urms_status_response.metered_lane_ctl[3].plan;
 			}
 #ifdef ALLOW_SET_METER
-			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
+			if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose, addr_2070) < 0) {
 				fprintf(stderr, "1:Bad meter setting command\n");
 //				exit(EXIT_FAILURE);
 			}
@@ -393,7 +415,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 		db_urms.lane_4_action = 6;
 #ifdef ALLOW_SET_METER
 		if(no_control_startup == 0)
-			urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose);
+			urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose, addr_2070);
 #endif
                 close(urmsfd);
                 exit(EXIT_SUCCESS);
@@ -487,7 +509,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 					fprintf(stderr, "Could not open connection to URMS controller\n");
 					exit(EXIT_FAILURE);
 				}
-				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
+				if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose, addr_2070) < 0) {
 					fprintf(stderr, "2:Bad meter setting command\n");
 					exit(EXIT_FAILURE);
 				}
@@ -577,7 +599,7 @@ printf("sizeof(db_urms_status_t) %d sizeof(db_urms_status2_t) %d sizeof(db_urms_
 					db_urms.lane_3_action = URMS_ACTION_SKIP;
 					db_urms.lane_4_action = URMS_ACTION_SKIP;
 #ifdef ALLOW_SET_METER
-					if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose) < 0) {
+					if( urms_set_meter(urmsfd, &db_urms, &db_urms_sav, verbose, addr_2070) < 0) {
 						fprintf(stderr, "3:Bad meter setting command for IP %s\n", controllerIP);
 					}
 #endif
@@ -717,7 +739,7 @@ static int OpenURMSConnection(char *controllerIP, char *port) {
 }
 
 
-int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verbose) {
+int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verbose, char addr_2070) {
 	gen_mess_t gen_mess;
 	char *msgbuf = (char *)&gen_mess;
 	int csum;
@@ -731,7 +753,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 	// Lane 1: 900 VPH release rate, fixed rate, plan 1
 	// Lane 2: 900 VPH release rate, fixed rate, plan 1
 	memset(&gen_mess, 0, sizeof(gen_mess_t));
-	gen_mess.urmsctl.addr = 2;
+	gen_mess.urmsctl.addr = addr_2070;
 	gen_mess.urmsctl.hdr1 = 0xe;
 	gen_mess.urmsctl.hdr2 = 0x15;
 	gen_mess.urmsctl.hdr3 = 0x70;
@@ -1018,7 +1040,7 @@ int tos_set_action(int fd, gen_mess_t *gen_mess, char verbose, unsigned char *rm
 	gen_mess->tos_set_action.comm_code = 'D';
 	for(i = 0; i < num_lanes; i++) {
 		gen_mess->tos_set_action.action[i] = rm_action_code_tos2[i];
-		printf("rm_action_code_tos2[%d] %hhx\n", i, rm_action_code_tos2[i]);
+		printf("rm_action_code_tos2[%d] %hx\n", i, rm_action_code_tos2[i]);
 	}
 	gen_mess->tos_set_action.FCSmsb = 0x00;
 	gen_mess->tos_set_action.FCSlsb = 0x00;
@@ -1038,7 +1060,7 @@ int tos_set_action(int fd, gen_mess_t *gen_mess, char verbose, unsigned char *rm
 	if(verbose) {
 	    get_current_timestamp(&ts);
 	    print_timestamp(stdout, &ts);
-	    printf("urms_get_status: Time for function call %f sec\n", (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) - (start_time.tv_sec + (start_time.tv_nsec/1.0e9)));
+	    printf("tos_set_action: Time for function call %f sec\n", (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) - (start_time.tv_sec + (start_time.tv_nsec/1.0e9)));
 	    fflush(NULL);
 	}
 
