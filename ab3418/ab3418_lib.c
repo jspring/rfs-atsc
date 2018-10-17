@@ -1,4 +1,4 @@
-/*FILE: ab3418_lib.c   Function library for sending and receiving AB3418 messages from 2070 Controller
+/*FILE: ab3418_lib.c   Function library for nending and receiving AB3418 messages from 2070 Controller
  *
  *
  * Copyright (c) 2013   Regents of the University of California
@@ -1220,7 +1220,12 @@ int get_status_udp(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpou
                                 (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) -
                                 (start_time.tv_sec + (start_time.tv_nsec/1.0e9))
                                 );
-		printf("get_status_udp 6-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
+//		printf("get_status_udp 6-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
+			printf("get_status_udp response checksum OK: ");
+                        for(i=0; i<bytes_recd; i++ )
+                                printf(" %#hhx", charbuf[i]);
+                        printf("\n");
+
 	}
 	return 0;
 }
@@ -2104,7 +2109,7 @@ int set_pattern(int wait_for_data, gen_mess_typ *readBuff, char pattern, int fpi
 		dst_addr, sizeof(struct sockaddr));
 	if(bytes_sent < 0)
 		perror("set_pattern");
-	printf("set_pattern: bytes_sent %d\n", bytes_sent);
+	printf("set_pattern: bytes_sent %d selectval %d\n", bytes_sent, selectval);
 
 	fflush(NULL);
 	fpin = fpout;
@@ -2120,7 +2125,12 @@ int set_pattern(int wait_for_data, gen_mess_typ *readBuff, char pattern, int fpi
 			printf("set_pattern 3: fpin %d selectval %d inportisset %s\n", fpin, selectval, inportisset);
 			return -2;
 		    }
+		    else
+			perror("select 25.0");
 		}
+		    else
+			perror("select 25.1");
+	printf("set_pattern2: selectval %d\n", selectval);
 		msg_len = sizeof(struct sockaddr);
 		bytes_sent = recvfrom(fpout, readBuff, ERR_RESPONSE_SIZE, 0,
 			dst_addr, &msg_len);
