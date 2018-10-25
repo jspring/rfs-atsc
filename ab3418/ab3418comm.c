@@ -94,12 +94,15 @@ int main(int argc, char *argv[]) {
 	int fpout = 0;
 	int td = 0;
 	FILE *fifofd = 0;
+	FILE *fp = 0;
+	char *datafilename;
 	db_timing_set_2070_t db_timing_set_2070;
 	db_timing_get_2070_t db_timing_get_2070;
 	phase_status_t phase_status;
 	int msg_len;
 	int wait_for_data = 1;
 	gen_mess_typ readBuff;
+	char *preadBuff = (char *)&readBuff;
 	phase_timing_t phase_timing[MAX_PHASES];
 	overlap_msg_t overlap_sav;
 	overlap_msg_t overlap;
@@ -129,6 +132,7 @@ int main(int argc, char *argv[]) {
 	struct timespec end_time;
 	struct timespec tp;
 	struct tm *ltime;
+	timestamp_t ts;
 	int dow;
 
         struct timeb timeptr_raw;
@@ -152,10 +156,11 @@ int main(int argc, char *argv[]) {
 
         int sd_out;             /// socket descriptor for UDP send
         short udp_port = 0;    /// set from command line option
-	unsigned char pattern;
+	int pattern = -1;
 	short time_port = 0;
+	int exit_here = 0;
  
-        while ((opt = getopt(argc, argv, "p:uvi:cnd:a:bho:s:A:I:P:T:D:")) != -1)
+        while ((opt = getopt(argc, argv, "p:uvwi:cnd:a:bho:s:A:I:P:T:D:Ef:")) != -1)
         {
                 switch (opt)
                 {
@@ -168,6 +173,9 @@ int main(int argc, char *argv[]) {
                         break;
                   case 'v':
                         verbose = 1;
+                        break;
+                  case 'w':
+                        verbose = 2;
                         break;
                   case 'i':
                         interval = atoi(optarg);
@@ -198,7 +206,7 @@ int main(int argc, char *argv[]) {
                         tcpip_addr = strdup(optarg);
                         break;
                   case 'P':
-                        pattern = (unsigned char)atoi(optarg);
+                        pattern = atoi(optarg);
                         break;
                   case 'T':
                         time_port = (short)atoi(optarg);
@@ -207,7 +215,13 @@ int main(int argc, char *argv[]) {
                         db_set_pattern_var = atoi(optarg);
 			db_status_var = db_set_pattern_var + 1;
                         break;
-
+                  case 'E':
+			exit_here = 1;
+                        break;
+		  case 'f':
+                        datafilename = strdup(optarg);
+printf("datafilename %s\n", datafilename);
+                        break;
 		  case 'h':
 		  default:
 			fprintf(stderr, "Usage: %s %s\n", argv[0], usage);
@@ -219,7 +233,6 @@ int main(int argc, char *argv[]) {
 	db_vars_san_jose[1].id = db_set_pattern_var + 1;
 	db_trig_san_jose[0] = db_set_pattern_var;
 
-printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 	// Clear message structs
 	memset(&detector_block, 0, sizeof(detector_msg_t));
 	memset(&detector_block_sav, 0, sizeof(detector_msg_t));
@@ -241,13 +254,13 @@ printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 	if( (udp_port != 0) && (remote_ipaddr != NULL) ) {
 		fprintf(stderr, "Opening UDP unicast to destination %s port %hu\n",
 			remote_ipaddr, udp_port);
-        	if ( (sd_out = udp_peer2peer_init(&dst_addr, remote_ipaddr, local_ipaddr, udp_port, 0)) < 0) {
-               		 printf("Failure to initialize socket from %s to %s on port %d\n",
-               		         remote_ipaddr, local_ipaddr, udp_port);
+        	if ( (sd_out = udp_peer2peer_init(&dst_addr, remote_ipaddr, local_ipaddr, udp_port, udp_port)) < 0) {
+               		 printf("1 Failure to initialize socket from %s to %s on port %d our error number %d\n",
+               		         remote_ipaddr, local_ipaddr, udp_port, sd_out);
                		 longjmp(exit_env, 2);
         	}
 
-		if (sd_out < 0) {
+		if (sd_out <= 0) {
 			printf("failure opening socket on %s %d\n",
 				remote_ipaddr, udp_port);
 			exit(EXIT_FAILURE);
@@ -265,13 +278,13 @@ printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 		fprintf(stderr, "Opening UDP unicast to destination %s time port %hu\n",
 			remote_ipaddr, time_port);
 		if ( (td = udp_peer2peer_init(&time_addr, remote_ipaddr, local_ipaddr, time_port, 0)) < 0) {
-			printf("Failure to initialize socket from %s to %s on time port %d\n",
+			printf("2 Failure to initialize socket from %s to %s on time port %d\n",
 				remote_ipaddr, local_ipaddr, time_port);
 			longjmp(exit_env, 2);
 		}
 
 
-		if (td < 0) {
+		if (td <= 0) {
 			printf("failure opening socket on %s %d\n",
 				remote_ipaddr, time_port);
 			exit(EXIT_FAILURE);
@@ -287,12 +300,32 @@ printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 
 	if( (udp_port != 0) && (remote_ipaddr != NULL) ) {
 		fpin = fpout = sd_out;
-		printf("Using UDP name %s and UDP port %d\n", remote_ipaddr, udp_port);
+		printf("Using UDP name %s and UDP port %d file descriptor %d time port file descriptor %d\n", remote_ipaddr, udp_port, sd_out, td);
 		if(time_port != 0)
 			retval = set_time_udp(wait_for_data, &readBuff, td, td, &time_addr, verbose);
 		retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
+		if(exit_here) {
+			if(retval > 0){
+				fp = fopen(datafilename, "w");
+				get_current_timestamp(&ts);
+				print_timestamp(fp, &ts);
+				for(i=0; i<retval; i++)
+					fprintf(fp, "%hhx ", preadBuff[i]);
+				fprintf(fp, "\n");
+				fclose(fp);
+				printf("Exiting early, but it's OK\n");
+				exit(EXIT_SUCCESS);
+			}
+			else {
+				printf("get_status_udp return value %d\n", retval);
+				exit(EXIT_FAILURE);
+			}
+		}
 //		retval = get_short_status(wait_for_data, &readBuff, fpin, fpout, verbose);
-		if(pattern != 0) {
+//	for(i=0; i<MAX_PHASES; i++) {
+//		retval = get_timing_udp(&db_timing_get_2070, wait_for_data, &phase_timing[i], sd_out, sd_out, &dst_addr, verbose);
+//	}
+		if(pattern >= 0) {
 			retval = set_pattern(wait_for_data, &readBuff, pattern, fpin, fpout, &dst_addr, verbose);
 			return 0;
 		}
@@ -317,14 +350,12 @@ printf("Got to 4 TCP/IP ip address %s\n",tcpip_addr);
 			exit(EXIT_FAILURE);
 		}
 		if(db_set_pattern_var != 0) {
-printf("Got to 1 db_var %d size %d\n", db_vars_san_jose[0].id, db_vars_san_jose[0].size);
 		    if ( ((pclt = db_list_init(argv[0], hostname,
 			domain, xport, db_vars_san_jose, NUM_SJ_VARS, 
 			db_trig_san_jose, NUM_SJ_TRIG_VARS)) == NULL))
 			exit(EXIT_FAILURE);
 		}
 		else {
-printf("Got to 2 db_var %d size %d\n", db_vars_san_jose[0].id, db_vars_san_jose[0].size);
 		    if ( ((pclt = db_list_init(argv[0], hostname,
 			domain, xport, NULL, 0, 
 			db_trig_list, NUM_TRIG_VARS)) == NULL)) {
@@ -380,7 +411,7 @@ printf("Got to 2 db_var %d size %d\n", db_vars_san_jose[0].id, db_vars_san_jose[
 	while(1) {
 		if(use_db)
 			retval = clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
-//		if( DB_TRIG_VAR(&trig_info) == DB_2070_TIMING_SET_VAR ) {
+//		if( DB_TRIG_VAR(&trig_info) == DB_2070_TIMING_SET_VAR ) 
 		if( DB_TRIG_VAR(&trig_info) == db_set_pattern_var) {
 //			db_clt_read(pclt, DB_2070_TIMING_SET_VAR, sizeof(db_timing_set_2070_t), &db_timing_set_2070);
 			db_clt_read(pclt, db_set_pattern_var, sizeof(db_set_pattern_t), &db_set_pattern);
@@ -391,8 +422,19 @@ printf("Got to 2 db_var %d size %d\n", db_vars_san_jose[0].id, db_vars_san_jose[
 		}
 		else {	
 wait_for_data=1;
-		if( (udp_port != 0) && (remote_ipaddr != NULL) ) 
+		if( (udp_port != 0) && (remote_ipaddr != NULL) ) {
 			retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
+			if(retval < 0) 
+				printf("get_status_udp returned negative value: %d\n", retval);
+			else {
+				fp = fopen(datafilename, "w");
+				get_current_timestamp(&ts);
+				print_timestamp(fp, &ts);
+				for(i=0; i<retval; i++)
+					fprintf(fp, "%hhx ", preadBuff[i]);
+				fclose(fp);
+			}
+		}
 		else {
 			retval = get_status(wait_for_data, &readBuff, fpin, fpout, verbose);
 			if(retval < 0) 
@@ -512,16 +554,13 @@ int OpenTSCPConnection(char *controllerIP, char *port) {
         struct addrinfo hints;
         struct addrinfo *result, *rp;
         int sfd, s;
-printf("OpenTSCPConnection: Got to 1\n");
         /* Obtain address(es) matching host/port */
         memset(&hints, 0, sizeof(struct addrinfo));
         hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
         hints.ai_socktype = SOCK_STREAM; /* TCP socket */
         hints.ai_flags = 0;
         hints.ai_protocol = 0;     /* Any protocol */
-printf("OpenTSCPConnection: Got to 1.01\n");
         s = getaddrinfo(controllerIP, port, &hints, &result);
-printf("OpenTSCPConnection: Got to 1.1\n");
         if (s != 0) {
                 fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
                 exit(EXIT_FAILURE);
@@ -540,19 +579,16 @@ printf("OpenTSCPConnection: Got to 1.1\n");
                         continue;
                 }
                 if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1) {
-printf("OpenTSCPConnection: Got to 1.2\n");
                         break;              /* Success */
                 }
                 perror("connect");
                 close(sfd);
         }
         if (rp == NULL) {                /* No address succeeded */
-printf("OpenTSCPConnection: Got to 1.3\n");
                 fprintf(stderr, "Could not connect\n");
                 return -1;
         }
         freeaddrinfo(result);       /* No longer needed */
-printf("OpenTSCPConnection: Got to 2 fd %d\n", sfd);
         return sfd;
 }
 
@@ -779,3 +815,61 @@ printf("\n");
                 printf("set_detector 5-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
         return 0;
 }
+       #include <sys/types.h>
+       #include <sys/socket.h>
+       #include <netdb.h>
+       #include <stdio.h>
+       #include <stdlib.h>
+       #include <unistd.h>
+       #include <string.h>
+
+       #define BUF_SIZE 500
+
+       int
+       OpenUDP(char *ipaddr, char *port)
+       {
+           struct addrinfo hints;
+           struct addrinfo *result, *rp;
+           int sfd, s, j;
+           size_t len;
+           ssize_t nread;
+           char buf[BUF_SIZE];
+
+           /* Obtain address(es) matching host/port */
+
+           memset(&hints, 0, sizeof(struct addrinfo));
+           hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+           hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+           hints.ai_flags = 0;
+           hints.ai_protocol = 0;          /* Any protocol */
+
+           s = getaddrinfo(ipaddr, port, &hints, &result);
+           if (s != 0) {
+               fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+               exit(EXIT_FAILURE);
+           }
+
+           /* getaddrinfo() returns a list of address structures.
+              Try each address until we successfully connect(2).
+              If socket(2) (or connect(2)) fails, we (close the socket
+              and) try the next address. */
+
+           for (rp = result; rp != NULL; rp = rp->ai_next) {
+               sfd = socket(rp->ai_family, rp->ai_socktype,
+                            rp->ai_protocol);
+               if (sfd == -1)
+                   continue;
+
+               if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
+                   break;                  /* Success */
+
+           }
+
+           if (rp == NULL) {               /* No address succeeded */
+               fprintf(stderr, "Could not connect\n");
+               return -1;
+           }
+	   else
+		return sfd;
+
+       }

@@ -1227,7 +1227,7 @@ int get_status_udp(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpou
                         printf("\n");
 
 	}
-	return 0;
+	return bytes_recd;
 }
 
 int get_spat(int wait_for_data, raw_signal_status_msg_t *praw_signal_status_msg, int fpin, int fpout, char verbose, char print_packed_binary) {
