@@ -476,6 +476,95 @@ int *SetControllerTimingDataOffset(void);
 int *GetLongStatus8(void);
 int *SetMasterTrafficResponsive(void);
 
+
+typedef struct {
+	char Walk1;	//08, 40, 72, 104, 136, 168, 200, 232
+	char PedClr;	//09, 41, 73, 105, 137, 169, 201, 233
+	char MinGrn;	//10, 42, 74, 106, 138, 170, 202, 234
+	char Added;	//11, 43, 75, 107, 139, 171, 203, 235
+	char MaxInt;	//12, 44, 76, 108, 140, 172, 204, 236
+	char Vext;	//13, 45, 77, 109, 141, 173, 205, 237
+	char Walk2;	//14, 46, 78, 110, 142, 174, 206, 238
+	char MinGap;	//15, 47, 79, 111, 143, 175, 207, 239
+	char BikeMG;	//16, 48, 80, 112, 144, 176, 208, 240
+	char RedAft;	//17, 49, 81, 113, 145, 177, 209, 241
+	char TTRed;	//18, 50, 82, 114, 146, 178, 210, 242
+	char const01;	//19, 51, 83, 115, 147, 179, 211, 243
+	char const0;	//20, 52, 84, 116, 148, 180, 212, 244
+	char Max1;	//21, 53, 85, 117, 149, 181, 213, 245
+	char Max2;	//22, 54, 86, 118, 150, 182, 214, 246
+	char Max3;	//23, 55, 87, 119, 151, 183, 215, 247
+	char Yel;	//24, 56, 88, 120, 152, 184, 216, 248
+	char RedClr;	//25, 57, 89, 121, 153, 185, 217, 249
+	char RedRevert;	//26, 58, 90, 122, 154, 186, 218, 250
+	char MaxExt;	//27, 59, 91, 123, 155, 187, 219, 251
+	char EarlyWlk;	//28, 60, 92, 124, 156, 188, 220, 252
+	char DlyWlk;	//29, 61, 93, 125, 157, 189, 221, 253
+	char SolDW;	//30, 62, 94, 126, 158, 190, 222, 254
+	char CSMinGrn;	//31, 63, 95, 127, 159, 191, 223, 255
+	char NegPed;	//32, 64, 96, 128, 160, 192, 224, 256
+	char APDisc;	//33, 65, 97, 129, 161, 193, 225, 257
+	char PmtGrn;	//34, 66, 98, 130, 162, 194, 226, 258
+	char PmtWalk;	//35, 67, 99, 131, 163, 195, 227, 259
+	char PmtPedClr;	//36, 68, 100, 132, 164, 196, 228, 260
+	char CSMaxGrn;	//37, 69, 101, 133, 165, 197, 229, 261
+	char ReturnGrn;	//38, 70, 102, 134, 166, 198, 230, 262
+	char AdvFls;	//39, 71, 103, 135, 167, 199, 231, 263
+} IS_PACKED san_jose_timing_single_phase_t; 
+
+typedef struct
+{
+	char	start_flag;   /* 0x7e */
+	char	address;      /* 0x05 2070 controller */
+	char	control;      /* 0x13 - unnumbered information, individual address */
+	char	ipi;          /* 0xc0 - NTCIP Class B Protocol */
+	char	mess_type;    /* 0xc7 - set controller timing data*/
+	char	const1_1;
+	char	const2_0;
+	char	const3_ff;
+	san_jose_timing_single_phase_t san_jose_timing_single_phase[8]; 
+	char	FCSmsb;       /* FCS (Frame Checking Sequence) MSB */
+	char	FCSlsb;       /* FCS least significant byte */
+	char	end_flag;     /* 0x7e */
+} IS_PACKED san_jose_timing_msg_t;
+
+/*
+      0000           0        e0        4c        5c             53        f2        10        10           b6            0        5a        af         8          0          45             0
+      0010           1        27         0         0             40         0        40        11           1d           c2        0a        c0        83          9          0a            c0
+      0020          83        7b         0        a2             fa        da         1        13           a9           95        7e         5        13         c0          c7             1
+
+      0030           0        ff   Walk1-1   PedClr1        MinGrn1    Added1   MaxInt1    Vext 1      Walk2-1      MinGap1   BikeMG1   RedAft1    TTRed1          0           0       Max 1-1
+      0040      Max2-1    Max3-1      Yel1   RedClr1     RedRevert1   MaxExt1 EarlyWlk1   DlyWlk1       SolDW1    CSMinGrn1   NegPed1   APDisc1   PmtGrn1   PmtWalk1   PmtPedClr     CSMaxGrn1
+      0050  ReturnGrn1   AdvFls1   
+
+      0050                         Walk1-2   PedClr2        MinGrn2    Added2   MaxInt2     Vext2      Walk2-2      MinGap2   BikeMG2   RedAft2    TTRed2          0           0        Max1-2
+      0060      Max2-2    Max3-2      Yel2   RedClr2     RedRevert2   MaxExt2 EarlyWlk2   DlyWlk2       SolDW2    CSMinGrn2   NegPed2   APDisc2   PmtGrn2   PmtWalk2   PmtPedClr     CSMaxGrn2
+      0070  ReturnGrn2   AdvFls2   
+
+      0070                         Walk1-3   PedClr3        MinGrn3    Added3   MaxInt3     Vext3      Walk2-3      MinGap3   BikeMG3   RedAft3    TTRed3          0           0        Max1-3
+      0080      Max2-3    Max3-3      Yel3   RedClr3     RedRevert3   MaxExt3 EarlyWlk3   DlyWlk3       SolDW3    CSMinGrn3   NegPed3   APDisc3   PmtGrn3   PmtWalk3   PmtPedClr     CSMaxGrn3
+      0090  ReturnGrn3   AdvFls3   
+
+      0090                         Walk1-4   PedClr4        MinGrn4    Added4   MaxInt4     Vext4      Walk2-4      MinGap4   BikeMG4   RedAft4    TTRed4          0           0        Max1-4
+      00a0      Max2-4    Max3-4      Yel4   RedClr4     RedRevert4   MaxExt4 EarlyWlk4   DlyWlk4       SolDW4    CSMinGrn4   NegPed4   APDisc4   PmtGrn4   PmtWalk4   PmtPedClr     CSMaxGrn4
+      00b0  ReturnGrn4   AdvFls4   
+
+      00b0                         Walk1-5   PedClr5        MinGrn5    Added5   MaxInt5     Vext5      Walk2-5      MinGap5   BikeMG5   RedAft5    TTRed5          0           0        Max1-5
+      00c0      Max2-5    Max3-5      Yel5   RedClr5     RedRevert5   MaxExt5 EarlyWlk5   DlyWlk5       SolDW5    CSMinGrn5   NegPed5   APDisc5   PmtGrn5   PmtWalk5   PmtPedClr     CSMaxGrn5
+      00d0  ReturnGrn5   AdvFls5   
+
+      00d0                         Walk1-6   PedClr6        MinGrn6    Added6   MaxInt6     Vext6      Walk2-6      MinGap6   BikeMG6   RedAft6    TTRed6          0           0        Max1-6
+      00e0      Max2-6    Max3-6      Yel6   RedClr6     RedRevert6   MaxExt6 EarlyWlk6   DlyWlk6       SolDW6    CSMinGrn6   NegPed6   APDisc6   PmtGrn6   PmtWalk6   PmtPedClr     CSMaxGrn6
+      00f0  ReturnGrn6   AdvFls6   
+
+      00f0                         Walk1-7   PedClr7        MinGrn7    Added7   MaxInt7     Vext7      Walk2-7      MinGap7   BikeMG7   RedAft7    TTRed7          0           0        Max1-7
+      0100      Max2-7    Max3-7      Yel7   RedClr7     RedRevert7   MaxExt7 EarlyWlk7   DlyWlk7       SolDW7    CSMinGrn7   NegPed7   APDisc7   PmtGrn7   PmtWalk7   PmtPedClr     CSMaxGrn7
+      0110  ReturnGrn7   AdvFls7   
+
+      0110                         Walk1-8   PedClr8        MinGrn8    Added8   MaxInt8     Vext8      Walk2-8      MinGap8   BikeMG8   RedAft8    TTRed8          0           0        Max1-8
+      0120      Max2-8    Max3-8      Yel8   RedClr8     RedRevert8   MaxExt8 EarlyWlk8   DlyWlk8       SolDW8    CSMinGrn8   NegPed8   APDisc8   PmtGrn8   PmtWalk8   PmtPedClr     CSMaxGrn8
+      0130  ReturnGrn8   AdvFls8   
+
+      0130                          CkSum1    CkSum2             7e 
+*/
 #endif
-
-
