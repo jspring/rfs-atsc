@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
                         break;
 		  case 'f':
                         datafilename = strdup(optarg);
-printf("datafilename %s\n", datafilename);
+//printf("datafilename %s\n", datafilename);
                         break;
 		  case 'h':
 		  default:
@@ -252,8 +252,8 @@ printf("datafilename %s\n", datafilename);
 
         /* Initialize port. */
 	if( (udp_port != 0) && (remote_ipaddr != NULL) ) {
-		fprintf(stderr, "Opening UDP unicast to destination %s port %hu\n",
-			remote_ipaddr, udp_port);
+		if(verbose)
+			printf("Opening UDP unicast to destination %s port %hu\n", remote_ipaddr, udp_port);
         	if ( (sd_out = udp_peer2peer_init(&dst_addr, remote_ipaddr, local_ipaddr, udp_port, udp_port)) < 0) {
                		 printf("1 Failure to initialize socket from %s to %s on port %d our error number %d\n",
                		         remote_ipaddr, local_ipaddr, udp_port, sd_out);
@@ -266,17 +266,19 @@ printf("datafilename %s\n", datafilename);
 			exit(EXIT_FAILURE);
 		}
 		else {
-			printf("Success opening socket %hhu on %s %d\n",
-				sd_out, remote_ipaddr, udp_port);
-			printf("port %d addr 0x%08x\n", ntohs(dst_addr.sin_port), ntohl(dst_addr.sin_addr.s_addr));
+			if(verbose) {
+				printf("Success opening socket %hhu on %s %d\n",
+					sd_out, remote_ipaddr, udp_port);
+				printf("port %d addr 0x%08x\n", ntohs(dst_addr.sin_port), ntohl(dst_addr.sin_addr.s_addr));
+			}
 			temp_addr = dst_addr.sin_addr.s_addr;
 			temp_port = dst_addr.sin_port;
 		}
 	}
 
 	if( (time_port != 0) && (remote_ipaddr != NULL) ) {
-		fprintf(stderr, "Opening UDP unicast to destination %s time port %hu\n",
-			remote_ipaddr, time_port);
+		if(verbose)
+			printf("Opening UDP unicast to destination %s time port %hu\n", remote_ipaddr, time_port);
 		if ( (td = udp_peer2peer_init(&time_addr, remote_ipaddr, local_ipaddr, time_port, 0)) < 0) {
 			printf("2 Failure to initialize socket from %s to %s on time port %d\n",
 				remote_ipaddr, local_ipaddr, time_port);
@@ -300,7 +302,8 @@ printf("datafilename %s\n", datafilename);
 
 	if( (udp_port != 0) && (remote_ipaddr != NULL) ) {
 		fpin = fpout = sd_out;
-		printf("Using UDP name %s and UDP port %d file descriptor %d time port file descriptor %d\n", remote_ipaddr, udp_port, sd_out, td);
+		if(verbose)
+			printf("Using UDP name %s and UDP port %d file descriptor %d time port file descriptor %d\n", remote_ipaddr, udp_port, sd_out, td);
 		if(time_port != 0)
 			retval = set_time_udp(wait_for_data, &readBuff, td, td, &time_addr, verbose);
 		retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
@@ -313,7 +316,8 @@ printf("datafilename %s\n", datafilename);
 					fprintf(fp, "%hhx ", preadBuff[i]);
 				fprintf(fp, "\n");
 				fclose(fp);
-				printf("Exiting early, but it's OK\n");
+				if(verbose)
+					printf("Exiting early, but it's OK\n");
 				exit(EXIT_SUCCESS);
 			}
 			else {
