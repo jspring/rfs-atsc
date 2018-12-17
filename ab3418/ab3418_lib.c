@@ -40,7 +40,7 @@
 #define LONG_STATUS8	0X0D
 #define ERR_RESPONSE_SIZE 10
 
-int print_status(get_long_status8_resp_mess_typ *status);
+int print_status(char *strbuf, FILE *fp, get_long_status8_resp_mess_typ *status, int verbose);
 int set_timing(db_timing_set_2070_t *db_timing_set_2070, int *msg_len, int fpin, int fpout, char verbose);
 int get_timing(db_timing_get_2070_t *db_timing_get_2070, int wait_for_data, phase_timing_t *phase_timing, int *fpin, int *fpout, char verbose);
 int get_status(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, char verbose);
@@ -281,7 +281,7 @@ bool_typ ser_driver_read_udp( gen_mess_typ *pMessagebuff, int fpin, char verbose
 			printf("ser_driver_read_udp: %02d:%02d:%02d:%03d\n",atsc.ts.hour,atsc.ts.min,
 				atsc.ts.sec,atsc.ts.millisec );
 		if(verbose == 2)
-			print_status( (get_long_status8_resp_mess_typ *) pMessagebuff );
+			print_status( NULL, NULL, (get_long_status8_resp_mess_typ *) pMessagebuff, verbose);
 		break;
 	    case 0xc7:
 		printf("ser_driver_read_udp: get_overlap returned OK\n");
@@ -521,7 +521,7 @@ bool_typ ser_driver_read( gen_mess_typ *pMessagebuff, int fpin, char verbose)
 			printf("ser_driver_read: %02d:%02d:%02d:%03d\n",atsc.ts.hour,atsc.ts.min,
 				atsc.ts.sec,atsc.ts.millisec );
 		if(verbose == 2)
-			print_status( (get_long_status8_resp_mess_typ *) pMessagebuff );
+			print_status( NULL, NULL, (get_long_status8_resp_mess_typ *) pMessagebuff, verbose);
 		break;
 	    case 0xc7:
 		printf("ser_driver_read: get_overlap returned OK\n");
@@ -567,94 +567,373 @@ bool_typ ser_driver_read( gen_mess_typ *pMessagebuff, int fpin, char verbose)
 	return (TRUE);
 }
 
-int print_status(get_long_status8_resp_mess_typ *status) {
+int print_status(char *strbuf, FILE *fp, get_long_status8_resp_mess_typ *status, int verbose) {
 
-	char *interval_str[] = {"Walk", "Don't walk", "Min green","" ,"Added initial", "Passage - resting",
-				"Max gap", "Min gap", "Red rest","Preemption","Stop time","Red revert",
-				"Max termination","Gap termination","Force off","Red clearance"};
+	char *interval_str[] = {"Walk", "Dont_walk", "Min_green","" ,"Added_initial", "Passage_resting",
+				"Max_gap", "Min_gap", "Red_rest","Preemption","Stop_time","Red_revert",
+				"Max_termination","Gap_termination","Force_off","Red_clearance"};
 	char *color_str[] = {"Green", "Red", "Green","" ,"Green", "Green",
-				"Green", "Green", "Red","Preemption","Stop time","Red",
-				"Max termination","Yellow","Force off","Red"};
-	char *ring_0_str[] = {"","1", "2", "","3" ,"","","","4"};
-	char *ring_1_str[] = {"","5", "6", "","7" ,"","","","8"};
+				"Green", "Green", "Red","Preemption","Stop_time","Red",
+				"Max_termination","Yellow","Force_off","Red"};
+	char *ring_0_str[] = {"0","1", "2", "","3" ,"","","","4"};
+	char *ring_1_str[] = {"0","5", "6", "","7" ,"","","","8"};
+	char local_buf[1000] = {0};
+	int offset;
+	int retval;
 
-	printf("phas %#hhx r0 %s color %s int %s r1 %s color %s int %s GYOV %#hhx det1 %hhx det2 %#hhx det3 %#hhx det4 %#hhx master clock %d seq number %d\n",
-		status->active_phase,
-		ring_0_str[status->active_phase & 0x0f],
-		color_str[status->interval & 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
-		interval_str[status->interval & 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
-		ring_1_str[(status->active_phase >> 4) & 0x0f],
-		color_str[(status->interval >> 4) & 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
-		interval_str[(status->interval >> 4)& 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
-					  // Interval encoding is as follows:
-					     // 0X00 = walk, 0x01 = don't walk, 0x02 = min green,
-					  // 0x03 = unused, 0x04 = added initial, 0x05 = passage -resting,
-					  // 0x06 = max gap, 0x07 = min gap, 0x08 = red rest,
-					// 0x09 = preemption, 0x0a = stop time, 0x0b = red revert,
-					  // 0x0c = max termination, 0x0d = gap termination,
-					  // 0x0e = force off, 0x0f = red clearance 
-		status->green_yellow_overlap, // Bits 0-3 green overlaps A-D,
-					  // bits 4-7 yellow overlaps A-D 
-		status->presence1,     // Bits 0-7: detector 1-8. Presence bits set true for
-					  // positive presence. 
-		status->presence2,     // Bits 0-7: detector 9-16 
-		status->presence3,     // Bits 0-7: detector 17-24 
-		status->presence4,     // Bits 0-3: detector 25-28, bits 4-7 unused 
-		status->master_clock,  // Master background cycle clock.  Counts up to cycle length 
-		status->seq_number    // Sample sequence number 
-	);
-/*	printf("active phase %#hhx \tphase call %#hhx \tring 0 interval %s \tring 1 interval %s \nstatus %d \tpattern %d \tgreen-yellow overlap %hhx \tpreemption %hhx \tped call %hhx \tdetector presence %hhx (1-8) %hhx (9-16) %hhx (17-24) %hhx (25-28) \tmaster clock %d \tlocal clock %d \tsample sequence number %d \tsystem detector volume/occupancy: 1 %hhd %hhd    2 %hhd %hhd    3 %hhd %hhd    4 %hhd %hhd    5 %hhd %hhd    6 %hhd %hhd    7 %hhd %hhd    8 %hhd %hhd \n",
-		status->active_phase,
-		status->phase_call,
-		interval_str[status->interval & 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
-		interval_str[(status->interval >> 4)& 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
-					  // Interval encoding is as follows:
-					     // 0X00 = walk, 0x01 = don't walk, 0x02 = min green,
-					  // 0x03 = unused, 0x04 = added initial, 0x05 = passage -resting,
-					  // 0x06 = max gap, 0x07 = min gap, 0x08 = red rest,
-					// 0x09 = preemption, 0x0a = stop time, 0x0b = red revert,
-					  // 0x0c = max termination, 0x0d = gap termination,
-					  // 0x0e = force off, 0x0f = red clearance 
-		status->status,		// Bit 7 = critical alarm, bit 6 = non-critical alarm,
-				 	// bit 5 = detector fault, bit 4 = coordination alarm,
-					 // bit 3 = local override, bit 2 = passed local zero,
-					 // bit 1 = cabinet flash, bit 0 = preempt. 
-		status->pattern,      // Pattern (0-250, 251-253 reserved, 254 flash, 255 free) 
-		status->green_yellow_overlap, // Bits 0-3 green overlaps A-D,
-					  // bits 4-7 yellow overlaps A-D 
-		status->preemption,    // Bits 0-1 EV A-D, bits 4-6 RR 1-2,
-					  // bit 6 = pattern transition, bit 7 unused 
-		status->ped_call,      // Ped call 1-8, (bit 7 = ped 8, bit 0 = ped 1) 
-		status->presence1,     // Bits 0-7: detector 1-8. Presence bits set true for
-					  // positive presence. 
-		status->presence2,     // Bits 0-7: detector 9-16 
-		status->presence3,     // Bits 0-7: detector 17-24 
-		status->presence4,     // Bits 0-3: detector 25-28, bits 4-7 unused 
-		status->master_clock,  // Master background cycle clock.  Counts up to cycle length 
-		status->local_clock,   // Local cycle clock.  Counts up to cycle length. 
-		status->seq_number,    // Sample sequence number 
-		status->volume1,	// System detector 1 
-		status->occupancy1,    // System detector 1.  Value 0-200 = detector occupancy in
-					  // 0.5% increments, 201-209 = reserved, 210 = stuck ON fault,
-					  // 211 = stuck OFF fault, 212 = open loop fault,
-					  // 213 = shorted loop fault, 214 = excessive inductance fault,
-					  // 215 = overcount fault. 
-		status->volume2,	// System detector 2 
-		status->occupancy2,    // system detector 2 
-		status->volume3,	// System detector 3 
-		status->occupancy3,    // system detector 3 
-		status->volume4,	// System detector 4 
-		status->occupancy4,    // system detector 4 
-		status->volume5,	// System detector 5 
-		status->occupancy5,    // system detector 5 
-		status->volume6,	// System detector 6 
-		status->occupancy6,    // system detector 6 
-		status->volume7,	// System detector 7 
-		status->occupancy7,    // system detector 7 
-		status->volume8,	// System detector 8 
-		status->occupancy8    // system detector 8 
-	);
-*/
+	if(fp != NULL) {
+		//Phase number, color, and interval
+		fprintf(fp, "%s %s %s %d %s %s %s %d ",
+			//Ring 0: Phase, Color, and Interval, bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
+			ring_0_str[status->active_phase & 0x0f], 	//Col 1: Phase number
+			color_str[status->interval & 0x0f],		//Col 2: Phase color
+			interval_str[status->interval & 0x0f],		//Col 3: Phase interval string
+			status->interval & 0x0f,			//Col 4: Phase interval
+
+			//Ring 1: Phase, Color, and Interval
+			ring_1_str[(status->active_phase >> 4) & 0x0f], //Col 5: Phase number
+			color_str[(status->interval >> 4) & 0x0f],      //Col 6: Phase color 
+			interval_str[(status->interval >> 4)& 0x0f],    //Col 7: Phase interval string
+			(status->interval >> 4) & 0x0f			//Col 8: Phase interval
+
+			//Interval encoding is as follows:
+			//0X00 = walk, 0x01 = don't walk, 0x02 = min green,
+			//0x03 = unused, 0x04 = added initial, 0x05 = passage -resting,
+			//0x06 = max gap, 0x07 = min gap, 0x08 = red rest,
+			//0x09 = preemption, 0x0a = stop time, 0x0b = red revert,
+			//0x0c = max termination, 0x0d = gap termination,
+			//0x0e = force off, 0x0f = red clearance 
+		);
+		if(strbuf != NULL) {
+		    retval = sprintf(strbuf, "%s %s %s %d %s %s %s %d ",
+			//Ring 0: Phase, Color, and Interval, bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
+			ring_0_str[status->active_phase & 0x0f], 	//Col 1: Phase number
+			color_str[status->interval & 0x0f],		//Col 2: Phase color
+			interval_str[status->interval & 0x0f],		//Col 3: Phase interval string
+			status->interval & 0x0f,			//Col 4: Phase interval
+
+			//Ring 1: Phase, Color, and Interval
+			ring_1_str[(status->active_phase >> 4) & 0x0f], //Col 5: Phase number
+			color_str[(status->interval >> 4) & 0x0f],      //Col 6: Phase color 
+			interval_str[(status->interval >> 4)& 0x0f],    //Col 7: Phase interval string
+			(status->interval >> 4) & 0x0f			//Col 8: Phase interval
+	       	    );
+		    offset = retval;
+		}
+
+		//Overlaps
+		fprintf(fp, "%d %d ",
+			//Green and yellow overlaps A-D
+			(int)(status->green_yellow_overlap>>4) & 0x0f,	//Col 9 Bits 4-7 yellow overlaps A-D 
+			(int)(status->green_yellow_overlap & 0x0f) 	//Col 10 Bits 0-3 green overlaps A-D
+		);
+		if(strbuf != NULL) {
+		    retval = sprintf(strbuf + offset, "%d %d ",
+			//Green and yellow overlaps A-D
+			(int)((status->green_yellow_overlap>>4) & 0x0f),	//Col 9 Bits 4-7 yellow overlaps A-D 
+			(int)((status->green_yellow_overlap & 0x0f)) 	//Col 10 Bits 0-3 green overlaps A-D
+		    );
+		    offset += retval;
+		}
+
+		//Detector status
+		fprintf(fp, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d ",
+			//System Detectors 25-28
+			(int)((status->presence4>>3) & 1),	//Col 11: Detector 28, bits 4-7 unused 
+			(int)((status->presence4>>2) & 1),	//Col 12: Detector 27
+			(int)((status->presence4>>1) & 1),	//Col 13: Detector 26
+			(int)((status->presence4>>0) & 1),	//Col 14: Detector 25
+
+			//System Detectors 17-24
+			(int)((status->presence3>>7) & 1),	//Col 15: Detector 24 Presence bits set true for positive presence. 
+			(int)((status->presence3>>6) & 1),	//Col 16: Detector 23
+			(int)((status->presence3>>5) & 1),	//Col 17: Detector 22
+			(int)((status->presence3>>4) & 1),	//Col 18: Detector 21
+			(int)((status->presence3>>3) & 1),	//Col 19: Detector 20
+			(int)((status->presence3>>2) & 1),	//Col 20: Detector 19
+			(int)((status->presence3>>1) & 1),	//Col 21: Detector 18
+			(int)((status->presence3>>0) & 1),	//Col 22: Detector 17
+
+			//System Detectors 9-16
+			(int)((status->presence2>>7) & 1),	//Col 23: Detector 16 Presence bits set true for positive presence. 
+			(int)((status->presence2>>6) & 1),	//Col 24: Detector 15
+			(int)((status->presence2>>5) & 1),	//Col 25: Detector 14
+			(int)((status->presence2>>4) & 1),	//Col 26: Detector 13
+			(int)((status->presence2>>3) & 1),	//Col 27: Detector 12
+			(int)((status->presence2>>2) & 1),	//Col 28: Detector 11
+			(int)((status->presence2>>1) & 1),	//Col 29: Detector 10
+			(int)((status->presence2>>0) & 1),	//Col 30: Detector 9
+
+			//System Detectors 1-8
+			(int)((status->presence1>>7) & 1),	//Col 31: Detector 8 Presence bits set true for positive presence. 
+			(int)((status->presence1>>6) & 1),	//Col 32: Detector 7
+			(int)((status->presence1>>5) & 1),	//Col 33: Detector 6
+			(int)((status->presence1>>4) & 1),	//Col 34: Detector 5
+			(int)((status->presence1>>3) & 1),	//Col 35: Detector 4
+			(int)((status->presence1>>2) & 1),	//Col 36: Detector 3
+			(int)((status->presence1>>1) & 1),	//Col 37: Detector 2
+			(int)((status->presence1>>0) & 1),	//Col 38: Detector 1
+			status->master_clock,			//Col 39: Master background cycle clock.  Counts up to cycle length 
+			status->seq_number    			//Col 40: Sample sequence number 
+		);
+		if(strbuf != NULL) {
+		    retval = sprintf(strbuf + offset, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d ",
+			//System Detectors 25-28
+			(int)((status->presence4>>3) & 1),	//Col 11: Detector 28, bits 4-7 unused 
+			(int)((status->presence4>>2) & 1),	//Col 12: Detector 27
+			(int)((status->presence4>>1) & 1),	//Col 13: Detector 26
+			(int)((status->presence4>>0) & 1),	//Col 14: Detector 25
+
+			//System Detectors 17-24
+			(int)((status->presence3>>7) & 1),	//Col 15: Detector 24 Presence bits set true for positive presence. 
+			(int)((status->presence3>>6) & 1),	//Col 16: Detector 23
+			(int)((status->presence3>>5) & 1),	//Col 17: Detector 22
+			(int)((status->presence3>>4) & 1),	//Col 18: Detector 21
+			(int)((status->presence3>>3) & 1),	//Col 19: Detector 20
+			(int)((status->presence3>>2) & 1),	//Col 20: Detector 19
+			(int)((status->presence3>>1) & 1),	//Col 21: Detector 18
+			(int)((status->presence3>>0) & 1),	//Col 22: Detector 17
+
+			//System Detectors 9-16
+			(int)((status->presence2>>7) & 1),	//Col 23: Detector 16 Presence bits set true for positive presence. 
+			(int)((status->presence2>>6) & 1),	//Col 24: Detector 15
+			(int)((status->presence2>>5) & 1),	//Col 25: Detector 14
+			(int)((status->presence2>>4) & 1),	//Col 26: Detector 13
+			(int)((status->presence2>>3) & 1),	//Col 27: Detector 12
+			(int)((status->presence2>>2) & 1),	//Col 28: Detector 11
+			(int)((status->presence2>>1) & 1),	//Col 29: Detector 10
+			(int)((status->presence2>>0) & 1),	//Col 30: Detector 9
+
+			//System Detectors 1-8
+			(int)((status->presence1>>7) & 1),	//Col 31: Detector 8 Presence bits set true for positive presence. 
+			(int)((status->presence1>>6) & 1),	//Col 32: Detector 7
+			(int)((status->presence1>>5) & 1),	//Col 33: Detector 6
+			(int)((status->presence1>>4) & 1),	//Col 34: Detector 5
+			(int)((status->presence1>>3) & 1),	//Col 35: Detector 4
+			(int)((status->presence1>>2) & 1),	//Col 36: Detector 3
+			(int)((status->presence1>>1) & 1),	//Col 37: Detector 2
+			(int)((status->presence1>>0) & 1),	//Col 38: Detector 1
+			status->master_clock,			//Col 39: Master background cycle clock.  Counts up to cycle length 
+			status->seq_number    			//Col 40: Sample sequence number 
+		    );
+		    offset += retval;
+		}
+
+		//Vehicle and pedestrian calls, and controller status
+		fprintf(fp, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d ",
+			//Vehicle calls
+			(int)(status->phase_call>>7) & 1,	//Col 41: Phase 8 call
+			(int)(status->phase_call>>6) & 1,	//Col 42: Phase 7 call
+			(int)(status->phase_call>>5) & 1,	//Col 43: Phase 6 call
+			(int)(status->phase_call>>4) & 1,	//Col 44: Phase 5 call
+			(int)(status->phase_call>>3) & 1,	//Col 45: Phase 4 call
+			(int)(status->phase_call>>2) & 1,	//Col 46: Phase 3 call
+			(int)(status->phase_call>>1) & 1,	//Col 47: Phase 2 call
+			(int)(status->phase_call>>0) & 1,	//Col 48: Phase 1 call
+
+			//Pedestrian calls
+			(int)(status->ped_call>>7) & 1,		//Col 49: Ped 8 call
+			(int)(status->ped_call>>6) & 1,		//Col 50: Ped 7 call
+			(int)(status->ped_call>>5) & 1,		//Col 51: Ped 6 call
+			(int)(status->ped_call>>4) & 1,		//Col 52: Ped 5 call
+			(int)(status->ped_call>>3) & 1,		//Col 53: Ped 4 call
+			(int)(status->ped_call>>2) & 1,		//Col 54: Ped 3 call
+			(int)(status->ped_call>>1) & 1,		//Col 55: Ped 2 call
+			(int)(status->ped_call>>0) & 1,		//Col 56: Ped 1 call
+
+			//Controller status
+			(int)(status->status>>7) & 1,		//Col 57: Bit 7 = critical alarm
+			(int)(status->status>>6) & 1,		//Col 58: Bit 6 = non-critical alarm
+			(int)(status->status>>5) & 1,		//Col 59: Bit 5 = detector fault
+			(int)(status->status>>4) & 1,		//Col 60: Bit 4 = coordination alarm
+			(int)(status->status>>3) & 1,		//Col 61: Bit 3 = local override
+			(int)(status->status>>2) & 1,		//Col 62: Bit 2 = passed local zero
+			(int)(status->status>>1) & 1,		//Col 63: Bit 1 = cabinet flash
+			(int)(status->status>>0) & 1		//Col 64: Bit 0 = preempt
+		);
+		if(strbuf != NULL) {
+		    retval = sprintf(strbuf + offset, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d ",
+			//Vehicle calls
+			(int)(status->phase_call>>7) & 1,	//Col 41: Phase 8 call
+			(int)(status->phase_call>>6) & 1,	//Col 42: Phase 7 call
+			(int)(status->phase_call>>5) & 1,	//Col 43: Phase 6 call
+			(int)(status->phase_call>>4) & 1,	//Col 44: Phase 5 call
+			(int)(status->phase_call>>3) & 1,	//Col 45: Phase 4 call
+			(int)(status->phase_call>>2) & 1,	//Col 46: Phase 3 call
+			(int)(status->phase_call>>1) & 1,	//Col 47: Phase 2 call
+			(int)(status->phase_call>>0) & 1,	//Col 48: Phase 1 call
+
+			//Pedestrian calls
+			(int)(status->ped_call>>7) & 1,		//Col 49: Ped 8 call
+			(int)(status->ped_call>>6) & 1,		//Col 50: Ped 7 call
+			(int)(status->ped_call>>5) & 1,		//Col 51: Ped 6 call
+			(int)(status->ped_call>>4) & 1,		//Col 52: Ped 5 call
+			(int)(status->ped_call>>3) & 1,		//Col 53: Ped 4 call
+			(int)(status->ped_call>>2) & 1,		//Col 54: Ped 3 call
+			(int)(status->ped_call>>1) & 1,		//Col 55: Ped 2 call
+			(int)(status->ped_call>>0) & 1,		//Col 56: Ped 1 call
+
+			//Controller status
+			(int)(status->status>>7) & 1,		//Col 57: Bit 7 = critical alarm
+			(int)(status->status>>6) & 1,		//Col 58: Bit 6 = non-critical alarm
+			(int)(status->status>>5) & 1,		//Col 59: Bit 5 = detector fault
+			(int)(status->status>>4) & 1,		//Col 60: Bit 4 = coordination alarm
+			(int)(status->status>>3) & 1,		//Col 61: Bit 3 = local override
+			(int)(status->status>>2) & 1,		//Col 62: Bit 2 = passed local zero
+			(int)(status->status>>1) & 1,		//Col 63: Bit 1 = cabinet flash
+			(int)(status->status>>0) & 1		//Col 64: Bit 0 = preempt
+		    );
+		    offset += retval;
+		}
+
+		//Pattern and preemption status
+		fprintf(fp, "%d %d %d %d %d ",
+			status->pattern,      			//Col 65: Pattern (0-250, 251-253 reserved, 254 flash, 255 free) 
+			(int)(status->preemption >> 6) & 1,	//Col 66: Bit 6 = pattern transition, bit 7 unused 
+			(int)(status->preemption >> 5) & 1,	//Col 67: RR 2
+			(int)(status->preemption >> 4) & 1,	//Col 68: RR 1
+			(int)(status->preemption & 0x03)	//Col 69: Bits 0-1 EV A-D, bits 4-6 RR 1-2,
+		);
+		if(strbuf != NULL) {
+		    retval = sprintf(strbuf + offset, "%d %d %d %d %d ",
+			status->pattern,      			//Col 65: Pattern (0-250, 251-253 reserved, 254 flash, 255 free) 
+			(int)(status->preemption >> 6) & 1,	//Col 66: Bit 6 = pattern transition, bit 7 unused 
+			(int)(status->preemption >> 5) & 1,	//Col 67: RR 2
+			(int)(status->preemption >> 4) & 1,	//Col 68: RR 1
+			(int)(status->preemption & 0x03)	//Col 69: Bits 0-1 EV A-D, bits 4-6 RR 1-2,
+		    );
+		    offset += retval;
+		}
+
+		fprintf(fp, "%d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f ",
+			status->volume1,			//Col 70: System detector 1 
+			status->occupancy1 / 2.0,	    	//Col 71: System detector 1.  Value 0-200 = detector occupancy in
+						  		//	0.5% increments, 201-209 = reserved, 210 = stuck ON fault,
+						  		//	211 = stuck OFF fault, 212 = open loop fault,
+						  		//	213 = shorted loop fault, 214 = excessive inductance fault,
+						  		//	215 = overcount fault. 
+			status->volume2,			//Col 72: System detector 2 volume
+			status->occupancy2 / 2.0,    		//Col 73: System detector 2 occupancy
+			status->volume3,			//Col 74: System detector 3 volume
+			status->occupancy3 / 2.0,    		//Col 75: System detector 3 occupancy
+			status->volume4,			//Col 76: System detector 4 volume
+			status->occupancy4 / 2.0,    		//Col 77: System detector 4 occupancy
+			status->volume5,			//Col 78: System detector 5 volume
+			status->occupancy5 / 2.0,    		//Col 79: System detector 5 occupancy
+			status->volume6,			//Col 80: System detector 6 volume
+			status->occupancy6 / 2.0,		//Col 81: System detector 6 occupancy
+			status->volume7,			//Col 82: System detector 7 volume
+			status->occupancy7 / 2.0,    		//Col 83: System detector 7 occupancy
+			status->volume8,			//Col 84: System detector 8 volume
+			status->occupancy8 / 2.0		//Col 85: System detector 8 occupancy
+		);
+		if(strbuf != NULL) {
+		    retval = sprintf(strbuf + offset, "%d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f\n",
+			status->volume1,			//Col 70: System detector 1 
+			status->occupancy1 / 2.0,	    	// Value 0-200 = detector occupancy in
+						  		// 0.5% increments, 201-209 = reserved, 210 = stuck ON fault,
+						  		// 211 = stuck OFF fault, 212 = open loop fault,
+						  		// 213 = shorted loop fault, 214 = excessive inductance fault,
+						  		// 215 = overcount fault. 
+			status->volume2,			//Col 76: System detector 2 volume
+			status->occupancy2 / 2.0,    		//Col 77: System detector 2 occupancy
+			status->volume3,			//Col 78: System detector 3 volume
+			status->occupancy3 / 2.0,    		//Col 79: System detector 3 occupancy
+			status->volume4,			//Col 80: System detector 4 volume
+			status->occupancy4 / 2.0,    		//Col 81: System detector 4 occupancy
+			status->volume5,			//Col 82: System detector 5 volume
+			status->occupancy5 / 2.0,    		//Col 83: System detector 5 occupancy
+			status->volume6,			//Col 84: System detector 6 volume
+			status->occupancy6 / 2.0,		//Col 85: System detector 6 occupancy
+			status->volume7,			//Col 86: System detector 7 volume
+			status->occupancy7 / 2.0,    		//Col 87: System detector 7 occupancy
+			status->volume8,			//Col 88: System detector 8 volume
+			status->occupancy8 / 2.0		//Col 89: System detector 8 occupancy
+		    );
+		    offset += retval;
+		}
+	}
+
+	if(verbose) {
+		printf("active phase byte %#hhx ring0: phase %s color %s interval %s ring1: phase %s color %s interval %s GYOV %#hhx det1 %#hhx det2 %#hhx det3 %#hhx det4 %#hhx master clock %d seq number %d\n",
+			status->active_phase,
+			ring_0_str[status->active_phase & 0x0f],
+			color_str[status->interval & 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
+			interval_str[status->interval & 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
+			ring_1_str[(status->active_phase >> 4) & 0x0f],
+			color_str[(status->interval >> 4) & 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
+			interval_str[(status->interval >> 4)& 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
+						  // Interval encoding is as follows:
+						     // 0X00 = walk, 0x01 = don't walk, 0x02 = min green,
+						  // 0x03 = unused, 0x04 = added initial, 0x05 = passage -resting,
+						  // 0x06 = max gap, 0x07 = min gap, 0x08 = red rest,
+						// 0x09 = preemption, 0x0a = stop time, 0x0b = red revert,
+						  // 0x0c = max termination, 0x0d = gap termination,
+						  // 0x0e = force off, 0x0f = red clearance 
+			status->green_yellow_overlap, // Bits 0-3 green overlaps A-D,
+						  // bits 4-7 yellow overlaps A-D 
+			status->presence1,     // Bits 0-7: detector 1-8. Presence bits set true for
+						  // positive presence. 
+			status->presence2,     // Bits 0-7: detector 9-16 
+			status->presence3,     // Bits 0-7: detector 17-24 
+			status->presence4,     // Bits 0-3: detector 25-28, bits 4-7 unused 
+			status->master_clock,  // Master background cycle clock.  Counts up to cycle length 
+			status->seq_number    // Sample sequence number 
+		);
+
+		printf("active phase %#hhx \tphase call %#hhx \tring 0 interval %s \tring 1 interval %s \nstatus %d \tpattern %d \tgreen-yellow overlap %#hhx \tpreemption %#hhx \tped call %#hhx \tdetector presence %#hhx (1-8) %#hhx (9-16) %#hhx (17-24) %#hhx (25-28) \tmaster clock %d \tlocal clock %d \tsample sequence number %d \tsystem detector volume/occupancy: 1 %hhd %hhd    2 %hhd %hhd    3 %hhd %hhd    4 %hhd %#hhd    5 %hhd %hhd    6 %hhd %hhd    7 %hhd %hhd    8 %hhd %hhd \n",
+			status->active_phase,
+			status->phase_call,
+			interval_str[status->interval & 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
+			interval_str[(status->interval >> 4)& 0x0f],      // Bits 0-3: ring 0 interval, bits 4-7: ring 1 interval.
+						  // Interval encoding is as follows:
+						     // 0X00 = walk, 0x01 = don't walk, 0x02 = min green,
+						  // 0x03 = unused, 0x04 = added initial, 0x05 = passage -resting,
+						  // 0x06 = max gap, 0x07 = min gap, 0x08 = red rest,
+						// 0x09 = preemption, 0x0a = stop time, 0x0b = red revert,
+						  // 0x0c = max termination, 0x0d = gap termination,
+						  // 0x0e = force off, 0x0f = red clearance 
+			status->status,		// Bit 7 = critical alarm, bit 6 = non-critical alarm,
+					 	// bit 5 = detector fault, bit 4 = coordination alarm,
+						 // bit 3 = local override, bit 2 = passed local zero,
+						 // bit 1 = cabinet flash, bit 0 = preempt. 
+			status->pattern,      // Pattern (0-250, 251-253 reserved, 254 flash, 255 free) 
+			status->green_yellow_overlap, // Bits 0-3 green overlaps A-D,
+						  // bits 4-7 yellow overlaps A-D 
+			status->preemption,    // Bits 0-1 EV A-D, bits 4-6 RR 1-2,
+						  // bit 6 = pattern transition, bit 7 unused 
+			status->ped_call,      // Ped call 1-8, (bit 7 = ped 8, bit 0 = ped 1) 
+			status->presence1,     // Bits 0-7: detector 1-8. Presence bits set true for
+						  // positive presence. 
+			status->presence2,     // Bits 0-7: detector 9-16 
+			status->presence3,     // Bits 0-7: detector 17-24 
+			status->presence4,     // Bits 0-3: detector 25-28, bits 4-7 unused 
+			status->master_clock,  // Master background cycle clock.  Counts up to cycle length 
+			status->local_clock,   // Local cycle clock.  Counts up to cycle length. 
+			status->seq_number,    // Sample sequence number 
+			status->volume1,	// System detector 1 
+			status->occupancy1,    // System detector 1.  Value 0-200 = detector occupancy in
+						  // 0.5% increments, 201-209 = reserved, 210 = stuck ON fault,
+						  // 211 = stuck OFF fault, 212 = open loop fault,
+						  // 213 = shorted loop fault, 214 = excessive inductance fault,
+						  // 215 = overcount fault. 
+			status->volume2,	// System detector 2 
+			status->occupancy2,    // system detector 2 
+			status->volume3,	// System detector 3 
+			status->occupancy3,    // system detector 3 
+			status->volume4,	// System detector 4 
+			status->occupancy4,    // system detector 4 
+			status->volume5,	// System detector 5 
+			status->occupancy5,    // system detector 5 
+			status->volume6,	// System detector 6 
+			status->occupancy6,    // system detector 6 
+			status->volume7,	// System detector 7 
+			status->occupancy7,    // system detector 7 
+			status->volume8,	// System detector 8 
+			status->occupancy8    // system detector 8 
+		);
+	}
+
 return 0;
 }
 
