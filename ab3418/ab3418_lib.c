@@ -1405,7 +1405,7 @@ printf("get_status wait_for data %d readBuff %ld\n", wait_for_data, (long) readB
                                 (start_time.tv_sec + (start_time.tv_nsec/1.0e9))
                                 );
 		printf("get_status 6-end: fpin %d selectval %d inportisset %s fpout %d selectval %d outportisset %s ser_driver_retval %d\n", fpin, selectval, inportisset, fpout, selectval, outportisset, ser_driver_retval);
-	return 0;
+	return ser_driver_retval;
 }
 
 int get_status_udp(int wait_for_data, gen_mess_typ *readBuff, int fpin, int fpout, struct sockaddr_in *dst_addr, char verbose) {

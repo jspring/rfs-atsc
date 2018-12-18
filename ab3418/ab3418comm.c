@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
 	int retval;
 	int check_retval;
 	char port[30] = "/dev/ttyS0";
-	char strbuf[300];
+	char strbuf[1000] = {0};
 	struct sockaddr_in dst_addr;
 	struct sockaddr_in time_addr;
 	char *local_ipaddr = NULL;       /// address of UDP destination
@@ -148,10 +148,8 @@ int main(int argc, char *argv[]) {
 	char db_urms_struct_null = 0;
 	char detector = 0;
 	unsigned int temp_addr;
-//	int blocknum;
-//	int rem;
-//	unsigned char new_phase_assignment;	
 	unsigned char output_spat_binary = 0;
+	unsigned char read_spat_from_file = 0;
 	short temp_port;
 
         int sd_out;             /// socket descriptor for UDP send
@@ -190,8 +188,10 @@ int main(int argc, char *argv[]) {
                         detector = atoi(optarg);
                         break;
                   case 'a':
-//                      new_phase_assignment = (unsigned char)atoi(optarg);
 			remote_ipaddr = strdup(optarg);
+                        break;
+                  case 'R':
+                        read_spat_from_file  = 1;
                         break;
                   case 'b':
                         output_spat_binary = 1;
@@ -212,8 +212,8 @@ int main(int argc, char *argv[]) {
                         time_port = (short)atoi(optarg);
                         break;
                   case 'D':
-                        db_set_pattern_var = atoi(optarg);
-			db_status_var = db_set_pattern_var + 1;
+                        db_status_var = atoi(optarg);
+			db_set_pattern_var = db_status_var + 1;
                         break;
                   case 'E':
 			exit_here = 1;
@@ -245,16 +245,12 @@ int main(int argc, char *argv[]) {
 	memset(&dst_addr, 0, sizeof(dst_addr));
 	memset(&time_addr, 0, sizeof(time_addr));
 
-	if ((ptmr = timer_init( interval, ChannelCreate(0))) == NULL) {
-		fprintf(stderr, "Unable to initialize delay timer\n");
-		exit(EXIT_FAILURE);
-	}
-
         /* Initialize port. */
 	if( (udp_port != 0) && (remote_ipaddr != NULL) ) {
 		if(verbose)
 			printf("Opening UDP unicast to destination %s port %hu\n", remote_ipaddr, udp_port);
-        	if ( (sd_out = udp_peer2peer_init(&dst_addr, remote_ipaddr, local_ipaddr, udp_port, udp_port)) < 0) {
+                if ( (sd_out = udp_unicast_init(&dst_addr, remote_ipaddr, udp_port)) < 0) {
+
                		 printf("1 Failure to initialize socket from %s to %s on port %d our error number %d\n",
                		         remote_ipaddr, local_ipaddr, udp_port, sd_out);
                		 longjmp(exit_env, 2);
@@ -308,13 +304,32 @@ int main(int argc, char *argv[]) {
 			retval = set_time_udp(wait_for_data, &readBuff, td, td, &time_addr, verbose);
 		retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
 		if(exit_here) {
+			process_phase_status( (get_long_status8_resp_mess_typ *)&readBuff, verbose, greens, &phase_status);
+			if(verbose) 
+				print_status( NULL, NULL, (get_long_status8_resp_mess_typ *)&readBuff, verbose);
 			if(retval > 0){
 				fp = fopen(datafilename, "w");
+				if(output_spat_binary) { 
+					fwrite(preadBuff, retval, 1, stdout);
+					fwrite(preadBuff, retval, 1, fp);
+//					for(i=0; i<retval; i++)
+//						printf("%hhx ", preadBuff[i]);
+//						fprintf(fp, "%hhx ", preadBuff[i]);
+//					fprintf(fp, "\n");
+					fclose(fp);
+					exit(EXIT_SUCCESS);
+				}
 				get_current_timestamp(&ts);
 				print_timestamp(fp, &ts);
-				for(i=0; i<retval; i++)
-					fprintf(fp, "%hhx ", preadBuff[i]);
+				struct tm *nowtime;
+				struct timespec tspec;
+				clock_gettime(CLOCK_REALTIME, &tspec);
+				nowtime = localtime(&tspec.tv_sec);
+				fprintf(fp, " %d/%d/%d ", nowtime->tm_mon+1, nowtime->tm_mday, nowtime->tm_year+1900);
+				memset(strbuf, 0, 1000);
+				retval = print_status(strbuf, fp, (get_long_status8_resp_mess_typ *)&readBuff, verbose);
 				fprintf(fp, "\n");
+				printf("strbuf: %s\n", strbuf);
 				fclose(fp);
 				if(verbose)
 					printf("Exiting early, but it's OK\n");
@@ -331,6 +346,7 @@ int main(int argc, char *argv[]) {
 //	}
 		if(pattern >= 0) {
 			retval = set_pattern(wait_for_data, &readBuff, pattern, fpin, fpout, &dst_addr, verbose);
+			retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
 			return 0;
 		}
 	}
@@ -440,12 +456,19 @@ wait_for_data=1;
 			}
 		}
 		else {
-			retval = get_status(wait_for_data, &readBuff, fpin, fpout, verbose);
+			if(read_spat_from_file) {
+				fp = fopen(datafilename, "r");
+				retval = fread(&readBuff, sizeof(get_long_status8_resp_mess_typ), 1, fp);
+				fclose(fp);
+			}
+			else {
+				retval = get_status(wait_for_data, &readBuff, fpin, fpout, verbose);
+			}
 			if(retval < 0) 
 				printf("get_status returned negative value: %d\n", retval);
 				check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
 		}
-		if(use_db && (retval == 0) ) {
+		if(use_db && (retval >= 0) ) {
 //			db_clt_write(pclt, DB_TSCP_STATUS_VAR, sizeof(get_long_status8_resp_mess_typ), (get_long_status8_resp_mess_typ *)&readBuff);
 			db_clt_write(pclt, db_status_var, sizeof(get_long_status8_resp_mess_typ), (get_long_status8_resp_mess_typ *)&readBuff);
 			retval = process_phase_status( (get_long_status8_resp_mess_typ *)&readBuff, verbose, greens, &phase_status);
@@ -456,7 +479,7 @@ wait_for_data=1;
 			}
 			fclose(fifofd);
 			if(verbose) 
-				print_status( (get_long_status8_resp_mess_typ *)&readBuff);
+				print_status( NULL, NULL, (get_long_status8_resp_mess_typ *)&readBuff, verbose);
 		}
 		usleep(80000);
 		if(udp_port == 0)
