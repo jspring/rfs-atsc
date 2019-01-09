@@ -15,7 +15,7 @@ AB3418_LIB = $(OBJDIR)/libab3418_lib.a
 AB3418_LIB_OBJS = $(OBJDIR)/ab3418_lib.o
 
 PATH_LIBS += -lset_min_max_green_lib -lserver_lib -lab3418_lib -ldl
-PATH_LDFLAGS += -L./lnx
+PATH_LDFLAGS += -L./lnx -fPIC
 PATH_CFLAGS += -I$(ATSC_INC_DIR) -pg
 
 HDRS = fcs.h msgs.h ab3418comm.h ab3418_lib.h server_lib.h set_min_max_green.h

@@ -65,8 +65,8 @@ int NUM_TRIG_VARS = sizeof(db_trig_list)/sizeof(int);
 static int db_status_var = 0;
 static int db_set_pattern_var = 0;
 static db_id_t db_vars_san_jose[] = {
+        {0, sizeof(get_long_status8_resp_mess_typ)},
         {0, sizeof(db_set_pattern_t)},
-        {1, sizeof(get_long_status8_resp_mess_typ)},
 };
 #define NUM_SJ_VARS sizeof(db_vars_san_jose)/sizeof(db_id_t)
 
@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
 	short time_port = 0;
 	int exit_here = 0;
  
-        while ((opt = getopt(argc, argv, "p:uvwi:cnd:a:bho:s:A:I:P:T:D:Ef:")) != -1)
+        while ((opt = getopt(argc, argv, "p:uvwi:cnd:a:Rbho:s:A:I:P:T:D:Ef:")) != -1)
         {
                 switch (opt)
                 {
@@ -214,6 +214,7 @@ int main(int argc, char *argv[]) {
                   case 'D':
                         db_status_var = atoi(optarg);
 			db_set_pattern_var = db_status_var + 1;
+                        use_db = 1;
                         break;
                   case 'E':
 			exit_here = 1;
@@ -229,9 +230,11 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	db_vars_san_jose[0].id = db_set_pattern_var;
-	db_vars_san_jose[1].id = db_set_pattern_var + 1;
-	db_trig_san_jose[0] = db_set_pattern_var;
+	if(db_status_var > 0) {
+		db_vars_san_jose[0].id = db_status_var;
+		db_vars_san_jose[1].id = db_set_pattern_var;
+		db_trig_san_jose[0] = db_set_pattern_var;
+	}
 
 	// Clear message structs
 	memset(&detector_block, 0, sizeof(detector_msg_t));
@@ -244,7 +247,6 @@ int main(int argc, char *argv[]) {
 	memset(&snd_addr, 0, sizeof(snd_addr));
 	memset(&dst_addr, 0, sizeof(dst_addr));
 	memset(&time_addr, 0, sizeof(time_addr));
-
         /* Initialize port. */
 	if( (udp_port != 0) && (remote_ipaddr != NULL) ) {
 		if(verbose)
@@ -351,15 +353,13 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	else
-		if(tcpip_addr == NULL) {
+		if( (tcpip_addr == NULL) && (read_spat_from_file != 1) ){
 			check_retval = check_and_reconnect_serial(0, &fpin, &fpout, port);
 			retval = set_time(wait_for_data, &readBuff, fpin, fpout, verbose);
 			retval = set_pattern(wait_for_data, &readBuff, pattern, fpin, fpout, &dst_addr, verbose);
 			retval = get_status(wait_for_data, &readBuff, fpin, fpout, verbose);
 			retval = get_short_status(wait_for_data, &readBuff, fpin, fpout, verbose);
 		}
-	else
-		fpout = fpin = OpenTSCPConnection(tcpip_addr, "2011");
 
 	if(use_db) {
 		get_local_name(hostname, MAXHOSTNAMELEN);
@@ -371,7 +371,7 @@ int main(int argc, char *argv[]) {
 		}
 		if(db_set_pattern_var != 0) {
 		    if ( ((pclt = db_list_init(argv[0], hostname,
-			domain, xport, db_vars_san_jose, NUM_SJ_VARS, 
+			domain, xport, NULL, 0, 
 			db_trig_san_jose, NUM_SJ_TRIG_VARS)) == NULL))
 			exit(EXIT_FAILURE);
 		}
@@ -391,11 +391,14 @@ int main(int argc, char *argv[]) {
 			db_urms.no_control = 1;
 			db_clt_write(pclt, DB_URMS_VAR, sizeof(db_urms_t), &db_urms);
 
-			if(retval < 0) 
+                        if(read_spat_from_file  != 1)
 				check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
 		    if(create_db_vars)
 			db_list_done(pclt, db_vars_ab3418comm, NUM_DB_VARS, 
 				db_trig_list, NUM_TRIG_VARS);
+//		    if(db_set_pattern_var != 0)
+//			db_list_done(pclt, db_vars_san_jose, NUM_SJ_VARS, 
+//				db_trig_san_jose, NUM_SJ_TRIG_VARS);
 		    else
 			db_list_done(pclt, NULL, 0, 
 				db_trig_list, NUM_TRIG_VARS);
@@ -458,21 +461,23 @@ wait_for_data=1;
 		else {
 			if(read_spat_from_file) {
 				fp = fopen(datafilename, "r");
-				retval = fread(&readBuff, sizeof(get_long_status8_resp_mess_typ), 1, fp);
+				retval = fread(&readBuff, 1, sizeof(get_long_status8_resp_mess_typ), fp);
+				printf("read_from_file: retval %d\n", retval);
+				print_status( NULL, stdout, (get_long_status8_resp_mess_typ *)&readBuff, verbose);
 				fclose(fp);
 			}
 			else {
 				retval = get_status(wait_for_data, &readBuff, fpin, fpout, verbose);
-			}
-			if(retval < 0) 
-				printf("get_status returned negative value: %d\n", retval);
+				if(retval < 0) 
+					printf("get_status returned negative value: %d\n", retval);
 				check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
+			}
 		}
 		if(use_db && (retval >= 0) ) {
 //			db_clt_write(pclt, DB_TSCP_STATUS_VAR, sizeof(get_long_status8_resp_mess_typ), (get_long_status8_resp_mess_typ *)&readBuff);
 			db_clt_write(pclt, db_status_var, sizeof(get_long_status8_resp_mess_typ), (get_long_status8_resp_mess_typ *)&readBuff);
 			retval = process_phase_status( (get_long_status8_resp_mess_typ *)&readBuff, verbose, greens, &phase_status);
-			db_clt_write(pclt, DB_PHASE_STATUS_VAR, sizeof(phase_status_t), &phase_status);
+//			db_clt_write(pclt, DB_PHASE_STATUS_VAR, sizeof(phase_status_t), &phase_status);
 			fifofd = fopen("/tmp/blah", "w");
 			for(i=0; i<8; i++) {
 				fprintf(fifofd, "%d", phase_status.phase_status_colors[i]);
@@ -482,7 +487,7 @@ wait_for_data=1;
 				print_status( NULL, NULL, (get_long_status8_resp_mess_typ *)&readBuff, verbose);
 		}
 		usleep(80000);
-		if(udp_port == 0)
+		if( (udp_port == 0) && (read_spat_from_file != 1) ){
 			retval = get_short_status(wait_for_data, &readBuff, fpin, fpout, verbose);
 			if(retval < 0) 
 				check_retval = check_and_reconnect_serial(retval, &fpin, &fpout, port);
@@ -495,6 +500,7 @@ wait_for_data=1;
 			else 
 				if(retval < 0)
 					printf("get_short_status returned negative value: %d\n", retval);
+		}
 		}
 		if(verbose) {
 			clock_gettime(CLOCK_REALTIME, &end_time);
@@ -612,7 +618,7 @@ int OpenTSCPConnection(char *controllerIP, char *port) {
                 close(sfd);
         }
         if (rp == NULL) {                /* No address succeeded */
-                fprintf(stderr, "Could not connect\n");
+                fprintf(stderr, "OpenTSCPConnection: Could not connect\n");
                 return -1;
         }
         freeaddrinfo(result);       /* No longer needed */
@@ -893,7 +899,7 @@ printf("\n");
            }
 
            if (rp == NULL) {               /* No address succeeded */
-               fprintf(stderr, "Could not connect\n");
+               fprintf(stderr, "OpenUDP: Could not connect\n");
                return -1;
            }
 	   else

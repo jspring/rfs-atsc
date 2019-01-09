@@ -805,9 +805,9 @@ int print_status(char *strbuf, FILE *fp, get_long_status8_resp_mess_typ *status,
 		    offset += retval;
 		}
 
-		fprintf(fp, "%d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f ",
-			status->volume1,			//Col 70: System detector 1 
-			status->occupancy1 / 2.0,	    	//Col 71: System detector 1.  Value 0-200 = detector occupancy in
+		fprintf(fp, "%d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f %d %.1f ",
+			status->volume1,			//Col 70: System detector 1 volume
+			status->occupancy1 / 2.0,	    	//Col 71: System detector 1 occupancy. Value 0-200 = detector occupancy in
 						  		//	0.5% increments, 201-209 = reserved, 210 = stuck ON fault,
 						  		//	211 = stuck OFF fault, 212 = open loop fault,
 						  		//	213 = shorted loop fault, 214 = excessive inductance fault,
@@ -835,20 +835,20 @@ int print_status(char *strbuf, FILE *fp, get_long_status8_resp_mess_typ *status,
 						  		// 211 = stuck OFF fault, 212 = open loop fault,
 						  		// 213 = shorted loop fault, 214 = excessive inductance fault,
 						  		// 215 = overcount fault. 
-			status->volume2,			//Col 76: System detector 2 volume
-			status->occupancy2 / 2.0,    		//Col 77: System detector 2 occupancy
-			status->volume3,			//Col 78: System detector 3 volume
-			status->occupancy3 / 2.0,    		//Col 79: System detector 3 occupancy
-			status->volume4,			//Col 80: System detector 4 volume
-			status->occupancy4 / 2.0,    		//Col 81: System detector 4 occupancy
-			status->volume5,			//Col 82: System detector 5 volume
-			status->occupancy5 / 2.0,    		//Col 83: System detector 5 occupancy
-			status->volume6,			//Col 84: System detector 6 volume
-			status->occupancy6 / 2.0,		//Col 85: System detector 6 occupancy
-			status->volume7,			//Col 86: System detector 7 volume
-			status->occupancy7 / 2.0,    		//Col 87: System detector 7 occupancy
-			status->volume8,			//Col 88: System detector 8 volume
-			status->occupancy8 / 2.0		//Col 89: System detector 8 occupancy
+			status->volume2,			//Col 72: System detector 2 volume
+			status->occupancy2 / 2.0,    		//Col 73: System detector 2 occupancy
+			status->volume3,			//Col 74: System detector 3 volume
+			status->occupancy3 / 2.0,    		//Col 75: System detector 3 occupancy
+			status->volume4,			//Col 76: System detector 4 volume
+			status->occupancy4 / 2.0,    		//Col 77: System detector 4 occupancy
+			status->volume5,			//Col 78: System detector 5 volume
+			status->occupancy5 / 2.0,    		//Col 79: System detector 5 occupancy
+			status->volume6,			//Col 80: System detector 6 volume
+			status->occupancy6 / 2.0,		//Col 81: System detector 6 occupancy
+			status->volume7,			//Col 82: System detector 7 volume
+			status->occupancy7 / 2.0,    		//Col 83: System detector 7 occupancy
+			status->volume8,			//Col 84: System detector 8 volume
+			status->occupancy8 / 2.0		//Col 85: System detector 8 occupancy
 		    );
 		    offset += retval;
 		}
