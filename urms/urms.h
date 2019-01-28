@@ -259,7 +259,7 @@ typedef struct {
 	char 	spare;	//289 121 Spare 
 	char	gen_purpose_out_stat;	//290 122 General Purpose Output Status 
 	struct metered_lane_ctl metered_lane_ctl[MAX_METERED_LANES]; //291-334
-	struct queue_stat queue_stat[MAX_METERED_LANES][4]; //335-414
+	struct queue_stat queue_stat[MAX_QUEUE_LOOPS][MAX_METERED_LANES]; //335-414
 	char checksum_msb;	//415 19F CRC-16 Checksum (MSB) 
 	char checksum_lsb;	//416 1A0 CRC-16 Checksum (LSB) 
 } IS_PACKED urms_status_response_t;
@@ -280,7 +280,7 @@ typedef struct {
 		// URMS Poll Response   
 		// Dec Hex Parameter 
 	timestamp_t ts;
-	struct queue_stat queue_stat[MAX_METERED_LANES][MAX_QUEUE_LOOPS]; //0-79
+	struct queue_stat queue_stat[MAX_QUEUE_LOOPS][MAX_METERED_LANES]; //0-79
 } IS_PACKED db_urms_status2_t;
 
 typedef struct {

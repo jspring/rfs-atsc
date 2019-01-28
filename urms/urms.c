@@ -32,7 +32,7 @@ static void sig_hand(int code)
                 longjmp(exit_env, code);
 }
 
-const char *usage = "\n\t-r <controller IP address (def. 10.254.25.113)> \n\t-p <port (def. 1000)>\n\t-d <Database number (Modulo 4!)> \n\t-v (verbose) \n\t-s (standalone, no DB) \n\t-g (Get the controller status; use with -s and -v to just print out the status to screen without using the database)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
+const char *usage = "\n\t-r <controller IP address (def. 10.254.25.113)> \n\t-p <port (def. 1000)>\n\t-a <controller address, def. 1>\n\t-d <Database number (Modulo 4!)> \n\t-v (verbose) \n\t-s (standalone, no DB) \n\t-g (Get the controller status; use with -s and -v to just print out the status to screen without using the database)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
 
 
 db_id_t db_vars_list[] =  {
@@ -524,24 +524,15 @@ int main(int argc, char *argv[]) {
 		// Also check time on controller and set our control to SKIP if we're
 		// outside of the metering windows (i.e. not AM or PM metering times).
 		else {
-			if(urmsfd < 0) 		//Returned a negative number from a previous I/O operation, which should have been dealt with.
-				urmsfd = 0;
-			if(urmsfd > 0)
-				close(urmsfd);
-			// Open connection to URMS controller
-			printf("3: Opening connection to %s on port %s\n",
-				controllerIP,
-				port
-			);
-			urmsfd = OpenURMSConnection(controllerIP, port);
-			if(urmsfd < 0) {
-				fprintf(stderr, "Could not open connection to URMS controller\n");
-				exit(EXIT_FAILURE);
-			}
 			if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
 				fprintf(stderr, "Bad status command\n");
+				close(urmsfd);
 				get_status_err++;
-				continue;
+				urmsfd = OpenURMSConnection(controllerIP, port);
+				if(urmsfd < 0) {
+					fprintf(stderr, "OpenURMSConnection failed with error %d: exiting\n", urmsfd);
+					exit(EXIT_FAILURE);
+				}
 	    		}
 			else {
 				if( clock_gettime(CLOCK_REALTIME, &curr_timespec) < 0)
@@ -572,8 +563,8 @@ int main(int argc, char *argv[]) {
 				// Check metering windows
 				if( (dow == 0) || 		//Disable control if it's Sunday, ...
 				    (dow == 6) || 		//Disable control if it's Saturday, ...
-				    (db_urms_status.hour < 6) || //or if it's before 6 AM, ...
-				    (db_urms_status.hour >= 9) || //or if it's after 9 AM
+				    (db_urms_status.hour < 7) || //or if it's before 7 AM, ...
+				    (db_urms_status.hour >= 10) || //or if it's after 10 AM
 // Coordinated Ramp Metering for    ((db_urms_status.hour >= 9) && (db_urms_status.hour < 15) ) || //or if it's between 9 AM and 3 PM, ...
 // the PM peak hours was disabled   (db_urms_status.hour >= 18) || 	//or if it's after 6 PM, ...
 // on 9/27/2017
@@ -688,6 +679,7 @@ int main(int argc, char *argv[]) {
 				get_current_timestamp(&db_urms_status2.ts);
 				db_clt_write(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
 				db_clt_write(pclt, db_urms_status_var + 1, sizeof(urms_datafile_t), &urms_datafile);
+				printf("db_urms_status2.queue_stat[0][0].occ_msb %hhu db_urms_status2.queue_stat[0][0].occ_lsb %hhu\n", db_urms_status2.queue_stat[0][0].occ_msb, db_urms_status2.queue_stat[0][0].occ_lsb );
 				db_clt_write(pclt, db_urms_status_var + 3, sizeof(db_urms_status2_t), &db_urms_status2);
 				db_clt_write(pclt, db_urms_status_var + 4, sizeof(db_urms_status3_t), &db_urms_status3);
 	    		}
@@ -971,15 +963,18 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	gen_mess->urmspoll2[8] = '2';
 	if (write(fd, &gen_mess->urmspoll2, 9) != 9) {
 
-//	if (write(fd, &gen_mess->urms_status_poll, sizeof(urms_status_poll_t)) != sizeof(urms_status_poll_t)) {
-	  fprintf(stderr, "urms_get_status: partial/failed write\n");
+//	if (write(fd, &gen_mess->urms_status_poll, sizeof(urms_status_poll_t)) != sizeof(urms_status_poll_t)) 
+	  perror("urms_get_status: partial/failed write");
+//	  fprintf(stderr, "urms_get_status: partial/failed write\n");
 //	  exit(EXIT_FAILURE);
+	  return -1;
 	}
 
 	nread = read(fd, gen_mess, 417);
 	clock_gettime(CLOCK_REALTIME, &end_time);
 	if (nread == -1) {
-	 perror("read");
+	  perror("urms_get_status: read error");
+	  return -2;
 	}
 
         // Now append the FCS.
@@ -998,6 +993,9 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	    	printf("\n");
 	    }
     	printf("urms_get_status: Time for function call %f sec\n", (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) - (start_time.tv_sec + (start_time.tv_nsec/1.0e9)));
+	printf("Q1-1 occ %.1f ", 0.1 * ((gen_mess->urms_status_response.queue_stat[0][0].occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.queue_stat[0][0].occ_lsb));
+	printf("Q2-1 occ %.1f ", 0.1 * ((gen_mess->urms_status_response.queue_stat[0][1].occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.queue_stat[0][1].occ_lsb));
+/*
 	printf("ML1 speed %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[0].speed, 0.1 * ((gen_mess->urms_status_response.mainline_stat[0].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[0].lead_occ_lsb));
 	printf("ML2 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[1].lead_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[1].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[1].lead_occ_lsb));
 	printf("MT2 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[1].trail_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[1].trail_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[1].trail_occ_lsb));
@@ -1013,7 +1011,7 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 		((gen_mess->urms_status_response.metered_lane_stat[3].metered_lane_rate_msb << 8) +
 		(unsigned char)(gen_mess->urms_status_response.metered_lane_stat[3].metered_lane_rate_lsb))
 	);
-
+*/
 	}
 	return 0;
 }
