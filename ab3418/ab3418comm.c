@@ -96,6 +96,7 @@ int main(int argc, char *argv[]) {
 	FILE *fifofd = 0;
 	FILE *fp = 0;
 	char *datafilename;
+	char *timestampfilename;
 	db_timing_set_2070_t db_timing_set_2070;
 	db_timing_get_2070_t db_timing_get_2070;
 	phase_status_t phase_status;
@@ -222,6 +223,7 @@ int main(int argc, char *argv[]) {
 		  case 'f':
                         datafilename = strdup(optarg);
 //printf("datafilename %s\n", datafilename);
+			timestampfilename = strcat(datafilename, ".time");
                         break;
 		  case 'h':
 		  default:
@@ -318,6 +320,10 @@ int main(int argc, char *argv[]) {
 //						printf("%hhx ", preadBuff[i]);
 //						fprintf(fp, "%hhx ", preadBuff[i]);
 //					fprintf(fp, "\n");
+					fclose(fp);
+					fp = fopen(timestampfilename, "w");
+					get_current_timestamp(&ts);
+					print_timestamp(fp, &ts);
 					fclose(fp);
 					exit(EXIT_SUCCESS);
 				}
