@@ -91,7 +91,7 @@ typedef struct
 	unsigned char pattern;      /* Byte 8 Pattern (0-250, 251-253 reserved, 254 flash, 255 free) */
 	unsigned char green_yellow_overlap; /* Byte 9 Bits 0-3 green overlaps A-D;
 	                              * bits 4-7 yellow overlaps A-D */
-	unsigned char preemption;    /* Byte 10 Bits 0-1 EV A-D; bits 4-6 RR 1-2;
+	unsigned char preemption;    /* Byte 10 Bits 0-3 EV A-D; bits 4-6 RR 1-2;
 	                              * bit 6 = pattern transition; bit 7 unused */
 	unsigned char phase_call;    /* Byte 11 Phase call 1-8; (bit 7 = phase 8; bit 0 = phase 1) */
 	unsigned char ped_call;      /* Byte 12 Ped call 1-8; (bit 7 = ped 8; bit 0 = ped 1) */

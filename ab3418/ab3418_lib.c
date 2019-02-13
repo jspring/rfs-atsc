@@ -295,6 +295,9 @@ bool_typ ser_driver_read_udp( gen_mess_typ *pMessagebuff, int fpin, char verbose
 	    case 0xd2:
 			printf("ser_driver_read_udp: SetTime returned OK\n");
 		break;
+	    case 0xd3:
+			printf("ser_driver_read_udp: SetPattern returned OK\n");
+		break;
 	    case 0xd6:
 		if( (pMessagebuff->data[5] == 2) && (pMessagebuff->data[6] == 4) )
 			printf("ser_driver_read_udp: SetOverlap returned OK\n");
@@ -792,7 +795,7 @@ int print_status(char *strbuf, FILE *fp, get_long_status8_resp_mess_typ *status,
 			(int)(status->preemption >> 6) & 1,	//Col 66: Bit 6 = pattern transition, bit 7 unused 
 			(int)(status->preemption >> 5) & 1,	//Col 67: RR 2
 			(int)(status->preemption >> 4) & 1,	//Col 68: RR 1
-			(int)(status->preemption & 0x03)	//Col 69: Bits 0-1 EV A-D, bits 4-6 RR 1-2,
+			(int)(status->preemption & 0x0f)	//Col 69: Bits 0-3 EV A-D, bits 4-6 RR 1-2,
 		);
 		if(strbuf != NULL) {
 		    retval = sprintf(strbuf + offset, "%d %d %d %d %d ",
@@ -800,7 +803,7 @@ int print_status(char *strbuf, FILE *fp, get_long_status8_resp_mess_typ *status,
 			(int)(status->preemption >> 6) & 1,	//Col 66: Bit 6 = pattern transition, bit 7 unused 
 			(int)(status->preemption >> 5) & 1,	//Col 67: RR 2
 			(int)(status->preemption >> 4) & 1,	//Col 68: RR 1
-			(int)(status->preemption & 0x03)	//Col 69: Bits 0-1 EV A-D, bits 4-6 RR 1-2,
+			(int)(status->preemption & 0x0f)	//Col 69: Bits 0-3 EV A-D, bits 4-6 RR 1-2,
 		    );
 		    offset += retval;
 		}
