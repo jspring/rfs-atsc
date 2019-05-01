@@ -9,7 +9,7 @@
 **	chain.
 */
 
-#define ALLOW_SET_METER
+#undef ALLOW_SET_METER
 #include "urms.h"
 #include "tos.h"
 #include "ab3418_lib.h"
@@ -97,6 +97,7 @@ int main(int argc, char *argv[]) {
 	int set_urms = 0;
 	int get_urms = 0;
 	char addr_2070 = 2;
+	char use_db = 0;
 	int set_tos_action = 0;
 	int set_tos_det = 0;
 	int i;
@@ -150,6 +151,7 @@ int main(int argc, char *argv[]) {
                         db_urms_var = db_urms_status_var + 2;
                         db_urms_status2_var = db_urms_status_var + 3;
                         db_urms_status3_var = db_urms_status_var + 4;
+			use_db = 1;
                         break;
                 case 'r':
 			controllerIP = strdup(optarg);
@@ -267,12 +269,14 @@ int main(int argc, char *argv[]) {
                 }
         }
 
-	db_vars_list[0].id = db_urms_status_var;
-	db_vars_list[1].id = db_urms_status_var + 1;
-	db_vars_list[2].id = db_urms_status_var + 2;
-	db_vars_list[3].id = db_urms_status_var + 3;
-	db_vars_list[4].id = db_urms_status_var + 4;
-	db_trig_list[0] = db_urms_var;
+	if(use_db) {
+		db_vars_list[0].id = db_urms_status_var;
+		db_vars_list[1].id = db_urms_status_var + 1;
+		db_vars_list[2].id = db_urms_status_var + 2;
+		db_vars_list[3].id = db_urms_status_var + 3;
+		db_vars_list[4].id = db_urms_status_var + 4;
+		db_trig_list[0] = db_urms_var;
+	}
 
 	printf("Starting urms.c: IP address %s port %s db_urms_status_var %d db_urms_var %d db_trig_list[0] %d num_trig_variables %d no_control_startup %d no_control_runtime %d\n",
 		controllerIP,
@@ -293,10 +297,11 @@ int main(int argc, char *argv[]) {
 		controllerIP,
 		port
 	);
+
 	urmsfd = OpenURMSConnection(controllerIP, port);
 	if(urmsfd < 0) {
-		fprintf(stderr, "Could not open connection to URMS controller\n");
-//		exit(EXIT_FAILURE);
+		fprintf(stderr, "2: Could not open connection to URMS controller\n");
+		exit(EXIT_FAILURE);
 	}
 
 	// If just testing in standalone, write message to controller and exit
@@ -401,9 +406,10 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_SUCCESS);
 	}
 	// Connect to database
-        get_local_name(hostname, MAXHOSTNAMELEN);
-	if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, db_trig_list, num_trig_variables)) == NULL) {
-            exit(EXIT_FAILURE);
+	if(use_db) {
+		get_local_name(hostname, MAXHOSTNAMELEN);
+		if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, db_trig_list, num_trig_variables)) == NULL)
+			exit(EXIT_FAILURE);
 	}
 
         if (setjmp(exit_env) != 0) {
@@ -426,7 +432,6 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "Unable to initialize delay timer\n");
                 exit(EXIT_FAILURE);
         }
-	
 	//Initialize the saved copy of db_urms_sav with the current values in the controller
 	// ALL of the parameters MUST be set!
 	if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
@@ -485,7 +490,8 @@ int main(int argc, char *argv[]) {
 		// need to do the timer_init. Do NOT also use 
 		// TIMER_WAIT; it'll add another timer interval to
 		// the loop.
-		clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
+		if(use_db)
+			clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
 
 		// Check for command received via db
 		if( DB_TRIG_VAR(&trig_info) == db_urms_var ) {
@@ -502,8 +508,8 @@ int main(int argc, char *argv[]) {
 			
 				if(urmsfd < 0) 		//Returned a negative number from a previous I/O operation, which should have been dealt with.
 					urmsfd = 0;
-				if(urmsfd > 0)
-					close(urmsfd);
+//				if(urmsfd > 0)
+//					close(urmsfd);
 				urmsfd = OpenURMSConnection(controllerIP, port);
 				if(urmsfd < 0) {
 					fprintf(stderr, "Could not open connection to URMS controller\n");
@@ -513,10 +519,10 @@ int main(int argc, char *argv[]) {
 					fprintf(stderr, "2:Bad meter setting command\n");
 					exit(EXIT_FAILURE);
 				}
-				close(urmsfd);
-				if(urmsfd < 0) {
-					perror("close2");
-				}
+//				close(urmsfd);
+//				if(urmsfd < 0) {
+//					perror("close2");
+//				}
 #endif
 			}
 		}
@@ -524,6 +530,12 @@ int main(int argc, char *argv[]) {
 		// Also check time on controller and set our control to SKIP if we're
 		// outside of the metering windows (i.e. not AM or PM metering times).
 		else {
+				close(urmsfd);
+				urmsfd = OpenURMSConnection(controllerIP, port);
+				if(urmsfd < 0) {
+					fprintf(stderr, "OpenURMSConnection failed with error %d: exiting\n", urmsfd);
+					exit(EXIT_FAILURE);
+				}
 			if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
 				fprintf(stderr, "Bad status command\n");
 				close(urmsfd);
@@ -677,13 +689,17 @@ int main(int argc, char *argv[]) {
 				}
 
 				get_current_timestamp(&db_urms_status2.ts);
-				db_clt_write(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
-				db_clt_write(pclt, db_urms_status_var + 1, sizeof(urms_datafile_t), &urms_datafile);
-				printf("db_urms_status2.queue_stat[0][0].occ_msb %hhu db_urms_status2.queue_stat[0][0].occ_lsb %hhu\n", db_urms_status2.queue_stat[0][0].occ_msb, db_urms_status2.queue_stat[0][0].occ_lsb );
-				db_clt_write(pclt, db_urms_status_var + 3, sizeof(db_urms_status2_t), &db_urms_status2);
-				db_clt_write(pclt, db_urms_status_var + 4, sizeof(db_urms_status3_t), &db_urms_status3);
+				if(use_db) {
+					db_clt_write(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
+					db_clt_write(pclt, db_urms_status_var + 1, sizeof(urms_datafile_t), &urms_datafile);
+					printf("db_urms_status2.queue_stat[0][0].occ_msb %hhu db_urms_status2.queue_stat[0][0].occ_lsb %hhu\n", db_urms_status2.queue_stat[0][0].occ_msb, db_urms_status2.queue_stat[0][0].occ_lsb );
+					db_clt_write(pclt, db_urms_status_var + 3, sizeof(db_urms_status2_t), &db_urms_status2);
+					db_clt_write(pclt, db_urms_status_var + 4, sizeof(db_urms_status3_t), &db_urms_status3);
+				}
 	    		}
 		}
+		if(!use_db)
+			TIMER_WAIT(ptimer);
 	}
 }
 
@@ -723,7 +739,7 @@ static int OpenURMSConnection(char *controllerIP, char *port) {
 		close(sfd);
 	}
 	if (rp == NULL) {		 /* No address succeeded */
-		fprintf(stderr, "Could not connect\n");
+		fprintf(stderr, "1: Could not connect\n");
 		return -1;
 	}
 	freeaddrinfo(result);	    /* No longer needed */
@@ -946,7 +962,6 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 //	gen_mess->urms_status_poll.checksum_msb = 0;
 //	gen_mess->urms_status_poll.checksum_lsb = 0;
 //	MUST DO FCS16 CHECKSUM HERE!!
-
 	clock_gettime(CLOCK_REALTIME, &start_time);
 
 //	Uncomment this block to use the URMSPOLL2 message instead of the URMS POLL
@@ -961,21 +976,21 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	gen_mess->urmspoll2[6] = 'L';
 	gen_mess->urmspoll2[7] = 'L';
 	gen_mess->urmspoll2[8] = '2';
-	if (write(fd, &gen_mess->urmspoll2, 9) != 9) {
+	if (write(fd, &gen_mess->urmspoll2, 9) < 0) {
 
 //	if (write(fd, &gen_mess->urms_status_poll, sizeof(urms_status_poll_t)) != sizeof(urms_status_poll_t)) 
-	  perror("urms_get_status: partial/failed write");
-//	  fprintf(stderr, "urms_get_status: partial/failed write\n");
+	  perror("urms_get_status1: partial/failed write");
+	  fprintf(stderr, "urms_get_status2: partial/failed write\n");
 //	  exit(EXIT_FAILURE);
 	  return -1;
 	}
 
 	nread = read(fd, gen_mess, 417);
-	clock_gettime(CLOCK_REALTIME, &end_time);
 	if (nread == -1) {
 	  perror("urms_get_status: read error");
 	  return -2;
 	}
+	clock_gettime(CLOCK_REALTIME, &end_time);
 
         // Now append the FCS.
 	msg_len = 417 - 4;
