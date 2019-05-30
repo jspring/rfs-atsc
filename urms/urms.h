@@ -50,8 +50,8 @@ typedef struct {
 	unsigned char hdr4; //(= 0x01)
 	unsigned char hdr5; //End of header (= 0x11)
 	unsigned char lane_1_action; //Metered lane 1 action (1=dark,2=rest in 
-				     //green,3=fixed rate,
-				     //6=skip(return to TOD metering)
+				     //green,3=fixed rate,4=traffic responsive,
+				     //5=emergency green?,6=skip(return to TOD metering)
 	unsigned char lane_1_release_rate_MSB;//Metered lane 1 release rate(VPH)
 	unsigned char lane_1_release_rate_LSB;//Metered lane 1 release rate(VPH)
 	unsigned char lane_1_plan;//Metered lane 1 plan number
