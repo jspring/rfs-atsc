@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
 		  case 'f':
                         datafilename = strdup(optarg);
 //printf("datafilename %s\n", datafilename);
-			timestampfilename = strcat(datafilename, ".time");
+//			timestampfilename = strcat(datafilename, ".time");
                         break;
 		  case 'h':
 		  default:
@@ -438,7 +438,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	while(1) {
-		if(use_db)
+		if(use_db && (read_spat_from_file == 0 ) )
 			retval = clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
 //		if( DB_TRIG_VAR(&trig_info) == DB_2070_TIMING_SET_VAR ) 
 		if( DB_TRIG_VAR(&trig_info) == db_set_pattern_var) {
@@ -450,7 +450,6 @@ int main(int argc, char *argv[]) {
 			}
 		}
 		else {	
-wait_for_data=1;
 		if( (udp_port != 0) && (remote_ipaddr != NULL) ) {
 			retval = get_status_udp(wait_for_data, &readBuff, sd_out, sd_out, &dst_addr, verbose);
 			if(retval < 0) 
@@ -466,10 +465,17 @@ wait_for_data=1;
 		}
 		else {
 			if(read_spat_from_file) {
+				memset(&readBuff, 0, sizeof(gen_mess_typ));
 				fp = fopen(datafilename, "r");
 				retval = fread(&readBuff, 1, sizeof(get_long_status8_resp_mess_typ), fp);
-				printf("read_from_file: retval %d\n", retval);
+				printf("read_from_file: retval %d %s", retval, datafilename);
+				for(i=0; i<retval; i++)
+					printf("%hhx ", preadBuff[i]);
+				get_current_timestamp(&ts);
+				print_timestamp(stdout, &ts);
 				print_status( NULL, stdout, (get_long_status8_resp_mess_typ *)&readBuff, verbose);
+				printf("\n");
+				fflush(NULL);
 				fclose(fp);
 			}
 			else {
@@ -583,7 +589,7 @@ wait_for_data=1;
 //			}
 //		}
 //	}
-		if(!use_db)
+		if( (!use_db) || read_spat_from_file )
 			TIMER_WAIT(ptmr);
 	}
 	return retval;
