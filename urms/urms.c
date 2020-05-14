@@ -9,7 +9,7 @@
 **	chain.
 */
 
-#define ALLOW_SET_METER
+#define ALLOW_SET_METER 1
 #include "urms.h"
 #include "tos.h"
 #include "ab3418_lib.h"
@@ -32,7 +32,7 @@ static void sig_hand(int code)
                 longjmp(exit_env, code);
 }
 
-const char *usage = "\n\t-r <controller IP address (def. 10.254.25.113)> \n\t-p <port (def. 1000)>\n\t-d <Database number (Modulo 4!)> \n\t-v (verbose) \n\t-s (standalone, no DB) \n\t-g (Get the controller status; use with -s and -v to just print out the status to screen without using the database)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
+const char *usage = "\n\t-r <controller IP address (def. 10.254.25.113)> \n\t-p <port (def. 1000)>\n\t-a <controller address, def. 1>\n\t-d <Database number (Modulo 4!)> \n\t-v (verbose) \n\t-s (standalone, no DB) \n\t-g (Get the controller status; use with -s and -v to just print out the status to screen without using the database)\n\nThe following tests are mutually exclusive, so don't mix the options by entering, for instance, a '-1' and a '-7'.  I don't check - just don't do it!\n\nFor standalone testing:\n\t-1 <lane 1 release rate (VPH)>\n\t-2 <lane 1 action (1=dark,2=rest in green,3=fixed rate,6=skip)>\n\t-3 <lane 1 plan>\n\t-4 <lane 2 release rate (VPH)>\n\t-5 <lane 2 action>\n\t-6 <lane 2 plan>\n\t-E <lane 3 release rate (VPH)>\n\t-F <lane 3 action>\n\t-G <lane 3 plan>\n\t-H <lane 4 release rate (VPH)>\n\t-I <lane 4 action>\n\t-J <lane 4 plan>\n\nFor TOS action code testing:\n\t-7 <lane 1 action code (0=skip,0x155=150 VPHPL)>\n\t-8 <lane 2 action code>\n\t-9 <lane 3 action code>\n\nTOS detector enable testing:\n\t-A <station type (1=mainline, 2=ramp,def.=2)>\n\t-B<number of lanes>\n\t-C <first logical lane (def.=1)>\n\t-D <detector enable code (mainline: 1=disabled,2=single lead,3=single trail,4=dual  ramp: recall=0,1=enable,2=red lock)>\n\n";
 
 
 db_id_t db_vars_list[] =  {
@@ -59,7 +59,219 @@ int tos_enable_detectors(int fd, gen_mess_t *gen_mess, char verbose,
 	unsigned char *det_enable, unsigned char num_lanes, 
 	unsigned char station_type, unsigned char first_logical_lane);
 
+typedef struct {
+	char *name;
+	float postmile;
+	char *ipaddr;
+	char *port;
+}controller_def_t;
+
+typedef struct{
+	//Index,Onramp_Names,Controller_IP_Address,Days,Time_Interval_Start,Time_Interval_End,Minimum_RM_Rate,Maximum_RM_Rate
+	//Elk_Grove_Blvd,10.253.28.97,Wednesday,1000,1200,111,212
+	char *name;
+	char *ipaddr;
+	char *datestr;
+	int interval_start;
+	int interval_end;
+	short min_rm_rate;
+	short max_rm_rate;
+} time_interval_config_t;
+
+typedef struct{
+	controller_def_t rm_controller;
+	char *crm_enabled;
+	controller_def_t data_controller[3];
+}section_def_t;
+
+typedef struct {
+	short max_rate;
+	short min_rate;
+	char *am_start_time;
+	char *am_end_time;
+	char *pm_start_time;
+	char *pm_end_time;
+	char rt_vs_history;
+	char q_override;
+} config_t;
+
+int strarr2sectiondef(char strarr[][20], section_def_t *section_def, int verbose) {
+
+	printf("strarr2sectiondef: Got to 1\n");
+	printf("strarr2sectiondef: Got to 2 strarr[0][0] %s\n", &strarr[0][0]);
+
+	//Ramp meter controller
+	section_def->rm_controller.name = &strarr[0][0];
+	if(section_def->rm_controller.name == NULL) {
+		fprintf(stderr, "No onramp name\n");
+		return -1;
+	}
+	
+	section_def->rm_controller.postmile = strtof(&strarr[1][0], NULL);
+
+	section_def->rm_controller.ipaddr = &strarr[2][0];
+	if(inet_addr(section_def->rm_controller.ipaddr) == INADDR_NONE) {
+		fprintf(stderr, "Invalid ramp meter controller IP address\n");
+		return -1;
+	}	
+
+	section_def->rm_controller.port = &strarr[3][0];
+	if(section_def->rm_controller.port == NULL) {
+		fprintf(stderr, "No port string\n");
+		return -1;
+	}
+
+	section_def->crm_enabled = &strarr[4][0];
+	if(section_def->crm_enabled == NULL) {
+		fprintf(stderr, "No crm enable string\n");
+		return -1;
+	}
+
+	//Data controller #1
+	section_def->data_controller[0].name = &strarr[5][0];
+	if(section_def->data_controller[0].name == NULL) {
+		fprintf(stderr, "No onramp name\n");
+	}
+	
+	section_def->data_controller[0].postmile = strtof(&strarr[6][0], NULL);
+
+	section_def->data_controller[0].ipaddr = &strarr[7][0];
+	if(inet_addr(section_def->data_controller[0].ipaddr) == INADDR_NONE) {
+		printf("Invalid IP address\n");
+	}	
+
+	section_def->data_controller[0].port = &strarr[8][0];
+	if(section_def->data_controller[0].port == NULL) {
+		fprintf(stderr, "No port string\n");
+	}
+
+	//Data controller #2
+	section_def->data_controller[1].name = &strarr[9][0];
+	if(section_def->data_controller[1].name == NULL) {
+		fprintf(stderr, "No onramp name\n");
+	}
+	
+	section_def->data_controller[1].postmile = strtof(&strarr[10][0], NULL);
+
+	section_def->data_controller[1].ipaddr = &strarr[11][0];
+	if(inet_addr(section_def->data_controller[1].ipaddr) == INADDR_NONE) {
+		printf("Invalid IP address\n");
+	}	
+
+	section_def->data_controller[1].port = &strarr[12][0];
+	if(section_def->data_controller[1].port == NULL) {
+		fprintf(stderr, "No port string\n");
+	}
+
+	//Data controller #3
+	section_def->data_controller[2].name = &strarr[13][0];
+	if(section_def->data_controller[2].name == NULL) {
+		fprintf(stderr, "No onramp name\n");
+	}
+	
+	section_def->data_controller[2].postmile = strtof(&strarr[14][0], NULL);
+
+	section_def->data_controller[2].ipaddr = &strarr[15][0];
+	if(inet_addr(section_def->data_controller[2].ipaddr) == INADDR_NONE) {
+		printf("Invalid IP address\n");
+	}	
+
+	section_def->data_controller[2].port = &strarr[16][0];
+	if(section_def->data_controller[2].port == NULL) {
+		fprintf(stderr, "No port string\n");
+	}
+/*
+	section_def->rt_vs_history = atoi(&strarr[11][0]);
+	section_def->q_override = atoi(&strarr[12][0]);
+*/
+	if(verbose) {
+		printf("section_def->rm_controller.name %s\n \
+			section_def->rm_controller.postmile %f\n \
+			section_def->rm_controller.ipaddr %s\n \
+			section_def->rm_controller.port %s\n \
+			section_def->crm_enabled %s\n \
+			section_def->data_controller[0].name %s\n \
+			section_def->data_controller[0].postmile %f\n \
+			section_def->data_controller[0].ipaddr %s\n \
+			section_def->data_controller[0].port %s\n \
+			section_def->data_controller[1].name %s\n \
+			section_def->data_controller[1].postmile %f\n \
+			section_def->data_controller[1].ipaddr %s\n \
+			section_def->data_controller[1].port %s\n \
+			section_def->data_controller[2].name %s\n \
+			section_def->data_controller[2].postmile %f\n \
+			section_def->data_controller[2].ipaddr %s\n \
+			section_def->data_controller[2].port %s\n",
+
+			section_def->rm_controller.name,
+			section_def->rm_controller.postmile,
+			section_def->rm_controller.ipaddr,
+			section_def->rm_controller.port,
+			section_def->crm_enabled,
+			section_def->data_controller[0].name,
+			section_def->data_controller[0].postmile,
+			section_def->data_controller[0].ipaddr,
+			section_def->data_controller[0].port,
+			section_def->data_controller[1].name,
+			section_def->data_controller[1].postmile,
+			section_def->data_controller[1].ipaddr,
+			section_def->data_controller[1].port,
+			section_def->data_controller[2].name,
+			section_def->data_controller[2].postmile,
+			section_def->data_controller[2].ipaddr,
+			section_def->data_controller[2].port
+		);		
+	}
+	return 0;
+}
+/*
+			section_def->rt_vs_history %d\n \
+			section_def->q_override %d\n", 
+			section_def->rt_vs_history,
+			section_def->q_override
+*/
+
+int strarr2timeinterval(char strarr[][20], time_interval_config_t *time_interval_config, int verbose) {
+
+	time_interval_config->name = &strarr[0][0];
+	if(time_interval_config->name == NULL) {
+		fprintf(stderr, "No onramp name\n");
+		return -1;
+	}
+	time_interval_config->ipaddr = &strarr[1][0];
+	if(inet_addr(time_interval_config->ipaddr) == INADDR_NONE) {
+		printf("Invalid IP address\n");
+		return -1;
+	}	
+	time_interval_config->datestr = &strarr[2][0];
+	time_interval_config->interval_start = atoi(&strarr[3][0]);
+	time_interval_config->interval_end = atoi(&strarr[4][0]);
+	time_interval_config->min_rm_rate = atoi(&strarr[5][0]);
+	time_interval_config->max_rm_rate = atoi(&strarr[6][0]);
+	if(verbose) {
+		printf("time_interval_config->name %s\n \
+			time_interval_config->ipaddr %s\n \
+			time_interval_config->interval_start %d\n \
+			time_interval_config->interval_end %d\n \
+			time_interval_config->datestr %s\n \
+			time_interval_config->min_rm_rate %d\n \
+			time_interval_config->max_rm_rate %d\n ",
+
+			time_interval_config->name,
+			time_interval_config->ipaddr,
+			time_interval_config->interval_start,
+			time_interval_config->interval_end,
+			time_interval_config->datestr,
+			time_interval_config->min_rm_rate,
+			time_interval_config->max_rm_rate
+		);		
+	}
+	return 0;
+};
+
 int main(int argc, char *argv[]) {
+	section_def_t section_def;
+	time_interval_config_t  time_interval_config;
 	int urmsfd;
 	gen_mess_t gen_mess;
 
@@ -75,10 +287,7 @@ int main(int argc, char *argv[]) {
         posix_timer_typ *ptimer;
         trig_info_typ trig_info;
 	int db_urms_status_var = 0;
-	int db_urms_status2_var = 0;
-	int db_urms_status3_var = 0;
 	int db_urms_var = 0;
-	int db_urms_datafile_var = 0;
 	db_urms_t db_urms;
 	db_urms_t db_urms_sav;
 	db_urms_status_t db_urms_status;
@@ -97,6 +306,7 @@ int main(int argc, char *argv[]) {
 	int set_urms = 0;
 	int get_urms = 0;
 	char addr_2070 = 2;
+	char use_db = 0;
 	int set_tos_action = 0;
 	int set_tos_det = 0;
 	int i;
@@ -130,6 +340,10 @@ int main(int argc, char *argv[]) {
 	unsigned char no_control_startup = 0;
 	unsigned char no_control_runtime = 1;
 	unsigned char no_control_runtime_sav = 0;
+	char *section_def_str = NULL;
+	char *time_config_str = NULL;
+	char str_seg[20][20] = {0};
+	char *tempstr;
 
 	memset(&db_urms, 0, sizeof(db_urms_t));
 
@@ -142,14 +356,12 @@ int main(int argc, char *argv[]) {
 //	sizeof(struct queue_stat),
 //	sizeof(struct addl_det_stat)
 //);
-        while ((option = getopt(argc, argv, "d:r:vgsp:a:i:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:J:")) != EOF) {
+        while ((option = getopt(argc, argv, "d:r:vgsp:a:i:n1:2:3:4:5:6:7:8:9:A:B:C:D:E:F:G:H:I:J:T:c:")) != EOF) {
 	    switch(option) {
                 case 'd':
                         db_urms_status_var = atoi(optarg);
-                        db_urms_datafile_var = db_urms_status_var + 1;
                         db_urms_var = db_urms_status_var + 2;
-                        db_urms_status2_var = db_urms_status_var + 3;
-                        db_urms_status3_var = db_urms_status_var + 4;
+			use_db = 1;
                         break;
                 case 'r':
 			controllerIP = strdup(optarg);
@@ -260,6 +472,53 @@ int main(int argc, char *argv[]) {
 			port = "2101";
 			set_tos_det = 1;
                         break;
+                case 'T':
+                        time_config_str = strdup(optarg);
+			for(i=0; i<7; i++) {
+				tempstr = strstr( time_config_str, ",");
+				if(tempstr == time_config_str){
+					str_seg[i][0] = -1;
+					printf("No string %d\n", i);
+					time_config_str += 1;
+				}
+				else {
+					tempstr = strtok(time_config_str, ",");
+					strcpy(&str_seg[i][0], tempstr);
+					printf("String %d %s\n", i, &str_seg[i][0]);
+					time_config_str += strlen(tempstr) + 1;
+				}	
+			}	
+			if(strarr2timeinterval(str_seg, &time_interval_config, verbose) < 0) {
+				printf("Configuration string is wrong. Exiting....\n");
+                       		exit(EXIT_FAILURE);
+			}
+                        break;
+                case 'c':
+                        section_def_str = strdup(optarg);
+			for(i=0; i<17; i++) {
+				tempstr = strstr( section_def_str, ",");
+				if(tempstr == section_def_str){
+					str_seg[i][0] = -1;
+					printf("No string %d\n", i);
+					section_def_str += 1;
+				}
+				else {
+					tempstr = strtok(section_def_str, ",");
+					strcpy(&str_seg[i][0], tempstr);
+					printf("String %d %s\n", i, &str_seg[i][0]);
+					section_def_str += strlen(tempstr) + 1;
+				}	
+			}	
+			if(strarr2sectiondef (str_seg, &section_def, verbose) < 0) {
+				printf("Configuration string is wrong. Exiting....\n");
+                       		exit(EXIT_FAILURE);
+			}
+			else {
+				controllerIP = strdup(section_def.rm_controller.ipaddr);
+				port = strdup(section_def.rm_controller.port);
+                        	no_control_startup = ((section_def.crm_enabled == NULL) ? 0:1);
+			}
+                        break;
                 default:
                         printf("\n\nUsage: %s %s\n", argv[0], usage);
                         exit(EXIT_FAILURE);
@@ -267,12 +526,25 @@ int main(int argc, char *argv[]) {
                 }
         }
 
-	db_vars_list[0].id = db_urms_status_var;
-	db_vars_list[1].id = db_urms_status_var + 1;
-	db_vars_list[2].id = db_urms_status_var + 2;
-	db_vars_list[3].id = db_urms_status_var + 3;
-	db_vars_list[4].id = db_urms_status_var + 4;
-	db_trig_list[0] = db_urms_var;
+printf("Got to 0\n");
+	if(use_db) {
+		db_vars_list[0].id = db_urms_status_var;
+		db_vars_list[1].id = db_urms_status_var + 1;
+		db_vars_list[2].id = db_urms_status_var + 2;
+		db_vars_list[3].id = db_urms_status_var + 3;
+		db_vars_list[4].id = db_urms_status_var + 4;
+		db_trig_list[0] = db_urms_var;
+	}
+printf("Got to 1 config.ipaddr %s port %s crm_enabled %s\n",
+	section_def.rm_controller.ipaddr, section_def.rm_controller.port, section_def.crm_enabled);
+	if(section_def_str != NULL) {
+		controllerIP = section_def.rm_controller.ipaddr;
+		port = section_def.rm_controller.port;
+		if(strcmp(section_def.crm_enabled, "on") == 0)
+			no_control_startup = 0;
+		else
+			no_control_startup = 1;
+	}
 
 	printf("Starting urms.c: IP address %s port %s db_urms_status_var %d db_urms_var %d db_trig_list[0] %d num_trig_variables %d no_control_startup %d no_control_runtime %d\n",
 		controllerIP,
@@ -293,10 +565,11 @@ int main(int argc, char *argv[]) {
 		controllerIP,
 		port
 	);
+
 	urmsfd = OpenURMSConnection(controllerIP, port);
 	if(urmsfd < 0) {
-		fprintf(stderr, "Could not open connection to URMS controller\n");
-//		exit(EXIT_FAILURE);
+		fprintf(stderr, "2: Could not open connection to URMS controller\n");
+		exit(EXIT_FAILURE);
 	}
 
 	// If just testing in standalone, write message to controller and exit
@@ -306,7 +579,7 @@ int main(int argc, char *argv[]) {
 				fprintf(stderr, "Bad status command\n");
 				exit(EXIT_FAILURE);
 			}
-			purms_status_response = &gen_mess;
+			purms_status_response = &gen_mess.urms_status_response;
 			if( ( (purms_status_response->metered_lane_ctl[0].cmd_src < 3) && (purms_status_response->metered_lane_ctl[0].cmd_src > 0) ) || 
 				( (purms_status_response->metered_lane_ctl[1].cmd_src < 3) && (purms_status_response->metered_lane_ctl[1].cmd_src > 0) ) || 
 				( (purms_status_response->metered_lane_ctl[2].cmd_src < 3) && (purms_status_response->metered_lane_ctl[2].cmd_src > 0) ) || 
@@ -401,9 +674,10 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_SUCCESS);
 	}
 	// Connect to database
-        get_local_name(hostname, MAXHOSTNAMELEN);
-	if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, db_trig_list, num_trig_variables)) == NULL) {
-            exit(EXIT_FAILURE);
+	if(use_db) {
+		get_local_name(hostname, MAXHOSTNAMELEN);
+		if ( (pclt = db_list_init(argv[0], hostname, domain, xport, NULL, 0, db_trig_list, num_trig_variables)) == NULL)
+			exit(EXIT_FAILURE);
 	}
 
         if (setjmp(exit_env) != 0) {
@@ -426,7 +700,6 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "Unable to initialize delay timer\n");
                 exit(EXIT_FAILURE);
         }
-	
 	//Initialize the saved copy of db_urms_sav with the current values in the controller
 	// ALL of the parameters MUST be set!
 	if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
@@ -485,7 +758,8 @@ int main(int argc, char *argv[]) {
 		// need to do the timer_init. Do NOT also use 
 		// TIMER_WAIT; it'll add another timer interval to
 		// the loop.
-		clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
+		if(use_db)
+			clt_ipc_receive(pclt, &trig_info, sizeof(trig_info));
 
 		// Check for command received via db
 		if( DB_TRIG_VAR(&trig_info) == db_urms_var ) {
@@ -502,8 +776,8 @@ int main(int argc, char *argv[]) {
 			
 				if(urmsfd < 0) 		//Returned a negative number from a previous I/O operation, which should have been dealt with.
 					urmsfd = 0;
-				if(urmsfd > 0)
-					close(urmsfd);
+//				if(urmsfd > 0)
+//					close(urmsfd);
 				urmsfd = OpenURMSConnection(controllerIP, port);
 				if(urmsfd < 0) {
 					fprintf(stderr, "Could not open connection to URMS controller\n");
@@ -513,10 +787,10 @@ int main(int argc, char *argv[]) {
 					fprintf(stderr, "2:Bad meter setting command\n");
 					exit(EXIT_FAILURE);
 				}
-				close(urmsfd);
-				if(urmsfd < 0) {
-					perror("close2");
-				}
+//				close(urmsfd);
+//				if(urmsfd < 0) {
+//					perror("close2");
+//				}
 #endif
 			}
 		}
@@ -524,24 +798,21 @@ int main(int argc, char *argv[]) {
 		// Also check time on controller and set our control to SKIP if we're
 		// outside of the metering windows (i.e. not AM or PM metering times).
 		else {
-			if(urmsfd < 0) 		//Returned a negative number from a previous I/O operation, which should have been dealt with.
-				urmsfd = 0;
-			if(urmsfd > 0)
 				close(urmsfd);
-			// Open connection to URMS controller
-			printf("3: Opening connection to %s on port %s\n",
-				controllerIP,
-				port
-			);
-			urmsfd = OpenURMSConnection(controllerIP, port);
-			if(urmsfd < 0) {
-				fprintf(stderr, "Could not open connection to URMS controller\n");
-				exit(EXIT_FAILURE);
-			}
+				urmsfd = OpenURMSConnection(controllerIP, port);
+				if(urmsfd < 0) {
+					fprintf(stderr, "OpenURMSConnection failed with error %d: exiting\n", urmsfd);
+					exit(EXIT_FAILURE);
+				}
 			if( urms_get_status(urmsfd, &gen_mess, verbose) < 0) {
 				fprintf(stderr, "Bad status command\n");
+				close(urmsfd);
 				get_status_err++;
-				continue;
+				urmsfd = OpenURMSConnection(controllerIP, port);
+				if(urmsfd < 0) {
+					fprintf(stderr, "OpenURMSConnection failed with error %d: exiting\n", urmsfd);
+					exit(EXIT_FAILURE);
+				}
 	    		}
 			else {
 				if( clock_gettime(CLOCK_REALTIME, &curr_timespec) < 0)
@@ -572,8 +843,8 @@ int main(int argc, char *argv[]) {
 				// Check metering windows
 				if( (dow == 0) || 		//Disable control if it's Sunday, ...
 				    (dow == 6) || 		//Disable control if it's Saturday, ...
-				    (db_urms_status.hour < 6) || //or if it's before 6 AM, ...
-				    (db_urms_status.hour >= 9) || //or if it's after 9 AM
+				    (db_urms_status.hour < 7) || //or if it's before 7 AM, ...
+				    (db_urms_status.hour >= 10) || //or if it's after 10 AM
 // Coordinated Ramp Metering for    ((db_urms_status.hour >= 9) && (db_urms_status.hour < 15) ) || //or if it's between 9 AM and 3 PM, ...
 // the PM peak hours was disabled   (db_urms_status.hour >= 18) || 	//or if it's after 6 PM, ...
 // on 9/27/2017
@@ -686,12 +957,17 @@ int main(int argc, char *argv[]) {
 				}
 
 				get_current_timestamp(&db_urms_status2.ts);
-				db_clt_write(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
-				db_clt_write(pclt, db_urms_status_var + 1, sizeof(urms_datafile_t), &urms_datafile);
-				db_clt_write(pclt, db_urms_status_var + 3, sizeof(db_urms_status2_t), &db_urms_status2);
-				db_clt_write(pclt, db_urms_status_var + 4, sizeof(db_urms_status3_t), &db_urms_status3);
+				if(use_db) {
+					db_clt_write(pclt, db_urms_status_var, sizeof(db_urms_status_t), &db_urms_status);
+					db_clt_write(pclt, db_urms_status_var + 1, sizeof(urms_datafile_t), &urms_datafile);
+					printf("db_urms_status2.queue_stat[0][0].occ_msb %hhu db_urms_status2.queue_stat[0][0].occ_lsb %hhu\n", db_urms_status2.queue_stat[0][0].occ_msb, db_urms_status2.queue_stat[0][0].occ_lsb );
+					db_clt_write(pclt, db_urms_status_var + 3, sizeof(db_urms_status2_t), &db_urms_status2);
+					db_clt_write(pclt, db_urms_status_var + 4, sizeof(db_urms_status3_t), &db_urms_status3);
+				}
 	    		}
 		}
+		if(!use_db)
+			TIMER_WAIT(ptimer);
 	}
 }
 
@@ -731,7 +1007,7 @@ static int OpenURMSConnection(char *controllerIP, char *port) {
 		close(sfd);
 	}
 	if (rp == NULL) {		 /* No address succeeded */
-		fprintf(stderr, "Could not connect\n");
+		fprintf(stderr, "1: Could not connect\n");
 		return -1;
 	}
 	freeaddrinfo(result);	    /* No longer needed */
@@ -903,7 +1179,7 @@ int urms_set_meter(int fd, db_urms_t *db_urms, db_urms_t *db_urms_sav, char verb
 
 	if ((ret = write(fd, msgbuf, sizeof(urmsctl_t))) != sizeof(urmsctl_t)) {
 	  perror("urms_set_meter write");
-	  fprintf(stderr, "urms_set_meter: partial/failed write, ret %d sizeof(urmsctl_t) %d\n",
+	  fprintf(stderr, "urms_set_meter: partial/failed write, ret %d sizeof(urmsctl_t) %ld\n",
 		ret,
 		sizeof(urmsctl_t)
 	  );
@@ -954,7 +1230,6 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 //	gen_mess->urms_status_poll.checksum_msb = 0;
 //	gen_mess->urms_status_poll.checksum_lsb = 0;
 //	MUST DO FCS16 CHECKSUM HERE!!
-
 	clock_gettime(CLOCK_REALTIME, &start_time);
 
 //	Uncomment this block to use the URMSPOLL2 message instead of the URMS POLL
@@ -969,18 +1244,21 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	gen_mess->urmspoll2[6] = 'L';
 	gen_mess->urmspoll2[7] = 'L';
 	gen_mess->urmspoll2[8] = '2';
-	if (write(fd, &gen_mess->urmspoll2, 9) != 9) {
+	if (write(fd, &gen_mess->urmspoll2, 9) < 0) {
 
-//	if (write(fd, &gen_mess->urms_status_poll, sizeof(urms_status_poll_t)) != sizeof(urms_status_poll_t)) {
-	  fprintf(stderr, "urms_get_status: partial/failed write\n");
+//	if (write(fd, &gen_mess->urms_status_poll, sizeof(urms_status_poll_t)) != sizeof(urms_status_poll_t)) 
+	  perror("urms_get_status1: partial/failed write");
+	  fprintf(stderr, "urms_get_status2: partial/failed write\n");
 //	  exit(EXIT_FAILURE);
+	  return -1;
 	}
 
 	nread = read(fd, gen_mess, 417);
-	clock_gettime(CLOCK_REALTIME, &end_time);
 	if (nread == -1) {
-	 perror("read");
+	  perror("urms_get_status: read error");
+	  return -2;
 	}
+	clock_gettime(CLOCK_REALTIME, &end_time);
 
         // Now append the FCS.
 	msg_len = 417 - 4;
@@ -998,6 +1276,9 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 	    	printf("\n");
 	    }
     	printf("urms_get_status: Time for function call %f sec\n", (end_time.tv_sec + (end_time.tv_nsec/1.0e9)) - (start_time.tv_sec + (start_time.tv_nsec/1.0e9)));
+	printf("Q1-1 occ %.1f ", 0.1 * ((gen_mess->urms_status_response.queue_stat[0][0].occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.queue_stat[0][0].occ_lsb));
+	printf("Q2-1 occ %.1f ", 0.1 * ((gen_mess->urms_status_response.queue_stat[0][1].occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.queue_stat[0][1].occ_lsb));
+/*
 	printf("ML1 speed %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[0].speed, 0.1 * ((gen_mess->urms_status_response.mainline_stat[0].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[0].lead_occ_lsb));
 	printf("ML2 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[1].lead_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[1].lead_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[1].lead_occ_lsb));
 	printf("MT2 vol %hhu occ %.1f ", gen_mess->urms_status_response.mainline_stat[1].trail_vol, 0.1 * ((gen_mess->urms_status_response.mainline_stat[1].trail_occ_msb << 8) + (unsigned char)gen_mess->urms_status_response.mainline_stat[1].trail_occ_lsb));
@@ -1013,7 +1294,7 @@ int urms_get_status(int fd, gen_mess_t *gen_mess, char verbose) {
 		((gen_mess->urms_status_response.metered_lane_stat[3].metered_lane_rate_msb << 8) +
 		(unsigned char)(gen_mess->urms_status_response.metered_lane_stat[3].metered_lane_rate_lsb))
 	);
-
+*/
 	}
 	return 0;
 }
